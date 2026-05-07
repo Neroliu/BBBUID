@@ -1,1 +1,1 @@
-BBBUID_version = "1.0.0"
+BBBUID_version = "1.0.1"
