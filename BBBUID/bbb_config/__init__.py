@@ -30,7 +30,7 @@ async def open_switch_func(bot: Bot, ev: Event):
     uid = await GsBind.get_uid_by_game(ev.user_id, ev.bot_id, "bbb")
     if uid is None:
         return await bot.send(UID_HINT)
-    cookie = await GsUser.get_user_cookie_by_uid(uid, "bbb")
+    cookie = await GsUser.get_user_cookie_by_user_id(ev.user_id, ev.bot_id)
     if cookie is None:
         return await bot.send(CK_HINT)
 
