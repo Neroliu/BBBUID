@@ -131,6 +131,7 @@ def _draw_score_table(
     img: Image.Image,
     y: int,
     hexagon_data: list[dict],
+    final_level_img: Image.Image | None = None,
 ) -> int:
     if not hexagon_data:
         return y
@@ -189,19 +190,13 @@ def _draw_score_table(
         y += 36
 
     # Total score row
-    total_score = sum(min(h.get("value", 0), 100) for h in hexagon_data) // len(hexagon_data)
-    _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + 34), fill=TABLE_HEADER_BG, radius=4)
-    draw.text((PAD + 12, y + 7), "总评分", ACCENT_COLOR, cell_font)
-    draw.text((PAD + col_w + 12, y + 7), "-", SUB_COLOR, cell_font)
-    draw.text((PAD + col_w * 2 + 12, y + 7), str(total_score), ACCENT_COLOR, cell_font)
-    bar_x = PAD + col_w * 3 + 12
-    bar_w = col_w - 24
-    bar_y = y + 10
-    _draw_rounded_rect(draw, (bar_x, bar_y, bar_x + bar_w, bar_y + bar_h), fill=SCORE_BAR_BG, radius=4)
-    fill_w = int(bar_w * total_score / 100)
-    if fill_w > 0:
-        _draw_rounded_rect(draw, (bar_x, bar_y, bar_x + fill_w, bar_y + bar_h), fill=ACCENT_COLOR, radius=4)
-    y += 36
+    _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + 38), fill=TABLE_HEADER_BG, radius=4)
+    draw.text((PAD + 12, y + 9), "总评", ACCENT_COLOR, cell_font)
+    if final_level_img:
+        icon_size = 32
+        fl_resized = final_level_img.resize((icon_size, icon_size), Image.LANCZOS)
+        img.paste(fl_resized, (PAD + col_w + 12, y + 3), fl_resized)
+    y += 40
 
     return y + 10
 
@@ -384,10 +379,11 @@ async def draw_role_wiki(detail: dict) -> Image.Image:
     equipments = evaluation.get("equipments", [])
     advance_general = evaluation.get("advanceGeneral", [])
     advance_data = evaluation.get("advanceData", [])
+    final_level_url = evaluation.get("finalLevel", "")
 
     # Pre-calculate height
     header_h = 160
-    score_h = 42 + 34 + len(hexagon) * 36 + 36 + 20 if hexagon else 0  # +36 for total row
+    score_h = 42 + 34 + len(hexagon) * 36 + 40 + 20 if hexagon else 0  # +40 for total row
     equip_h = 0
     for eq_group in equipments:
         equips = eq_group.get("equips", [])
@@ -407,7 +403,8 @@ async def draw_role_wiki(detail: dict) -> Image.Image:
 
     # Score table (replaces hexagon radar)
     if hexagon:
-        y = _draw_score_table(img, y, hexagon)
+        final_level_img = await _download_image(final_level_url) if final_level_url else None
+        y = _draw_score_table(img, y, hexagon, final_level_img)
 
     # Equipment icons - try local cache first, then download
     equip_icons: dict[str, Image.Image] = {}

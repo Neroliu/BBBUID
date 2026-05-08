@@ -62,6 +62,7 @@ def _parse_role_evaluation(parsed_items: List[Dict]) -> Dict:
     result: Dict = {
         "avatar": "",
         "hexagon": [],
+        "finalLevel": "",
         "subFields": [],
         "equipments": [],
         "advanceGeneral": [],
@@ -73,6 +74,7 @@ def _parse_role_evaluation(parsed_items: List[Dict]) -> Dict:
         if part == "basicIntroduction":
             result["avatar"] = data.get("avatar", "")
             result["hexagon"] = data.get("hexagon", [])
+            result["finalLevel"] = data.get("finalLevel", "")
             for sf in data.get("subFields", []):
                 result["subFields"].append({
                     "name": sf.get("name", ""),
@@ -176,7 +178,7 @@ def parse_evaluation_from_detail(detail: Dict) -> Dict:
             parsed = _parse_html_data(section.get("text", ""))
             if parsed:
                 return _parse_role_evaluation(parsed)
-    return {"avatar": "", "hexagon": [], "subFields": [], "equipments": [], "advanceGeneral": [], "advanceData": []}
+    return {"avatar": "", "hexagon": [], "finalLevel": "", "subFields": [], "equipments": [], "advanceGeneral": [], "advanceData": []}
 
 
 async def find_content_by_name(name: str, channel_id: int) -> Optional[Dict]:
