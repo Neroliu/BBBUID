@@ -8,8 +8,8 @@ from gsuid_core.subscribe import gs_subscribe
 from . import until
 from ..utils.hint import BIND_UID_HINT
 
-sv_bbb_sign = SV("崩坏3米游社签到")
-sv_bbb_sign_config = SV("崩坏3米游社签到配置", pm=1)
+sv_bbb_sign = SV("崩坏3签到")
+sv_bbb_sign_config = SV("崩坏3签到配置", pm=1)
 
 
 @sv_bbb_sign.on_fullmatch("签到")
