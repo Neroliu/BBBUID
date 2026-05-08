@@ -10,6 +10,7 @@ venv/
 dist/
 build/
 .claude/
+data/
 *.log
 .DS_Store
 Thumbs.db
