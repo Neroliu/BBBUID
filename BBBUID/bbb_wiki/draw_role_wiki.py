@@ -274,6 +274,22 @@ def _draw_equipment_section(
     return y
 
 
+def _calc_text_height(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, max_w: int) -> int:
+    if not text:
+        return 0
+    line_h = font.size + 6
+    words = list(text)
+    line_w = 0
+    lines = 1
+    for ch in words:
+        cw = draw.textlength(ch, font=font)
+        if line_w + cw > max_w:
+            lines += 1
+            line_w = 0
+        line_w += cw
+    return lines * line_h
+
+
 def _draw_advance_table(
     img: Image.Image,
     y: int,
@@ -289,7 +305,8 @@ def _draw_advance_table(
     header_font = _font(16)
     cell_font = _font(15)
     rank_icon_size = 28
-    row_h = 36
+    min_row_h = 36
+    desc_max_w = 240
 
     # Section title
     _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + 30), fill=SECTION_BG, radius=8)
@@ -312,23 +329,26 @@ def _draw_advance_table(
         gen = advance_general[idx]
         adv = advance_data[idx] if idx < len(advance_data) else {}
 
+        # Pre-calculate row height based on desc text
+        desc = gen.get("desc", "")
+        desc_h = _calc_text_height(draw, desc, cell_font, desc_max_w)
+        row_h = max(min_row_h, desc_h + 12)
+
         row_bg = TABLE_ROW_BG1 if idx % 2 == 0 else TABLE_ROW_BG2
         _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + row_h), fill=row_bg, radius=4)
 
         cx = PAD
-        # Rank icon
+        # Rank icon - vertically centered
         icon = rank_icons.get(idx)
         if icon:
             icon_y = y + (row_h - rank_icon_size) // 2
             img.paste(icon, (cx + (cols[0] - rank_icon_size) // 2, icon_y), icon)
         cx += cols[0]
 
-        # Description - use draw_text_by_line for proper wrapping
-        desc = gen.get("desc", "")
-        desc_max_w = cols[1] - 12
+        # Description - draw wrapped text
         draw_text_by_line(
             img,
-            (cx + 6, y + 4),
+            (cx + 6, y + 5),
             desc,
             cell_font,
             SUB_COLOR,
@@ -336,15 +356,16 @@ def _draw_advance_table(
         )
         cx += cols[1]
 
-        # Stats
+        # Stats - vertically centered
+        stat_y = y + (row_h - 18) // 2
         for j, key in enumerate(["life", "attack", "defense", "energy", "understanding"]):
             val = str(adv.get(key, "-"))
-            draw.text((cx + 6, y + 7), val, TEXT_COLOR, cell_font)
+            draw.text((cx + 6, stat_y), val, TEXT_COLOR, cell_font)
             cx += cols[2 + j]
 
         # Fragment cost
         cost = str(gen.get("cost", "-"))
-        draw.text((cx + 6, y + 7), cost, ACCENT_COLOR, cell_font)
+        draw.text((cx + 6, stat_y), cost, ACCENT_COLOR, cell_font)
 
         y += row_h
 
@@ -391,7 +412,7 @@ async def draw_role_wiki(detail: dict) -> Image.Image:
         equip_h += 48 + rows * (EQUIP_ICON_SIZE + 28) + 20
         if eq_group.get("reason"):
             equip_h += 80
-    advance_h = 40 + 32 + len(advance_general) * 36 + 20 if advance_general else 0
+    advance_h = 40 + 32 + len(advance_general) * 60 + 20 if advance_general else 0  # 60px max per row for multi-line desc
     footer_h = 60
     total_h = PAD + header_h + score_h + equip_h + advance_h + footer_h + 60
 
