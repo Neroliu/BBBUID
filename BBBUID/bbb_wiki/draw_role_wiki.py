@@ -86,7 +86,7 @@ def _draw_rounded_rect(
     draw.rounded_rectangle(xy, fill=fill, radius=radius)
 
 
-def _draw_header(
+async def _draw_header(
     img: Image.Image,
     avatar: Image.Image | None,
     title: str,
@@ -328,7 +328,7 @@ async def draw_role_wiki(detail: dict) -> Image.Image:
 
     # Header
     avatar = await _download_image(avatar_url)
-    y = _draw_header(img, avatar, title, basic_info, sub_fields)
+    y = await _draw_header(img, avatar, title, basic_info, sub_fields)
 
     # Hexagon radar chart
     if hexagon:
