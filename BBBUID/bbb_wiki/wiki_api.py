@@ -54,6 +54,47 @@ def _parse_html_data(html: str) -> List[Dict]:
         return []
 
 
+def _strip_html(html: str) -> str:
+    return re.sub(r"<[^>]+>", "", html).strip()
+
+
+def _parse_role_evaluation(parsed_items: List[Dict]) -> Dict:
+    result: Dict = {
+        "avatar": "",
+        "hexagon": [],
+        "subFields": [],
+        "equipments": [],
+    }
+    for item in parsed_items:
+        data = item.get("data", {})
+        part = item.get("partKey", "")
+        if part == "basicIntroduction":
+            result["avatar"] = data.get("avatar", "")
+            result["hexagon"] = data.get("hexagon", [])
+            for sf in data.get("subFields", []):
+                result["subFields"].append({
+                    "name": sf.get("name", ""),
+                    "value": _strip_html(sf.get("value", "")),
+                })
+        elif part == "equipmentRecommendation":
+            for eq_group in data.get("equipment", []):
+                name_ = eq_group.get("name_", "")
+                if "推荐" not in name_:
+                    continue
+                equips = []
+                for eq in eq_group.get("equips", []):
+                    equips.append({
+                        "title": eq.get("title", ""),
+                        "icon": eq.get("icon", ""),
+                    })
+                result["equipments"].append({
+                    "label": name_,
+                    "equips": equips,
+                    "reason": _strip_html(eq_group.get("reason", "")),
+                })
+    return result
+
+
 async def get_content_detail(content_id: int) -> Optional[Dict]:
     data = await _get("/v1/content/info", {"content_id": content_id})
     if not data:
@@ -67,9 +108,12 @@ async def get_content_detail(content_id: int) -> Optional[Dict]:
         "contents": content.get("contents", []),
         "ext": content.get("ext", ""),
         "basic_info": {},
+        "evaluation": {},
     }
     for section in result["contents"]:
         parsed = _parse_html_data(section.get("text", ""))
+        if not parsed:
+            continue
         for item in parsed:
             if item.get("tmplKey") == "valkyrie" and item.get("partKey") == "basicIntroduction":
                 fields = {}
@@ -80,6 +124,8 @@ async def get_content_detail(content_id: int) -> Optional[Dict]:
                         fields[f["nameR"]] = f["valueR"]
                 result["basic_info"] = fields
                 break
+        if section.get("name") == "角色评价":
+            result["evaluation"] = _parse_role_evaluation(parsed)
     return result
 
 
@@ -103,6 +149,15 @@ async def search_content(keyword: str, channel_id: Optional[int] = None) -> List
             "bbs_url": item.get("bbs_url", ""),
         })
     return results
+
+
+def parse_evaluation_from_detail(detail: Dict) -> Dict:
+    for section in detail.get("contents", []):
+        if section.get("name") == "角色评价":
+            parsed = _parse_html_data(section.get("text", ""))
+            if parsed:
+                return _parse_role_evaluation(parsed)
+    return {"avatar": "", "hexagon": [], "subFields": [], "equipments": []}
 
 
 async def find_content_by_name(name: str, channel_id: int) -> Optional[Dict]:

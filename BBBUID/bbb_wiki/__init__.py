@@ -9,6 +9,7 @@ from gsuid_core.utils.image.convert import convert_img
 
 from .resource_update import update_all, get_local_detail, get_local_index
 from .draw_wiki import screenshot_wiki
+from .draw_role_wiki import draw_role_wiki
 
 sv_bbb_wiki = SV("崩坏3WIKI")
 
@@ -61,7 +62,16 @@ async def _send_wiki(bot: Bot, name: str, channel_id: int, label: str):
 @sv_bbb_wiki.on_prefix("角色图鉴")
 async def send_role_wiki(bot: Bot, ev: Event):
     name = " ".join(re.findall("[a-zA-Z_一-龥·♪☆★♥]+", ev.text)).strip()
-    await _send_wiki(bot, name, 18, "角色")
+    if not name:
+        return await bot.send("[崩坏3] 请输入角色名称，例如: bbb角色图鉴琪亚娜")
+    logger.info(f"[崩坏3] [角色图鉴] 查询: {name}")
+    detail = _find_local("角色", name)
+    if detail:
+        img = await draw_role_wiki(detail)
+        logger.info(f"[崩坏3] [角色图鉴] {name} 渲染完成")
+        await bot.send(img)
+    else:
+        await bot.send(f"[崩坏3] 未找到角色: {name}")
 
 
 @sv_bbb_wiki.on_prefix("武器图鉴")

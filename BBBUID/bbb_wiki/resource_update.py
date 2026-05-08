@@ -5,11 +5,12 @@ import httpx
 
 from gsuid_core.logger import logger
 
-from .wiki_api import get_channel_content_list, get_content_detail
+from .wiki_api import get_channel_content_list, get_content_detail, parse_evaluation_from_detail
 from ..utils.RESOURCE_PATH import CHANNEL_MAP, get_wiki_path
 
 INDEX_FILE = "index.json"
 ICON_SUFFIX = ".png"
+EQUIP_ICONS_DIR = "equip_icons"
 
 
 def _load_index(channel_name: str) -> dict:
@@ -58,6 +59,46 @@ def _remove_icon(channel_name: str, content_id: int):
         icon_path.unlink()
 
 
+def _get_equip_icons_dir(channel_name: str, content_id: int) -> Path:
+    path = get_wiki_path(channel_name) / EQUIP_ICONS_DIR / str(content_id)
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+async def _download_equipment_icons(channel_name: str, content_id: int, detail: dict):
+    evaluation = detail.get("evaluation") or parse_evaluation_from_detail(detail)
+    equipments = evaluation.get("equipments", [])
+    if not equipments:
+        return
+
+    icons_dir = _get_equip_icons_dir(channel_name, content_id)
+    async with httpx.AsyncClient() as client:
+        for eq_group in equipments:
+            for i, eq in enumerate(eq_group.get("equips", [])):
+                icon_url = eq.get("icon", "")
+                if not icon_url:
+                    continue
+                icon_path = icons_dir / f"{i}.png"
+                if icon_path.exists():
+                    continue
+                try:
+                    resp = await client.get(icon_url, timeout=15)
+                    if resp.status_code == 200:
+                        icon_path.write_bytes(resp.content)
+                    else:
+                        logger.warning(f"[崩坏3] [资源更新] 装备图标下载失败 [{resp.status_code}]")
+                except Exception as e:
+                    logger.warning(f"[崩坏3] [资源更新] 装备图标下载异常: {e}")
+
+
+def _remove_equipment_icons(channel_name: str, content_id: int):
+    icons_dir = get_wiki_path(channel_name) / EQUIP_ICONS_DIR / str(content_id)
+    if icons_dir.exists():
+        for f in icons_dir.iterdir():
+            f.unlink()
+        icons_dir.rmdir()
+
+
 async def update_channel(channel_name: str, channel_id: int):
     logger.info(f"[崩坏3] [资源更新] 开始更新 {channel_name}...")
     items = await get_channel_content_list(channel_id)
@@ -96,12 +137,15 @@ async def update_channel(channel_name: str, channel_id: int):
                 icon_url = detail.get("icon", "")
                 if icon_url:
                     await _download_icon(channel_name, item["content_id"], icon_url)
+                if channel_name == "角色":
+                    await _download_equipment_icons(channel_name, item["content_id"], detail)
 
     for cid in removed:
         json_path = get_wiki_path(channel_name) / f"{cid}.json"
         if json_path.exists():
             json_path.unlink()
         _remove_icon(channel_name, int(cid))
+        _remove_equipment_icons(channel_name, int(cid))
 
     _save_index(channel_name, new_index)
     logger.info(f"[崩坏3] [资源更新] {channel_name} 更新完成")
@@ -128,3 +172,17 @@ def get_local_icon(channel_name: str, content_id: int) -> Path | None:
     if icon_path.exists():
         return icon_path
     return None
+
+
+def get_local_equip_icons(channel_name: str, content_id: int) -> dict[int, Path]:
+    result: dict[int, Path] = {}
+    icons_dir = get_wiki_path(channel_name) / EQUIP_ICONS_DIR / str(content_id)
+    if icons_dir.exists():
+        for f in icons_dir.iterdir():
+            if f.suffix == ".png":
+                try:
+                    idx = int(f.stem)
+                    result[idx] = f
+                except ValueError:
+                    pass
+    return result
