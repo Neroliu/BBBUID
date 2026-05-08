@@ -1,0 +1,121 @@
+{
+  "基础命令": {
+    "desc": "UID绑定与管理",
+    "data": [
+      {
+        "name": "绑定UID",
+        "desc": "绑定崩坏3 UID",
+        "eg": "绑定uid123456789",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "切换UID",
+        "desc": "切换已绑定的UID",
+        "eg": "切换uid",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "删除UID",
+        "desc": "解绑UID",
+        "eg": "删除uid123456789",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
+  "签到服务": {
+    "desc": "米游社签到相关",
+    "data": [
+      {
+        "name": "签到",
+        "desc": "手动执行米游社签到",
+        "eg": "签到",
+        "need_ck": true,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "开启自动签到",
+        "desc": "开启每日自动签到",
+        "eg": "开启自动签到",
+        "need_ck": true,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "关闭自动签到",
+        "desc": "关闭每日自动签到",
+        "eg": "关闭自动签到",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "全部重签",
+        "desc": "重新执行所有签到",
+        "eg": "全部重签",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": true
+      }
+    ]
+  },
+  "WIKI图鉴": {
+    "desc": "崩坏3百科查询",
+    "data": [
+      {
+        "name": "角色图鉴",
+        "desc": "查询女武神角色信息",
+        "eg": "角色图鉴琪亚娜",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "武器图鉴",
+        "desc": "查询武器信息",
+        "eg": "武器图鉴苍雷星梭",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "圣痕图鉴",
+        "desc": "查询圣痕信息",
+        "eg": "圣痕图鉴琪亚娜·霓裳",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "人偶图鉴",
+        "desc": "查询人偶信息",
+        "eg": "人偶图鉴重装小兔",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "协同者图鉴",
+        "desc": "查询协同者信息",
+        "eg": "协同者图鉴松雀",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "WIKI搜索",
+        "desc": "关键词搜索百科",
+        "eg": "bbbwiki薪炎",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  }
+}
