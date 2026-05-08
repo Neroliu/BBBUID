@@ -55,7 +55,9 @@ def _parse_html_data(html: str) -> List[Dict]:
 
 
 def _strip_html(html: str) -> str:
-    return re.sub(r"<[^>]+>", "", html).strip()
+    import html as html_mod
+    text = re.sub(r"<[^>]+>", "", html).strip()
+    return html_mod.unescape(text)
 
 
 def _parse_role_evaluation(parsed_items: List[Dict]) -> Dict:
@@ -131,6 +133,7 @@ async def get_content_detail(content_id: int) -> Optional[Dict]:
         "basic_info": {},
         "evaluation": {},
     }
+    is_weapon = False
     for section in result["contents"]:
         parsed = _parse_html_data(section.get("text", ""))
         if not parsed:
@@ -144,9 +147,12 @@ async def get_content_detail(content_id: int) -> Optional[Dict]:
                     if f.get("nameR") and f.get("valueR"):
                         fields[f["nameR"]] = f["valueR"]
                 result["basic_info"] = fields
-                break
+            if item.get("tmplKey") == "weapon" and item.get("partKey") == "info":
+                is_weapon = True
         if section.get("name") == "角色评价":
             result["evaluation"] = _parse_role_evaluation(parsed)
+    if is_weapon:
+        result["weapon_data"] = _parse_weapon_data(result["contents"])
     return result
 
 
@@ -190,3 +196,66 @@ async def find_content_by_name(name: str, channel_id: int) -> Optional[Dict]:
         if name in item["title"]:
             return item
     return None
+
+
+def _parse_weapon_data(contents: list) -> Dict:
+    result: Dict = {
+        "info": {},
+        "skills": [],
+        "forging": {},
+        "materials": [],
+        "gainMethods": [],
+        "syncMaterials": [],
+        "roles": [],
+    }
+    for section in contents:
+        parsed = _parse_html_data(section.get("text", ""))
+        if not parsed:
+            continue
+        for item in parsed:
+            tk = f"{item.get('tmplKey', '')}:{item.get('partKey', '')}"
+            data = item.get("data", {})
+            if tk == "weapon:info":
+                result["info"] = {
+                    "starValue": data.get("starValue", 0),
+                    "attr": data.get("attr", []),
+                    "icon": data.get("icon", ""),
+                }
+            elif tk == "weapon:skill":
+                for a in data.get("attr", []):
+                    result["skills"].append({
+                        "key": a.get("key", ""),
+                        "value": _strip_html(a.get("value", "")),
+                    })
+            elif tk == "weapon:forging":
+                result["forging"] = {
+                    "material": data.get("material", []),
+                    "otherMaterial": data.get("otherMaterial", []),
+                }
+            elif tk in ("stigmata:material", "general:material"):
+                result["materials"] = data.get("list", [])
+            elif tk == "general:gainMethod":
+                title = data.get("title", "")
+                methods = []
+                for gm in data.get("gainMethod", []):
+                    methods.append({
+                        "key": gm.get("key", ""),
+                        "value": _strip_html(gm.get("value", "")),
+                    })
+                if "同调" in title:
+                    result["syncMaterials"].extend(methods)
+                else:
+                    result["gainMethods"].extend(methods)
+            elif tk == "weapon:role":
+                for a in data.get("attr", []):
+                    result["roles"].append({
+                        "icon": a.get("icon", ""),
+                        "key": a.get("key", ""),
+                        "value": _strip_html(a.get("value", "")),
+                        "starValue": a.get("starValue", 0),
+                    })
+    return result
+
+
+def parse_weapon_data_from_detail(detail: Dict) -> Dict:
+    return _parse_weapon_data(detail.get("contents", []))

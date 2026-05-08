@@ -1,35 +1,35 @@
-from io import BytesIO
+from PIL import Image, ImageDraw, ImageFont
 
-import httpx
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
-
-from gsuid_core.logger import logger
-from gsuid_core.utils.fonts.fonts import core_font
 from gsuid_core.utils.image.convert import convert_img
-from gsuid_core.utils.image.image_tools import (
-    draw_pic_with_ring,
-    draw_text_by_line,
+from gsuid_core.utils.image.image_tools import draw_pic_with_ring, draw_text_by_line
+
+from .resource_update import get_local_equip_icons
+from .draw_utils import (
+    S,
+    CARD_W,
+    PAD,
+    BG_COLOR,
+    TEXT_COLOR,
+    SUB_COLOR,
+    ACCENT_COLOR,
+    BADGE_BG,
+    SECTION_BG,
+    TABLE_HEADER_BG,
+    TABLE_ROW_BG1,
+    TABLE_ROW_BG2,
+    SCORE_BAR_BG,
+    _s,
+    _font,
+    _download_image,
+    _get_icon,
+    _draw_rounded_rect,
+    _create_blurred_bg,
+    _calc_text_height,
+    _draw_wrapped_text,
+    _draw_footer,
 )
 
-from .resource_update import get_wiki_path, get_local_equip_icons
-
-# Resolution scale factor
-S = 2
-
-CARD_W = 900 * S
-PAD = 40 * S
 EQUIP_ICON_SIZE = 64 * S
-
-BG_COLOR = (28, 28, 38)
-TEXT_COLOR = (230, 230, 235)
-SUB_COLOR = (160, 160, 170)
-ACCENT_COLOR = (80, 160, 255)
-BADGE_BG = (50, 50, 65)
-SECTION_BG = (36, 36, 48)
-TABLE_HEADER_BG = (45, 45, 60)
-TABLE_ROW_BG1 = (32, 32, 44)
-TABLE_ROW_BG2 = (38, 38, 52)
-SCORE_BAR_BG = (50, 50, 65)
 
 LEVEL_COLORS = {
     "SSS": (255, 80, 80),
@@ -39,70 +39,6 @@ LEVEL_COLORS = {
     "B": (100, 160, 220),
     "C": (160, 160, 170),
 }
-
-_font_cache: dict[int, ImageFont.FreeTypeFont] = {}
-
-
-def _s(v: int) -> int:
-    return v * S
-
-
-def _font(size: int) -> ImageFont.FreeTypeFont:
-    size = _s(size)
-    if size not in _font_cache:
-        _font_cache[size] = core_font(size)
-    return _font_cache[size]
-
-
-def _text_size(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont):
-    bbox = draw.textbbox((0, 0), text, font=font)
-    return bbox[2] - bbox[0], bbox[3] - bbox[1]
-
-
-async def _download_image(url: str) -> Image.Image | None:
-    if not url:
-        return None
-    try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(url, timeout=15)
-            if resp.status_code == 200:
-                return Image.open(BytesIO(resp.content)).convert("RGBA")
-    except Exception as e:
-        logger.warning(f"[崩坏3] [WIKI渲染] 下载图片失败: {e}")
-    return None
-
-
-async def _get_icon(url: str, size: int) -> Image.Image | None:
-    img = await _download_image(url)
-    if img:
-        img = img.resize((size, size), Image.LANCZOS)
-    return img
-
-
-def _draw_rounded_rect(
-    draw: ImageDraw.ImageDraw,
-    xy: tuple,
-    fill: tuple,
-    radius: int = 24,
-):
-    draw.rounded_rectangle(xy, fill=fill, radius=radius)
-
-
-def _create_blurred_bg(avatar: Image.Image, card_w: int, card_h: int) -> Image.Image:
-    # Scale avatar to cover card width, crop to card height
-    aspect = avatar.width / avatar.height
-    bg_h = max(card_h, int(card_w / aspect))
-    bg = avatar.resize((card_w, bg_h), Image.LANCZOS)
-    # Center-crop to card height
-    if bg_h > card_h:
-        top = (bg_h - card_h) // 2
-        bg = bg.crop((0, top, card_w, top + card_h))
-    # Apply Gaussian blur
-    bg = bg.filter(ImageFilter.GaussianBlur(radius=_s(20)))
-    # Darken with overlay
-    overlay = Image.new("RGBA", bg.size, (*BG_COLOR, 180))
-    bg = Image.alpha_composite(bg.convert("RGBA"), overlay)
-    return bg
 
 
 async def _draw_header(
@@ -300,50 +236,6 @@ def _draw_equipment_section(
     return y
 
 
-def _calc_text_height(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, max_w: int) -> int:
-    if not text:
-        return 0
-    line_h = font.size + _s(6)
-    line_w = 0
-    lines = 1
-    for ch in text:
-        cw = draw.textlength(ch, font=font)
-        if line_w + cw > max_w:
-            lines += 1
-            line_w = 0
-        line_w += cw
-    return lines * line_h
-
-
-def _draw_wrapped_text(
-    img: Image.Image,
-    pos: tuple[int, int],
-    text: str,
-    font: ImageFont.FreeTypeFont,
-    fill: tuple,
-    max_w: int,
-) -> int:
-    """Draw text with wrapping, using per-character width measurement. Returns final y."""
-    x, y = pos
-    draw = ImageDraw.Draw(img)
-    line_h = font.size + _s(6)
-    row = ""
-    line_w = 0
-    for ch in text:
-        cw = draw.textlength(ch, font=font)
-        if line_w + cw > max_w and row:
-            draw.text((x, y), row, font=font, fill=fill)
-            y += line_h
-            row = ""
-            line_w = 0
-        row += ch
-        line_w += cw
-    if row:
-        draw.text((x, y), row, font=font, fill=fill)
-        y += line_h
-    return y
-
-
 def _draw_advance_table(
     img: Image.Image,
     y: int,
@@ -420,21 +312,6 @@ def _draw_advance_table(
         y += row_h
 
     return y + _s(10)
-
-
-def _draw_footer(img: Image.Image, y: int) -> int:
-    draw = ImageDraw.Draw(img)
-    footer_font = _font(14)
-    draw.line([(PAD, y), (CARD_W - PAD, y)], fill=(60, 60, 75), width=_s(1))
-    y += _s(12)
-    draw.text(
-        (CARD_W // 2, y),
-        "BBBUID · 崩坏3 WIKI",
-        (80, 80, 95),
-        footer_font,
-        anchor="mt",
-    )
-    return y + _s(30)
 
 
 async def draw_role_wiki(detail: dict) -> Image.Image:
