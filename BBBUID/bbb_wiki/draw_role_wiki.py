@@ -304,16 +304,44 @@ def _calc_text_height(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.Free
     if not text:
         return 0
     line_h = font.size + _s(6)
-    words = list(text)
     line_w = 0
     lines = 1
-    for ch in words:
+    for ch in text:
         cw = draw.textlength(ch, font=font)
         if line_w + cw > max_w:
             lines += 1
             line_w = 0
         line_w += cw
     return lines * line_h
+
+
+def _draw_wrapped_text(
+    img: Image.Image,
+    pos: tuple[int, int],
+    text: str,
+    font: ImageFont.FreeTypeFont,
+    fill: tuple,
+    max_w: int,
+) -> int:
+    """Draw text with wrapping, using per-character width measurement. Returns final y."""
+    x, y = pos
+    draw = ImageDraw.Draw(img)
+    line_h = font.size + _s(6)
+    row = ""
+    line_w = 0
+    for ch in text:
+        cw = draw.textlength(ch, font=font)
+        if line_w + cw > max_w and row:
+            draw.text((x, y), row, font=font, fill=fill)
+            y += line_h
+            row = ""
+            line_w = 0
+        row += ch
+        line_w += cw
+    if row:
+        draw.text((x, y), row, font=font, fill=fill)
+        y += line_h
+    return y
 
 
 def _draw_advance_table(
@@ -372,15 +400,10 @@ def _draw_advance_table(
             img.paste(icon, (cx + (cols[0] - rank_icon_size) // 2, icon_y), icon)
         cx += cols[0]
 
-        # Description - draw on wider temp image, crop to column width, left-aligned, vertically centered
+        # Description - draw directly, left-aligned, vertically centered
         desc_x = cx + _s(6)
         desc_y = y + (row_h - desc_h) // 2
-        overflow_pad = _s(60)
-        tmp_w = desc_max_w + overflow_pad
-        tmp = Image.new("RGBA", (tmp_w, desc_h + _s(10)), (0, 0, 0, 0))
-        draw_text_by_line(tmp, (0, 0), desc, cell_font, SUB_COLOR, desc_max_w)
-        tmp = tmp.crop((0, 0, desc_max_w, desc_h + _s(10)))
-        img.paste(tmp, (desc_x, desc_y), tmp)
+        _draw_wrapped_text(img, (desc_x, desc_y), desc, cell_font, SUB_COLOR, desc_max_w)
         cx += cols[1]
 
         # Stats - vertically centered
