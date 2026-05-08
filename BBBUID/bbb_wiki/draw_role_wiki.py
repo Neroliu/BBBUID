@@ -1,7 +1,7 @@
 from io import BytesIO
 
 import httpx
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from gsuid_core.logger import logger
 from gsuid_core.utils.fonts.fonts import core_font
@@ -78,6 +78,23 @@ def _draw_rounded_rect(
     radius: int = 12,
 ):
     draw.rounded_rectangle(xy, fill=fill, radius=radius)
+
+
+def _create_blurred_bg(avatar: Image.Image, card_w: int, card_h: int) -> Image.Image:
+    # Scale avatar to cover card width, crop to card height
+    aspect = avatar.width / avatar.height
+    bg_h = max(card_h, int(card_w / aspect))
+    bg = avatar.resize((card_w, bg_h), Image.LANCZOS)
+    # Center-crop to card height
+    if bg_h > card_h:
+        top = (bg_h - card_h) // 2
+        bg = bg.crop((0, top, card_w, top + card_h))
+    # Apply Gaussian blur
+    bg = bg.filter(ImageFilter.GaussianBlur(radius=40))
+    # Darken with overlay
+    overlay = Image.new("RGBA", bg.size, (*BG_COLOR, 180))
+    bg = Image.alpha_composite(bg.convert("RGBA"), overlay)
+    return bg
 
 
 async def _draw_header(
@@ -416,10 +433,12 @@ async def draw_role_wiki(detail: dict) -> Image.Image:
     footer_h = 60
     total_h = PAD + header_h + score_h + equip_h + advance_h + footer_h + 60
 
-    img = Image.new("RGBA", (CARD_W, total_h), BG_COLOR)
-
-    # Header
+    # Download avatar and create blurred background
     avatar = await _download_image(avatar_url)
+    if avatar:
+        img = _create_blurred_bg(avatar, CARD_W, total_h)
+    else:
+        img = Image.new("RGBA", (CARD_W, total_h), BG_COLOR)
     y = await _draw_header(img, avatar, title, basic_info, sub_fields)
 
     # Score table (replaces hexagon radar)
