@@ -90,7 +90,7 @@ def _create_blurred_bg(avatar: Image.Image, card_w: int, card_h: int) -> Image.I
         top = (bg_h - card_h) // 2
         bg = bg.crop((0, top, card_w, top + card_h))
     # Apply Gaussian blur
-    bg = bg.filter(ImageFilter.GaussianBlur(radius=40))
+    bg = bg.filter(ImageFilter.GaussianBlur(radius=20))
     # Darken with overlay
     overlay = Image.new("RGBA", bg.size, (*BG_COLOR, 180))
     bg = Image.alpha_composite(bg.convert("RGBA"), overlay)
@@ -362,15 +362,13 @@ def _draw_advance_table(
             img.paste(icon, (cx + (cols[0] - rank_icon_size) // 2, icon_y), icon)
         cx += cols[0]
 
-        # Description - draw wrapped text
-        draw_text_by_line(
-            img,
-            (cx + 6, y + 5),
-            desc,
-            cell_font,
-            SUB_COLOR,
-            desc_max_w,
-        )
+        # Description - draw wrapped text, clipped to column width
+        desc_x = cx + 6
+        desc_y = y + 5
+        tmp = Image.new("RGBA", (desc_max_w, row_h + 10), (0, 0, 0, 0))
+        draw_text_by_line(tmp, (0, 0), desc, cell_font, SUB_COLOR, desc_max_w)
+        tmp = tmp.crop((0, 0, desc_max_w, row_h))
+        img.paste(tmp, (desc_x, desc_y), tmp)
         cx += cols[1]
 
         # Stats - vertically centered
