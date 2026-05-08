@@ -8,15 +8,6 @@ import httpx
 WIKI_BASE = "https://api-takumi-static.mihoyo.com/common/blackboard/bh3_wiki"
 APP_SN = "bh3_wiki"
 
-CHANNEL_MAP = {
-    "女武神": 18,
-    "角色": 18,
-    "武器": 20,
-    "圣痕": 19,
-    "人偶": 21,
-    "协同者": 218,
-}
-
 
 async def _get(path: str, params: Optional[Dict] = None) -> Optional[Dict]:
     url = f"{WIKI_BASE}{path}"

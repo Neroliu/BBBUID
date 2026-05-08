@@ -88,7 +88,7 @@ async def send_partner_wiki(bot: Bot, ev: Event):
     await _send_wiki(bot, name, 218, "协同者")
 
 
-@sv_bbb_wiki.on_prefix("崩坏3wiki", "崩坏3WIKI", "bbbwiki", "bbbWIKI")
+@sv_bbb_wiki.on_prefix(("崩坏3wiki", "崩坏3WIKI", "bbbwiki", "bbbWIKI"))
 async def search_wiki(bot: Bot, ev: Event):
     keyword = " ".join(re.findall("[a-zA-Z_一-龥·]+", ev.text)).strip()
     if not keyword:

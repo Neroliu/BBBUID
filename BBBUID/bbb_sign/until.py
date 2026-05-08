@@ -145,7 +145,7 @@ async def is_sign(region: str, uid: str, cookie) -> dict:
     return data
 
 
-async def sign_req(uid, server_id="pc01", cookie=None, Header={}):
+async def sign_req(uid, server_id="pc01", cookie=None, Header=None):
     HEADER = copy.deepcopy(mys_api._HEADER)
     HEADER["Cookie"] = cookie
     HEADER["x-rpc-app_version"] = mys_version
@@ -153,7 +153,8 @@ async def sign_req(uid, server_id="pc01", cookie=None, Header={}):
     HEADER["X_Requested_With"] = "com.mihoyo.hyperion"
     HEADER["DS"] = get_web_ds_token(True)
     HEADER["Referer"] = "https://act.mihoyo.com/"
-    HEADER.update(Header)
+    if Header:
+        HEADER.update(Header)
     data = await mys_api._mys_request(
         url=sign_url,
         method="POST",
