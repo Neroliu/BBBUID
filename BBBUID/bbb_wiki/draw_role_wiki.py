@@ -13,9 +13,12 @@ from gsuid_core.utils.image.image_tools import (
 
 from .resource_update import get_wiki_path, get_local_equip_icons
 
-CARD_W = 900
-PAD = 40
-EQUIP_ICON_SIZE = 64
+# Resolution scale factor
+S = 2
+
+CARD_W = 900 * S
+PAD = 40 * S
+EQUIP_ICON_SIZE = 64 * S
 
 BG_COLOR = (28, 28, 38)
 TEXT_COLOR = (230, 230, 235)
@@ -40,7 +43,12 @@ LEVEL_COLORS = {
 _font_cache: dict[int, ImageFont.FreeTypeFont] = {}
 
 
+def _s(v: int) -> int:
+    return v * S
+
+
 def _font(size: int) -> ImageFont.FreeTypeFont:
+    size = _s(size)
     if size not in _font_cache:
         _font_cache[size] = core_font(size)
     return _font_cache[size]
@@ -75,7 +83,7 @@ def _draw_rounded_rect(
     draw: ImageDraw.ImageDraw,
     xy: tuple,
     fill: tuple,
-    radius: int = 12,
+    radius: int = 24,
 ):
     draw.rounded_rectangle(xy, fill=fill, radius=radius)
 
@@ -90,7 +98,7 @@ def _create_blurred_bg(avatar: Image.Image, card_w: int, card_h: int) -> Image.I
         top = (bg_h - card_h) // 2
         bg = bg.crop((0, top, card_w, top + card_h))
     # Apply Gaussian blur
-    bg = bg.filter(ImageFilter.GaussianBlur(radius=20))
+    bg = bg.filter(ImageFilter.GaussianBlur(radius=_s(20)))
     # Darken with overlay
     overlay = Image.new("RGBA", bg.size, (*BG_COLOR, 180))
     bg = Image.alpha_composite(bg.convert("RGBA"), overlay)
@@ -108,15 +116,16 @@ async def _draw_header(
     y = PAD
 
     avatar_x = PAD
+    avatar_sz = _s(120)
     if avatar:
-        avatar_img = avatar.resize((120, 120), Image.LANCZOS)
-        avatar_img = await draw_pic_with_ring(avatar_img, 120, bg_color=BG_COLOR, is_ring=True)
+        avatar_img = avatar.resize((avatar_sz, avatar_sz), Image.LANCZOS)
+        avatar_img = await draw_pic_with_ring(avatar_img, avatar_sz, bg_color=BG_COLOR, is_ring=True)
         img.paste(avatar_img, (avatar_x, y), avatar_img)
 
-    text_x = avatar_x + 140
+    text_x = avatar_x + _s(140)
     name_font = _font(36)
-    draw.text((text_x, y + 8), title, TEXT_COLOR, name_font)
-    y_info = y + 52
+    draw.text((text_x, y + _s(8)), title, TEXT_COLOR, name_font)
+    y_info = y + _s(52)
 
     info_font = _font(22)
     info_parts = []
@@ -126,7 +135,7 @@ async def _draw_header(
     if info_parts:
         info_text = " | ".join(info_parts)
         draw.text((text_x, y_info), info_text, SUB_COLOR, info_font)
-        y_info += 32
+        y_info += _s(32)
 
     # Sub fields - skip 往世乐土
     sub_font = _font(18)
@@ -137,11 +146,11 @@ async def _draw_header(
             continue
         short_val = value[:50] + ("..." if len(value) > 50 else "")
         draw.text((text_x, y_info), f"{name}: {short_val}", SUB_COLOR, sub_font)
-        y_info += 26
+        y_info += _s(26)
 
-    y = max(y + 140, y_info + 10)
-    draw.line([(PAD, y), (CARD_W - PAD, y)], fill=(60, 60, 75), width=1)
-    return y + 20
+    y = max(y + _s(140), y_info + _s(10))
+    draw.line([(PAD, y), (CARD_W - PAD, y)], fill=(60, 60, 75), width=_s(1))
+    return y + _s(20)
 
 
 def _draw_score_table(
@@ -157,23 +166,23 @@ def _draw_score_table(
     title_font = _font(24)
     header_font = _font(18)
     cell_font = _font(18)
-    bar_h = 16
+    bar_h = _s(16)
 
     # Section title
-    _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + 30), fill=SECTION_BG, radius=8)
-    draw.text((PAD + 16, y + 4), "性能评分", ACCENT_COLOR, title_font)
-    y += 42
+    _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + _s(30)), fill=SECTION_BG, radius=_s(8))
+    draw.text((PAD + _s(16), y + _s(4)), "性能评分", ACCENT_COLOR, title_font)
+    y += _s(42)
 
     # Table header
     col_w = (CARD_W - PAD * 2) // 4
     headers = ["评分项", "等级", "分数", "评分条"]
     hx = PAD
-    _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + 32), fill=TABLE_HEADER_BG, radius=6)
+    _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + _s(32)), fill=TABLE_HEADER_BG, radius=_s(6))
     for i, h in enumerate(headers):
         if i < 3:
-            draw.text((hx + 12, y + 6), h, SUB_COLOR, header_font)
+            draw.text((hx + _s(12), y + _s(6)), h, SUB_COLOR, header_font)
         hx += col_w
-    y += 34
+    y += _s(34)
 
     # Table rows
     for idx, h in enumerate(hexagon_data):
@@ -182,40 +191,40 @@ def _draw_score_table(
         level = h.get("level", "")
 
         row_bg = TABLE_ROW_BG1 if idx % 2 == 0 else TABLE_ROW_BG2
-        _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + 34), fill=row_bg, radius=4)
+        _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + _s(34)), fill=row_bg, radius=_s(4))
 
         # Name
-        draw.text((PAD + 12, y + 7), key, TEXT_COLOR, cell_font)
+        draw.text((PAD + _s(12), y + _s(7)), key, TEXT_COLOR, cell_font)
 
         # Level with color
         level_color = LEVEL_COLORS.get(level, SUB_COLOR)
-        draw.text((PAD + col_w + 12, y + 7), level, level_color, cell_font)
+        draw.text((PAD + col_w + _s(12), y + _s(7)), level, level_color, cell_font)
 
         # Score
-        draw.text((PAD + col_w * 2 + 12, y + 7), str(value), TEXT_COLOR, cell_font)
+        draw.text((PAD + col_w * 2 + _s(12), y + _s(7)), str(value), TEXT_COLOR, cell_font)
 
         # Score bar
-        bar_x = PAD + col_w * 3 + 12
-        bar_w = col_w - 24
-        bar_y = y + 10
-        _draw_rounded_rect(draw, (bar_x, bar_y, bar_x + bar_w, bar_y + bar_h), fill=SCORE_BAR_BG, radius=4)
+        bar_x = PAD + col_w * 3 + _s(12)
+        bar_w = col_w - _s(24)
+        bar_y = y + _s(10)
+        _draw_rounded_rect(draw, (bar_x, bar_y, bar_x + bar_w, bar_y + bar_h), fill=SCORE_BAR_BG, radius=_s(4))
         fill_w = int(bar_w * value / 100)
         if fill_w > 0:
             bar_color = LEVEL_COLORS.get(level, ACCENT_COLOR)
-            _draw_rounded_rect(draw, (bar_x, bar_y, bar_x + fill_w, bar_y + bar_h), fill=bar_color, radius=4)
+            _draw_rounded_rect(draw, (bar_x, bar_y, bar_x + fill_w, bar_y + bar_h), fill=bar_color, radius=_s(4))
 
-        y += 36
+        y += _s(36)
 
     # Total score row
-    _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + 38), fill=TABLE_HEADER_BG, radius=4)
-    draw.text((PAD + 12, y + 9), "总评", ACCENT_COLOR, cell_font)
+    _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + _s(38)), fill=TABLE_HEADER_BG, radius=_s(4))
+    draw.text((PAD + _s(12), y + _s(9)), "总评", ACCENT_COLOR, cell_font)
     if final_level_img:
-        icon_size = 32
+        icon_size = _s(32)
         fl_resized = final_level_img.resize((icon_size, icon_size), Image.LANCZOS)
-        img.paste(fl_resized, (PAD + col_w + 12, y + 3), fl_resized)
-    y += 40
+        img.paste(fl_resized, (PAD + col_w + _s(12), y + _s(3)), fl_resized)
+    y += _s(40)
 
-    return y + 10
+    return y + _s(10)
 
 
 def _draw_equipment_section(
@@ -235,9 +244,9 @@ def _draw_equipment_section(
         reason = eq_group.get("reason", "")
 
         # Section label
-        _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + 30), fill=SECTION_BG, radius=8)
-        draw.text((PAD + 16, y + 4), f"★ {label}", ACCENT_COLOR, title_font)
-        y += 40
+        _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + _s(30)), fill=SECTION_BG, radius=_s(8))
+        draw.text((PAD + _s(16), y + _s(4)), f"★ {label}", ACCENT_COLOR, title_font)
+        y += _s(40)
 
         # Equipment grid: 2 per row, each with icon + name
         col_w = (CARD_W - PAD * 2) // 2
@@ -245,26 +254,26 @@ def _draw_equipment_section(
             col = i % 2
             row = i // 2
             ex = PAD + col * col_w
-            ey = y + row * (EQUIP_ICON_SIZE + 28)
+            ey = y + row * (EQUIP_ICON_SIZE + _s(28))
 
             title = eq.get("title", "")
             icon = equip_icons.get(title)
             if icon:
                 icon_resized = icon.resize((EQUIP_ICON_SIZE, EQUIP_ICON_SIZE), Image.LANCZOS)
-                img.paste(icon_resized, (ex + 8, ey), icon_resized)
+                img.paste(icon_resized, (ex + _s(8), ey), icon_resized)
             else:
                 _draw_rounded_rect(
                     draw,
-                    (ex + 8, ey, ex + 8 + EQUIP_ICON_SIZE, ey + EQUIP_ICON_SIZE),
+                    (ex + _s(8), ey, ex + _s(8) + EQUIP_ICON_SIZE, ey + EQUIP_ICON_SIZE),
                     fill=BADGE_BG,
-                    radius=8,
+                    radius=_s(8),
                 )
 
             # Equipment name - allow more space
-            max_name_w = col_w - EQUIP_ICON_SIZE - 28
+            max_name_w = col_w - EQUIP_ICON_SIZE - _s(28)
             draw_text_by_line(
                 img,
-                (ex + EQUIP_ICON_SIZE + 16, ey + 8),
+                (ex + EQUIP_ICON_SIZE + _s(16), ey + _s(8)),
                 title,
                 name_font,
                 TEXT_COLOR,
@@ -272,21 +281,21 @@ def _draw_equipment_section(
             )
 
         rows = (len(equips) + 1) // 2
-        y += rows * (EQUIP_ICON_SIZE + 28) + 8
+        y += rows * (EQUIP_ICON_SIZE + _s(28)) + _s(8)
 
         # Reason text with proper spacing
         if reason:
             y = draw_text_by_line(
                 img,
-                (PAD + 8, y),
+                (PAD + _s(8), y),
                 reason,
                 reason_font,
                 SUB_COLOR,
-                CARD_W - PAD * 2 - 16,
+                CARD_W - PAD * 2 - _s(16),
             )
-            y += 10
+            y += _s(10)
 
-        y += 8
+        y += _s(8)
 
     return y
 
@@ -294,7 +303,7 @@ def _draw_equipment_section(
 def _calc_text_height(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, max_w: int) -> int:
     if not text:
         return 0
-    line_h = font.size + 6
+    line_h = font.size + _s(6)
     words = list(text)
     line_w = 0
     lines = 1
@@ -321,27 +330,27 @@ def _draw_advance_table(
     title_font = _font(24)
     header_font = _font(16)
     cell_font = _font(15)
-    rank_icon_size = 28
-    min_row_h = 36
+    rank_icon_size = _s(28)
+    min_row_h = _s(36)
 
     # Section title
-    _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + 30), fill=SECTION_BG, radius=8)
-    draw.text((PAD + 16, y + 4), "进阶总览", ACCENT_COLOR, title_font)
-    y += 40
+    _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + _s(30)), fill=SECTION_BG, radius=_s(8))
+    draw.text((PAD + _s(16), y + _s(4)), "进阶总览", ACCENT_COLOR, title_font)
+    y += _s(40)
 
     # Column widths: Rank | Description | HP | ATK | DEF | SP | CRT | Cost
-    # Total = 820 = CARD_W - PAD*2
-    cols = [60, 340, 70, 70, 70, 70, 70, 70]
+    # Total = CARD_W - PAD*2
+    cols = [_s(60), _s(340), _s(70), _s(70), _s(70), _s(70), _s(70), _s(70)]
     headers = ["星级", "进阶效果", "生命", "攻击", "防御", "能量", "会心", "碎片"]
-    desc_max_w = cols[1] - 12
+    desc_max_w = cols[1] - _s(12)
 
     # Header row
-    _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + 30), fill=TABLE_HEADER_BG, radius=6)
+    _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + _s(30)), fill=TABLE_HEADER_BG, radius=_s(6))
     cx = PAD
     for i, h in enumerate(headers):
-        draw.text((cx + 6, y + 6), h, SUB_COLOR, header_font)
+        draw.text((cx + _s(6), y + _s(6)), h, SUB_COLOR, header_font)
         cx += cols[i]
-    y += 32
+    y += _s(32)
 
     for idx in range(len(advance_general)):
         gen = advance_general[idx]
@@ -350,10 +359,10 @@ def _draw_advance_table(
         # Pre-calculate row height based on desc text
         desc = gen.get("desc", "")
         desc_h = _calc_text_height(draw, desc, cell_font, desc_max_w)
-        row_h = max(min_row_h, desc_h + 12)
+        row_h = max(min_row_h, desc_h + _s(12))
 
         row_bg = TABLE_ROW_BG1 if idx % 2 == 0 else TABLE_ROW_BG2
-        _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + row_h), fill=row_bg, radius=4)
+        _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + row_h), fill=row_bg, radius=_s(4))
 
         cx = PAD
         # Rank icon - vertically centered
@@ -364,34 +373,34 @@ def _draw_advance_table(
         cx += cols[0]
 
         # Description - draw on temp image (no crop), left-aligned, vertically centered
-        desc_x = cx + 6
+        desc_x = cx + _s(6)
         desc_y = y + (row_h - desc_h) // 2
-        tmp = Image.new("RGBA", (desc_max_w, desc_h + 10), (0, 0, 0, 0))
+        tmp = Image.new("RGBA", (desc_max_w, desc_h + _s(10)), (0, 0, 0, 0))
         draw_text_by_line(tmp, (0, 0), desc, cell_font, SUB_COLOR, desc_max_w)
         img.paste(tmp, (desc_x, desc_y), tmp)
         cx += cols[1]
 
         # Stats - vertically centered
-        stat_y = y + (row_h - 18) // 2
+        stat_y = y + (row_h - _s(18)) // 2
         for j, key in enumerate(["life", "attack", "defense", "energy", "understanding"]):
             val = str(adv.get(key, "-"))
-            draw.text((cx + 6, stat_y), val, TEXT_COLOR, cell_font)
+            draw.text((cx + _s(6), stat_y), val, TEXT_COLOR, cell_font)
             cx += cols[2 + j]
 
         # Fragment cost
         cost = str(gen.get("cost", "-"))
-        draw.text((cx + 6, stat_y), cost, ACCENT_COLOR, cell_font)
+        draw.text((cx + _s(6), stat_y), cost, ACCENT_COLOR, cell_font)
 
         y += row_h
 
-    return y + 10
+    return y + _s(10)
 
 
 def _draw_footer(img: Image.Image, y: int) -> int:
     draw = ImageDraw.Draw(img)
     footer_font = _font(14)
-    draw.line([(PAD, y), (CARD_W - PAD, y)], fill=(60, 60, 75), width=1)
-    y += 12
+    draw.line([(PAD, y), (CARD_W - PAD, y)], fill=(60, 60, 75), width=_s(1))
+    y += _s(12)
     draw.text(
         (CARD_W // 2, y),
         "BBBUID · 崩坏3 WIKI",
@@ -399,7 +408,7 @@ def _draw_footer(img: Image.Image, y: int) -> int:
         footer_font,
         anchor="mt",
     )
-    return y + 30
+    return y + _s(30)
 
 
 async def draw_role_wiki(detail: dict) -> Image.Image:
@@ -418,18 +427,18 @@ async def draw_role_wiki(detail: dict) -> Image.Image:
     final_level_url = evaluation.get("finalLevel", "")
 
     # Pre-calculate height
-    header_h = 160
-    score_h = 42 + 34 + len(hexagon) * 36 + 40 + 20 if hexagon else 0  # +40 for total row
+    header_h = _s(160)
+    score_h = _s(42 + 34 + 40 + 20) + len(hexagon) * _s(36) if hexagon else 0
     equip_h = 0
     for eq_group in equipments:
         equips = eq_group.get("equips", [])
         rows = (len(equips) + 1) // 2
-        equip_h += 48 + rows * (EQUIP_ICON_SIZE + 28) + 20
+        equip_h += _s(48) + rows * (EQUIP_ICON_SIZE + _s(28)) + _s(20)
         if eq_group.get("reason"):
-            equip_h += 80
-    advance_h = 40 + 32 + len(advance_general) * 60 + 20 if advance_general else 0  # 60px max per row for multi-line desc
-    footer_h = 60
-    total_h = PAD + header_h + score_h + equip_h + advance_h + footer_h + 60
+            equip_h += _s(80)
+    advance_h = _s(40 + 32 + 20) + len(advance_general) * _s(60) if advance_general else 0
+    footer_h = _s(60)
+    total_h = PAD + header_h + score_h + equip_h + advance_h + footer_h + _s(60)
 
     # Download avatar and create blurred background
     avatar = await _download_image(avatar_url)
@@ -473,7 +482,7 @@ async def draw_role_wiki(detail: dict) -> Image.Image:
 
     # Advance overview table
     if advance_general:
-        rank_icon_size = 28
+        rank_icon_size = _s(28)
         rank_icons: dict[int, Image.Image] = {}
         for idx, ag in enumerate(advance_general):
             icon_url = ag.get("icon", "")
