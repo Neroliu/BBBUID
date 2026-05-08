@@ -363,11 +363,11 @@ def _draw_advance_table(
             img.paste(icon, (cx + (cols[0] - rank_icon_size) // 2, icon_y), icon)
         cx += cols[0]
 
-        # Description - draw on temp image (no crop), centered
+        # Description - draw on temp image (no crop), left-aligned, vertically centered
         desc_x = cx + 6
-        desc_y = y + 5
-        tmp = Image.new("RGBA", (desc_max_w, row_h + 20), (0, 0, 0, 0))
-        draw_text_by_line(tmp, (0, 0), desc, cell_font, SUB_COLOR, desc_max_w, center=True)
+        desc_y = y + (row_h - desc_h) // 2
+        tmp = Image.new("RGBA", (desc_max_w, desc_h + 10), (0, 0, 0, 0))
+        draw_text_by_line(tmp, (0, 0), desc, cell_font, SUB_COLOR, desc_max_w)
         img.paste(tmp, (desc_x, desc_y), tmp)
         cx += cols[1]
 
