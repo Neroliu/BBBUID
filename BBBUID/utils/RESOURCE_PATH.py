@@ -5,6 +5,9 @@ from gsuid_core.data_store import get_res_path
 MAIN_PATH = get_res_path() / "BBBUID"
 
 WIKI_PATH = MAIN_PATH / "wiki"
+ALIAS_PATH = MAIN_PATH / "alias"
+USER_CHAR_ALIAS_PATH = ALIAS_PATH / "char_alias.json"
+CHAR_META_PATH = MAIN_PATH / "char_meta.json"
 
 CHANNEL_MAP = {
     "角色": 18,
@@ -24,6 +27,7 @@ def get_wiki_path(channel_name: str) -> Path:
 def init_dir():
     for name in CHANNEL_MAP:
         get_wiki_path(name)
+    ALIAS_PATH.mkdir(parents=True, exist_ok=True)
 
 
 init_dir()

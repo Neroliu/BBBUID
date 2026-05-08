@@ -366,7 +366,7 @@ def _draw_advance_table(
         desc_x = cx + 6
         desc_y = y + 5
         tmp = Image.new("RGBA", (desc_max_w, row_h + 10), (0, 0, 0, 0))
-        draw_text_by_line(tmp, (0, 0), desc, cell_font, SUB_COLOR, desc_max_w)
+        draw_text_by_line(tmp, (0, 0), desc, cell_font, SUB_COLOR, desc_max_w, center=True)
         tmp = tmp.crop((0, 0, desc_max_w, row_h))
         img.paste(tmp, (desc_x, desc_y), tmp)
         cx += cols[1]

@@ -7,6 +7,7 @@ from gsuid_core.logger import logger
 
 from .wiki_api import get_channel_content_list, get_content_detail, parse_evaluation_from_detail
 from ..utils.RESOURCE_PATH import CHANNEL_MAP, get_wiki_path
+from ..bbb_alias.name_convert import build_char_meta_from_wiki
 
 INDEX_FILE = "index.json"
 ICON_SUFFIX = ".png"
@@ -160,6 +161,12 @@ async def update_all():
             await update_channel(name, cid)
         except Exception as e:
             logger.error(f"[崩坏3] [资源更新] {name} 更新失败: {e}")
+
+    # Rebuild alias index from wiki data
+    try:
+        build_char_meta_from_wiki()
+    except Exception as e:
+        logger.error(f"[崩坏3] [资源更新] 别名索引生成失败: {e}")
 
 
 def get_local_detail(channel_name: str, content_id: int) -> dict | None:

@@ -10,6 +10,7 @@ from gsuid_core.utils.image.convert import convert_img
 from .resource_update import update_all, get_local_detail, get_local_index
 from .draw_wiki import screenshot_wiki
 from .draw_role_wiki import draw_role_wiki
+from ..bbb_alias.name_convert import alias_to_content_id
 
 sv_bbb_wiki = SV("崩坏3WIKI")
 
@@ -40,6 +41,11 @@ def _find_local(channel_name: str, name: str) -> dict | None:
     for cid, title in index.items():
         if name in title:
             return get_local_detail(channel_name, int(cid))
+    # Alias resolution for 角色 channel
+    if channel_name == "角色":
+        content_id = alias_to_content_id(name)
+        if content_id:
+            return get_local_detail(channel_name, int(content_id))
     return None
 
 
