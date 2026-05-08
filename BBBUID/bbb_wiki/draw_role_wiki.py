@@ -188,6 +188,21 @@ def _draw_score_table(
 
         y += 36
 
+    # Total score row
+    total_score = sum(min(h.get("value", 0), 100) for h in hexagon_data) // len(hexagon_data)
+    _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + 34), fill=TABLE_HEADER_BG, radius=4)
+    draw.text((PAD + 12, y + 7), "总评分", ACCENT_COLOR, cell_font)
+    draw.text((PAD + col_w + 12, y + 7), "-", SUB_COLOR, cell_font)
+    draw.text((PAD + col_w * 2 + 12, y + 7), str(total_score), ACCENT_COLOR, cell_font)
+    bar_x = PAD + col_w * 3 + 12
+    bar_w = col_w - 24
+    bar_y = y + 10
+    _draw_rounded_rect(draw, (bar_x, bar_y, bar_x + bar_w, bar_y + bar_h), fill=SCORE_BAR_BG, radius=4)
+    fill_w = int(bar_w * total_score / 100)
+    if fill_w > 0:
+        _draw_rounded_rect(draw, (bar_x, bar_y, bar_x + fill_w, bar_y + bar_h), fill=ACCENT_COLOR, radius=4)
+    y += 36
+
     return y + 10
 
 
@@ -269,6 +284,7 @@ def _draw_advance_table(
     y: int,
     advance_general: list[dict],
     advance_data: list[dict],
+    rank_icons: dict[int, Image.Image],
 ) -> int:
     if not advance_general:
         return y
@@ -277,6 +293,8 @@ def _draw_advance_table(
     title_font = _font(24)
     header_font = _font(16)
     cell_font = _font(15)
+    rank_icon_size = 28
+    row_h = 36
 
     # Section title
     _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + 30), fill=SECTION_BG, radius=8)
@@ -284,8 +302,8 @@ def _draw_advance_table(
     y += 40
 
     # Column widths: Rank | Description | HP | ATK | DEF | SP | CRT | Cost
-    cols = [60, 280, 70, 70, 70, 70, 70, 70]
-    headers = ["阶级", "进阶效果", "生命", "攻击", "防御", "能量", "会心", "碎片"]
+    cols = [60, 260, 70, 70, 70, 70, 70, 70]
+    headers = ["星级", "进阶效果", "生命", "攻击", "防御", "能量", "会心", "碎片"]
 
     # Header row
     _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + 30), fill=TABLE_HEADER_BG, radius=6)
@@ -295,27 +313,32 @@ def _draw_advance_table(
         cx += cols[i]
     y += 32
 
-    # Rank labels
-    rank_labels = ["S", "SS1", "SS2", "SS3", "SSS1", "SSS2", "SSS3", "SSS4", "SSS5"]
-
     for idx in range(len(advance_general)):
         gen = advance_general[idx]
         adv = advance_data[idx] if idx < len(advance_data) else {}
 
         row_bg = TABLE_ROW_BG1 if idx % 2 == 0 else TABLE_ROW_BG2
-        _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + 32), fill=row_bg, radius=4)
+        _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + row_h), fill=row_bg, radius=4)
 
         cx = PAD
-        # Rank label
-        rank_label = rank_labels[idx] if idx < len(rank_labels) else f"{idx+1}"
-        draw.text((cx + 6, y + 7), rank_label, TEXT_COLOR, cell_font)
+        # Rank icon
+        icon = rank_icons.get(idx)
+        if icon:
+            icon_y = y + (row_h - rank_icon_size) // 2
+            img.paste(icon, (cx + (cols[0] - rank_icon_size) // 2, icon_y), icon)
         cx += cols[0]
 
-        # Description - truncate if too long
+        # Description - use draw_text_by_line for proper wrapping
         desc = gen.get("desc", "")
-        if len(desc) > 20:
-            desc = desc[:20] + "..."
-        draw.text((cx + 6, y + 7), desc, SUB_COLOR, cell_font)
+        desc_max_w = cols[1] - 12
+        draw_text_by_line(
+            img,
+            (cx + 6, y + 4),
+            desc,
+            cell_font,
+            SUB_COLOR,
+            desc_max_w,
+        )
         cx += cols[1]
 
         # Stats
@@ -328,7 +351,7 @@ def _draw_advance_table(
         cost = str(gen.get("cost", "-"))
         draw.text((cx + 6, y + 7), cost, ACCENT_COLOR, cell_font)
 
-        y += 34
+        y += row_h
 
     return y + 10
 
@@ -364,7 +387,7 @@ async def draw_role_wiki(detail: dict) -> Image.Image:
 
     # Pre-calculate height
     header_h = 160
-    score_h = 42 + 34 + len(hexagon) * 36 + 20 if hexagon else 0
+    score_h = 42 + 34 + len(hexagon) * 36 + 36 + 20 if hexagon else 0  # +36 for total row
     equip_h = 0
     for eq_group in equipments:
         equips = eq_group.get("equips", [])
@@ -372,7 +395,7 @@ async def draw_role_wiki(detail: dict) -> Image.Image:
         equip_h += 48 + rows * (EQUIP_ICON_SIZE + 28) + 20
         if eq_group.get("reason"):
             equip_h += 80
-    advance_h = 40 + 32 + len(advance_general) * 34 + 20 if advance_general else 0
+    advance_h = 40 + 32 + len(advance_general) * 36 + 20 if advance_general else 0
     footer_h = 60
     total_h = PAD + header_h + score_h + equip_h + advance_h + footer_h + 60
 
@@ -415,7 +438,15 @@ async def draw_role_wiki(detail: dict) -> Image.Image:
 
     # Advance overview table
     if advance_general:
-        y = _draw_advance_table(img, y, advance_general, advance_data)
+        rank_icon_size = 28
+        rank_icons: dict[int, Image.Image] = {}
+        for idx, ag in enumerate(advance_general):
+            icon_url = ag.get("icon", "")
+            if icon_url:
+                icon = await _get_icon(icon_url, rank_icon_size)
+                if icon:
+                    rank_icons[idx] = icon
+        y = _draw_advance_table(img, y, advance_general, advance_data, rank_icons)
 
     # Footer
     y = _draw_footer(img, y)
