@@ -100,7 +100,7 @@ def _draw_header(
     avatar_x = PAD
     if avatar:
         avatar_img = avatar.resize((120, 120), Image.LANCZOS)
-        avatar_img = draw_pic_with_ring(avatar_img, 120, bg_color=BG_COLOR, is_ring=True)
+        avatar_img = await draw_pic_with_ring(avatar_img, 120, bg_color=BG_COLOR, is_ring=True)
         img.paste(avatar_img, (avatar_x, y), avatar_img)
 
     # Name and basic info
