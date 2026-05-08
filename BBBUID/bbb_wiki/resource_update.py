@@ -291,3 +291,20 @@ def get_local_material_icon(content_id: int) -> Path | None:
     if icon_path.exists():
         return icon_path
     return None
+
+
+async def save_material_icon(content_id: int, icon_url: str) -> Path | None:
+    icons_dir = get_wiki_path("武器") / MATERIAL_ICONS_DIR
+    icons_dir.mkdir(parents=True, exist_ok=True)
+    icon_path = icons_dir / f"{content_id}.png"
+    if icon_path.exists():
+        return icon_path
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(icon_url, timeout=15)
+            if resp.status_code == 200:
+                icon_path.write_bytes(resp.content)
+                return icon_path
+    except Exception as e:
+        logger.warning(f"[崩坏3] [资源更新] 材料图标下载异常 [{content_id}]: {e}")
+    return None

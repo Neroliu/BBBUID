@@ -4,7 +4,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from gsuid_core.utils.image.convert import convert_img
 
-from .resource_update import get_local_material_icon
+from .resource_update import get_local_material_icon, save_material_icon
 from .draw_utils import (
     S,
     CARD_W,
@@ -50,6 +50,20 @@ async def _get_material_icon(content_id: int) -> Image.Image | None:
             )
         except Exception:
             pass
+    # Download on-demand
+    from .wiki_api import get_content_detail
+    detail = await get_content_detail(content_id)
+    if detail:
+        icon_url = detail.get("icon", "")
+        if icon_url:
+            saved = await save_material_icon(content_id, icon_url)
+            if saved:
+                try:
+                    return Image.open(saved).convert("RGBA").resize(
+                        (MATERIAL_ICON_SIZE, MATERIAL_ICON_SIZE), Image.LANCZOS
+                    )
+                except Exception:
+                    pass
     return None
 
 
@@ -57,6 +71,11 @@ def _draw_section_title(draw: ImageDraw.ImageDraw, y: int, title: str) -> int:
     _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + _s(30)), fill=SECTION_BG, radius=_s(8))
     draw.text((PAD + _s(16), y + _s(4)), f"★ {title}", ACCENT_COLOR, _font(24))
     return y + _s(40)
+
+
+def _draw_sub_title(draw: ImageDraw.ImageDraw, y: int, title: str) -> int:
+    draw.text((PAD + _s(8), y), title, ACCENT_COLOR, _font(18))
+    return y + _s(30)
 
 
 def _draw_star_text(draw: ImageDraw.ImageDraw, x: int, y: int, count: int, font: ImageFont.FreeTypeFont):
@@ -122,7 +141,6 @@ def _draw_skills(img: Image.Image, y: int, skills: list[dict]) -> int:
             continue
 
         row_bg = TABLE_ROW_BG1 if idx % 2 == 0 else TABLE_ROW_BG2
-        # Pre-calculate height
         name_h = _s(28)
         desc_h = _calc_text_height(draw, value, desc_font, max_w) if value else 0
         row_h = name_h + desc_h + _s(12)
@@ -157,6 +175,34 @@ def _draw_gain_methods(img: Image.Image, y: int, gain_methods: list[dict]) -> in
     return y + _s(10)
 
 
+async def _draw_material_item(
+    img: Image.Image,
+    x: int,
+    y: int,
+    name: str,
+    count: int,
+    icon_url: str,
+    cid: int | None,
+) -> None:
+    draw = ImageDraw.Draw(img)
+    name_font = _font(16)
+    count_font = _font(14)
+
+    icon = None
+    if icon_url:
+        icon = await _get_icon(icon_url, MATERIAL_ICON_SIZE)
+    if not icon and cid:
+        icon = await _get_material_icon(cid)
+
+    if icon:
+        img.paste(icon, (x, y), icon)
+
+    text_x = x + MATERIAL_ICON_SIZE + _s(12)
+    draw.text((text_x, y + _s(4)), name, TEXT_COLOR, name_font)
+    if count:
+        draw.text((text_x, y + _s(28)), f"x{count}", SUB_COLOR, count_font)
+
+
 async def _draw_forging(
     img: Image.Image,
     y: int,
@@ -170,44 +216,27 @@ async def _draw_forging(
     draw = ImageDraw.Draw(img)
     y = _draw_section_title(draw, y, "悬赏锻造")
 
-    name_font = _font(16)
-    count_font = _font(14)
+    # 超限素材
+    if material:
+        y = _draw_sub_title(draw, y, "超限素材")
+        for item in material:
+            name = item.get("name", "")
+            num = item.get("num", 0)
+            icon_url = item.get("icon", "")
+            cid = _extract_content_id(item.get("url", ""))
+            await _draw_material_item(img, PAD + _s(8), y, name, num, icon_url, cid)
+            y += MATERIAL_ICON_SIZE + _s(12)
 
-    for item in material:
-        name = item.get("name", "")
-        num = item.get("num", 0)
-        icon_url = item.get("icon", "")
-        cid = _extract_content_id(item.get("url", ""))
-
-        icon = None
-        if icon_url:
-            icon = await _get_icon(icon_url, MATERIAL_ICON_SIZE)
-        elif cid:
-            icon = await _get_material_icon(cid)
-
-        if icon:
-            img.paste(icon, (PAD + _s(8), y), icon)
-
-        text_x = PAD + MATERIAL_ICON_SIZE + _s(20)
-        draw.text((text_x, y + _s(4)), name, TEXT_COLOR, name_font)
-        if num:
-            draw.text((text_x, y + _s(28)), f"x{num}", SUB_COLOR, count_font)
-        y += MATERIAL_ICON_SIZE + _s(12)
-
-    for item in other_material:
-        name = item.get("name", "")
-        num = item.get("num", 0)
-        cid = _extract_content_id(item.get("url", ""))
-
-        icon = await _get_material_icon(cid) if cid else None
-        if icon:
-            img.paste(icon, (PAD + _s(8), y), icon)
-
-        text_x = PAD + MATERIAL_ICON_SIZE + _s(20)
-        draw.text((text_x, y + _s(4)), name, TEXT_COLOR, name_font)
-        if num:
-            draw.text((text_x, y + _s(28)), f"x{num}", SUB_COLOR, count_font)
-        y += MATERIAL_ICON_SIZE + _s(12)
+    # 其他素材
+    if other_material:
+        y = _draw_sub_title(draw, y, "其他素材")
+        for item in other_material:
+            name = item.get("name", "")
+            num = item.get("num", 0)
+            icon_url = item.get("icon", "")
+            cid = _extract_content_id(item.get("url", ""))
+            await _draw_material_item(img, PAD + _s(8), y, name, num, icon_url, cid)
+            y += MATERIAL_ICON_SIZE + _s(12)
 
     return y + _s(10)
 
@@ -219,42 +248,71 @@ async def _draw_materials(img: Image.Image, y: int, materials: list[dict]) -> in
     y = _draw_section_title(draw, y, "进化材料")
 
     level_font = _font(18)
+    name_font = _font(16)
     count_font = _font(14)
 
-    for level_data in materials:
+    # Table header
+    col_level_w = _s(120)
+    col_mat_w = CARD_W - PAD * 2 - col_level_w
+    _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + _s(30)), fill=TABLE_HEADER_BG, radius=_s(4))
+    draw.text((PAD + _s(12), y + _s(6)), "突破等级", SUB_COLOR, level_font)
+    draw.text((PAD + col_level_w + _s(12), y + _s(6)), "所需材料", SUB_COLOR, level_font)
+    y += _s(32)
+
+    for idx, level_data in enumerate(materials):
         level = level_data.get("level", "")
         mats = level_data.get("material", [])
         if not mats:
             continue
 
-        # Level label
-        _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + _s(32)), fill=TABLE_HEADER_BG, radius=_s(4))
-        draw.text((PAD + _s(16), y + _s(6)), f"Lv.{level}", ACCENT_COLOR, level_font)
-        y += _s(36)
+        # Calculate row height based on number of material items
+        items_per_row = max(1, col_mat_w // (MATERIAL_ICON_SIZE + _s(16)))
+        mat_rows = (len(mats) + items_per_row - 1) // items_per_row
+        row_h = max(_s(36), mat_rows * (MATERIAL_ICON_SIZE + _s(8)) + _s(8))
 
-        # Material icons in a row
-        x = PAD + _s(8)
-        for mat in mats:
+        row_bg = TABLE_ROW_BG1 if idx % 2 == 0 else TABLE_ROW_BG2
+        _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + row_h), fill=row_bg, radius=_s(4))
+
+        # Level text - vertically centered
+        level_text = f"Lv.{level}"
+        level_text_y = y + (row_h - _s(22)) // 2
+        draw.text((PAD + _s(12), level_text_y), level_text, ACCENT_COLOR, level_font)
+
+        # Material icons in grid
+        mat_x = PAD + col_level_w + _s(8)
+        mat_y = y + _s(4)
+        for i, mat in enumerate(mats):
+            col = i % items_per_row
+            if col == 0 and i > 0:
+                mat_x = PAD + col_level_w + _s(8)
+                mat_y += MATERIAL_ICON_SIZE + _s(8)
+
             name = mat.get("name", "")
             count = mat.get("count", 0)
             cid = _extract_content_id(mat.get("url", ""))
 
             icon = await _get_material_icon(cid) if cid else None
             if icon:
-                img.paste(icon, (x, y), icon)
+                img.paste(icon, (mat_x, mat_y), icon)
 
             # Draw count below icon
             count_text = f"x{count}"
             draw.text(
-                (x + MATERIAL_ICON_SIZE // 2, y + MATERIAL_ICON_SIZE + _s(2)),
+                (mat_x + MATERIAL_ICON_SIZE // 2, mat_y + MATERIAL_ICON_SIZE + _s(2)),
                 count_text,
                 SUB_COLOR,
                 count_font,
                 anchor="mt",
             )
-            x += MATERIAL_ICON_SIZE + _s(16)
 
-        y += MATERIAL_ICON_SIZE + _s(28)
+            # Draw material name next to icon
+            name_x = mat_x + MATERIAL_ICON_SIZE + _s(4)
+            max_name_w = _s(120)
+            draw.text((name_x, mat_y + _s(4)), name, SUB_COLOR, _font(12))
+
+            mat_x += MATERIAL_ICON_SIZE + _s(120)
+
+        y += row_h
 
     return y + _s(10)
 
@@ -315,8 +373,7 @@ async def _draw_roles(img: Image.Image, y: int, roles: list[dict]) -> int:
 
 
 def _estimate_height(weapon_data: dict) -> int:
-    """Estimate image height for pre-allocation."""
-    h = PAD + _s(120)  # header
+    h = PAD + _s(120)
 
     skills = weapon_data.get("skills", [])
     if skills:
@@ -329,11 +386,11 @@ def _estimate_height(weapon_data: dict) -> int:
     forging = weapon_data.get("forging", {})
     forging_count = len(forging.get("material", [])) + len(forging.get("otherMaterial", []))
     if forging_count:
-        h += _s(50) + forging_count * (MATERIAL_ICON_SIZE + _s(12))
+        h += _s(80) + forging_count * (MATERIAL_ICON_SIZE + _s(12))
 
     materials = weapon_data.get("materials", [])
     if materials:
-        h += _s(50) + len(materials) * (MATERIAL_ICON_SIZE + _s(64))
+        h += _s(80) + len(materials) * (MATERIAL_ICON_SIZE + _s(40))
 
     sync_mats = weapon_data.get("syncMaterials", [])
     if sync_mats:
@@ -343,7 +400,7 @@ def _estimate_height(weapon_data: dict) -> int:
     if roles:
         h += _s(50) + len(roles) * (ROLE_ICON_SIZE + _s(16))
 
-    h += _s(60)  # footer
+    h += _s(60)
     return h
 
 
@@ -356,7 +413,6 @@ async def draw_weapon_wiki(detail: dict) -> Image.Image:
 
     total_h = _estimate_height(weapon_data)
 
-    # Create background from weapon icon
     weapon_icon_url = info.get("icon", "") or detail.get("icon", "")
     weapon_icon = await _download_image(weapon_icon_url) if weapon_icon_url else None
     if weapon_icon:
@@ -364,43 +420,34 @@ async def draw_weapon_wiki(detail: dict) -> Image.Image:
     else:
         img = Image.new("RGBA", (CARD_W, total_h), BG_COLOR)
 
-    # Header
     y = _draw_header(img, weapon_icon, title, info)
 
-    # Skills
     skills = weapon_data.get("skills", [])
     if skills:
         y = _draw_skills(img, y, skills)
 
-    # Gain methods
     gain_methods = weapon_data.get("gainMethods", [])
     if gain_methods:
         y = _draw_gain_methods(img, y, gain_methods)
 
-    # Forging
     forging = weapon_data.get("forging", {})
     if forging.get("material") or forging.get("otherMaterial"):
         y = await _draw_forging(img, y, forging)
 
-    # Evolution materials
     materials = weapon_data.get("materials", [])
     if materials:
         y = await _draw_materials(img, y, materials)
 
-    # Sync materials
     sync_mats = weapon_data.get("syncMaterials", [])
     if sync_mats:
         y = await _draw_sync_materials(img, y, sync_mats)
 
-    # Roles
     roles = weapon_data.get("roles", [])
     if roles:
         y = await _draw_roles(img, y, roles)
 
-    # Footer
     y = _draw_footer(img, y)
 
-    # Crop to actual height
     img = img.crop((0, 0, CARD_W, y))
 
     return await convert_img(img)
