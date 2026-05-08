@@ -323,7 +323,6 @@ def _draw_advance_table(
     cell_font = _font(15)
     rank_icon_size = 28
     min_row_h = 36
-    desc_max_w = 240
 
     # Section title
     _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + 30), fill=SECTION_BG, radius=8)
@@ -331,8 +330,10 @@ def _draw_advance_table(
     y += 40
 
     # Column widths: Rank | Description | HP | ATK | DEF | SP | CRT | Cost
-    cols = [60, 260, 70, 70, 70, 70, 70, 70]
+    # Total = 820 = CARD_W - PAD*2
+    cols = [60, 340, 70, 70, 70, 70, 70, 70]
     headers = ["星级", "进阶效果", "生命", "攻击", "防御", "能量", "会心", "碎片"]
+    desc_max_w = cols[1] - 12
 
     # Header row
     _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + 30), fill=TABLE_HEADER_BG, radius=6)
@@ -362,12 +363,11 @@ def _draw_advance_table(
             img.paste(icon, (cx + (cols[0] - rank_icon_size) // 2, icon_y), icon)
         cx += cols[0]
 
-        # Description - draw wrapped text, clipped to column width
+        # Description - draw on temp image (no crop), centered
         desc_x = cx + 6
         desc_y = y + 5
-        tmp = Image.new("RGBA", (desc_max_w, row_h + 10), (0, 0, 0, 0))
+        tmp = Image.new("RGBA", (desc_max_w, row_h + 20), (0, 0, 0, 0))
         draw_text_by_line(tmp, (0, 0), desc, cell_font, SUB_COLOR, desc_max_w, center=True)
-        tmp = tmp.crop((0, 0, desc_max_w, row_h))
         img.paste(tmp, (desc_x, desc_y), tmp)
         cx += cols[1]
 
