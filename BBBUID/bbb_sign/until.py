@@ -37,7 +37,7 @@ async def get_account_list(cookie) -> list:
 
 async def sign(uid: str) -> str:
     """签到入口，接收游戏UID，返回结果文本。适配 muti_task 调用。"""
-    cookie = await GsUser.get_user_cookie_by_uid(uid, "bh3_cn")
+    cookie = await GsUser.get_user_cookie_by_uid(uid, "bbb")
     if not cookie:
         return f"[{uid}] 你没有绑定过Cookies噢~"
 
@@ -80,10 +80,10 @@ async def sign(uid: str) -> str:
 
     # 执行签到
     Header = {}
-    fp = await GsUser.get_user_attr_by_uid(uid, "fp", "bh3_cn")
+    fp = await GsUser.get_user_attr_by_uid(uid, "fp", "bbb")
     if fp:
         Header["x-rpc-device_fp"] = fp
-    device_id = await GsUser.get_user_attr_by_uid(uid, "device_id", "bh3_cn")
+    device_id = await GsUser.get_user_attr_by_uid(uid, "device_id", "bbb")
     if device_id:
         Header["x-rpc-device_id"] = device_id
 
@@ -133,7 +133,7 @@ async def get_checkin_rewards():
     return data
 
 
-async def is_sign(region: str, uid: str, cookie) -> dict:
+async def is_sign(region: str, uid: str, cookie):
     url = is_sign_url.format(act_id, region, uid)
     HEADER = copy.deepcopy(mys_api._HEADER)
     HEADER["Cookie"] = cookie

@@ -73,12 +73,15 @@ async def _download_equipment_icons(channel_name: str, content_id: int, detail: 
 
     icons_dir = _get_equip_icons_dir(channel_name, content_id)
     async with httpx.AsyncClient() as client:
+        idx = 0
         for eq_group in equipments:
-            for i, eq in enumerate(eq_group.get("equips", [])):
+            for eq in eq_group.get("equips", []):
                 icon_url = eq.get("icon", "")
                 if not icon_url:
+                    idx += 1
                     continue
-                icon_path = icons_dir / f"{i}.png"
+                icon_path = icons_dir / f"{idx}.png"
+                idx += 1
                 if icon_path.exists():
                     continue
                 try:

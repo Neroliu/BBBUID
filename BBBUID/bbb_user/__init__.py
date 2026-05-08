@@ -14,7 +14,7 @@ sv_bbb_user = SV("崩坏3用户信息")
 )
 async def bind_uid(bot: Bot, ev: Event):
     qid = ev.user_id
-    uid = ev.text.strip()
+    uid = (ev.text or "").strip()
     if not uid:
         return await bot.send("[崩坏3] 你需要在命令后面加入你的UID！")
     data = await GsBind.insert_uid(qid, ev.bot_id, uid, ev.group_id, game_name=GAME_NAME)
@@ -34,7 +34,7 @@ async def bind_uid(bot: Bot, ev: Event):
 )
 async def switch_uid(bot: Bot, ev: Event):
     qid = ev.user_id
-    uid = ev.text.strip()
+    uid = (ev.text or "").strip()
     if uid and not uid.isdigit():
         return await bot.send("[崩坏3] 你需要在切换命令后面加入UID或者直接输入切换命令！")
     data = await GsBind.switch_uid_by_game(qid, ev.bot_id, uid, GAME_NAME)
@@ -52,7 +52,7 @@ async def switch_uid(bot: Bot, ev: Event):
 )
 async def delete_uid(bot: Bot, ev: Event):
     qid = ev.user_id
-    uid = ev.text.strip()
+    uid = (ev.text or "").strip()
     if not uid:
         return await bot.send("[崩坏3] 你需要在解绑命令后面加入你的UID！")
     data = await GsBind.delete_uid(qid, ev.bot_id, uid, GAME_NAME)
