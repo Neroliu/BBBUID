@@ -1,4 +1,3 @@
-from pathlib import Path
 from io import BytesIO
 
 from PIL import Image
@@ -20,6 +19,9 @@ def _screenshot_wiki_sync(content_id: int) -> bytes:
     return buf
 
 
+_screenshot_wiki_threaded = to_thread(_screenshot_wiki_sync)
+
+
 async def screenshot_wiki(content_id: int) -> Image.Image:
-    buf = await to_thread(_screenshot_wiki_sync, content_id)
+    buf = await _screenshot_wiki_threaded(content_id)
     return Image.open(BytesIO(buf))
