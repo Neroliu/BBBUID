@@ -1,6 +1,4 @@
-import math
 from io import BytesIO
-from pathlib import Path
 
 import httpx
 from PIL import Image, ImageDraw, ImageFont
@@ -17,7 +15,6 @@ from .resource_update import get_wiki_path, get_local_equip_icons
 
 CARD_W = 900
 PAD = 40
-ICON_SIZE = 80
 EQUIP_ICON_SIZE = 64
 
 BG_COLOR = (28, 28, 38)
@@ -26,6 +23,10 @@ SUB_COLOR = (160, 160, 170)
 ACCENT_COLOR = (80, 160, 255)
 BADGE_BG = (50, 50, 65)
 SECTION_BG = (36, 36, 48)
+TABLE_HEADER_BG = (45, 45, 60)
+TABLE_ROW_BG1 = (32, 32, 44)
+TABLE_ROW_BG2 = (38, 38, 52)
+SCORE_BAR_BG = (50, 50, 65)
 
 LEVEL_COLORS = {
     "SSS": (255, 80, 80),
@@ -63,13 +64,6 @@ async def _download_image(url: str) -> Image.Image | None:
     return None
 
 
-def _load_local_icon(channel_name: str, content_id: int) -> Image.Image | None:
-    icon_path = get_wiki_path(channel_name) / f"{content_id}.png"
-    if icon_path.exists():
-        return Image.open(icon_path).convert("RGBA")
-    return None
-
-
 async def _get_icon(url: str, size: int) -> Image.Image | None:
     img = await _download_image(url)
     if img:
@@ -96,14 +90,12 @@ async def _draw_header(
     draw = ImageDraw.Draw(img)
     y = PAD
 
-    # Avatar
     avatar_x = PAD
     if avatar:
         avatar_img = avatar.resize((120, 120), Image.LANCZOS)
         avatar_img = await draw_pic_with_ring(avatar_img, 120, bg_color=BG_COLOR, is_ring=True)
         img.paste(avatar_img, (avatar_x, y), avatar_img)
 
-    # Name and basic info
     text_x = avatar_x + 140
     name_font = _font(36)
     draw.text((text_x, y + 8), title, TEXT_COLOR, name_font)
@@ -119,103 +111,84 @@ async def _draw_header(
         draw.text((text_x, y_info), info_text, SUB_COLOR, info_font)
         y_info += 32
 
-    # Sub fields (e.g. 星之环)
+    # Sub fields - skip 往世乐土
     sub_font = _font(18)
-    for sf in sub_fields[:2]:
+    for sf in sub_fields:
         name = sf.get("name", "")
         value = sf.get("value", "")
-        if name and value:
-            short_val = value[:50] + ("..." if len(value) > 50 else "")
-            draw.text((text_x, y_info), f"{name}: {short_val}", SUB_COLOR, sub_font)
-            y_info += 26
+        if not name or not value or "往世乐土" in name:
+            continue
+        short_val = value[:50] + ("..." if len(value) > 50 else "")
+        draw.text((text_x, y_info), f"{name}: {short_val}", SUB_COLOR, sub_font)
+        y_info += 26
 
     y = max(y + 140, y_info + 10)
-
-    # Divider
     draw.line([(PAD, y), (CARD_W - PAD, y)], fill=(60, 60, 75), width=1)
     return y + 20
 
 
-def _draw_hexagon(
+def _draw_score_table(
     img: Image.Image,
-    cx: int,
-    cy: int,
-    radius: int,
+    y: int,
     hexagon_data: list[dict],
-):
+) -> int:
+    if not hexagon_data:
+        return y
+
     draw = ImageDraw.Draw(img)
-    n = 6
-    angles = [math.radians(90 + i * 360 / n) for i in range(n)]
+    title_font = _font(24)
+    header_font = _font(18)
+    cell_font = _font(18)
+    bar_h = 16
 
-    # Background hexagon grid (3 levels)
-    for level in [0.33, 0.66, 1.0]:
-        points = []
-        for i in range(n):
-            px = cx + radius * level * math.cos(angles[i])
-            py = cy - radius * level * math.sin(angles[i])
-            points.append((px, py))
-        draw.polygon(points, outline=(50, 50, 65), width=1)
+    # Section title
+    _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + 30), fill=SECTION_BG, radius=8)
+    draw.text((PAD + 16, y + 4), "性能评分", ACCENT_COLOR, title_font)
+    y += 42
 
-    # Axis lines
-    for i in range(n):
-        px = cx + radius * math.cos(angles[i])
-        py = cy - radius * math.sin(angles[i])
-        draw.line([(cx, cy), (px, py)], fill=(50, 50, 65), width=1)
+    # Table header
+    col_w = (CARD_W - PAD * 2) // 4
+    headers = ["评分项", "等级", "分数", "评分条"]
+    hx = PAD
+    _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + 32), fill=TABLE_HEADER_BG, radius=6)
+    for i, h in enumerate(headers):
+        if i < 3:
+            draw.text((hx + 12, y + 6), h, SUB_COLOR, header_font)
+        hx += col_w
+    y += 34
 
-    # Data polygon
-    if hexagon_data:
-        data_points = []
-        for i, h in enumerate(hexagon_data[:n]):
-            val = min(h.get("value", 0), 100) / 100.0
-            px = cx + radius * val * math.cos(angles[i])
-            py = cy - radius * val * math.sin(angles[i])
-            data_points.append((px, py))
-        draw.polygon(data_points, fill=(80, 160, 255, 60), outline=ACCENT_COLOR, width=2)
-
-    # Labels
-    label_font = _font(18)
-    level_font = _font(16)
-    label_r = radius + 30
-    for i, h in enumerate(hexagon_data[:n]):
-        angle = angles[i]
-        lx = cx + label_r * math.cos(angle)
-        ly = cy - label_r * math.sin(angle)
+    # Table rows
+    for idx, h in enumerate(hexagon_data):
         key = h.get("key", "")
+        value = min(h.get("value", 0), 100)
         level = h.get("level", "")
-        tw, th = _text_size(draw, key, label_font)
 
-        # Anchor based on position
-        if i == 0:  # top
-            anchor = "mb"
-        elif i == 3:  # bottom
-            anchor = "mt"
-        elif i < 3:  # right side
-            anchor = "lm"
-        else:  # left side
-            anchor = "rm"
+        row_bg = TABLE_ROW_BG1 if idx % 2 == 0 else TABLE_ROW_BG2
+        _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + 34), fill=row_bg, radius=4)
 
-        draw.text((lx, ly), key, TEXT_COLOR, label_font, anchor=anchor)
+        # Name
+        draw.text((PAD + 12, y + 7), key, TEXT_COLOR, cell_font)
 
-        # Level badge
+        # Level with color
         level_color = LEVEL_COLORS.get(level, SUB_COLOR)
-        # Offset level label further out
-        if i == 0:
-            lly = ly - th - 4
-            llx = lx
-            lanchor = "mb"
-        elif i == 3:
-            lly = ly + th + 4
-            llx = lx
-            lanchor = "mt"
-        elif i < 3:
-            lly = ly
-            llx = lx + tw + 6
-            lanchor = "lm"
-        else:
-            lly = ly
-            llx = lx - tw - 6
-            lanchor = "rm"
-        draw.text((llx, lly), level, level_color, level_font, anchor=lanchor)
+        draw.text((PAD + col_w + 12, y + 7), level, level_color, cell_font)
+
+        # Score
+        draw.text((PAD + col_w * 2 + 12, y + 7), str(value), TEXT_COLOR, cell_font)
+
+        # Score bar
+        bar_x = PAD + col_w * 3 + 12
+        bar_w = col_w - 24
+        bar_y = y + 10
+        _draw_rounded_rect(draw, (bar_x, bar_y, bar_x + bar_w, bar_y + bar_h), fill=SCORE_BAR_BG, radius=4)
+        fill_w = int(bar_w * value / 100)
+        if fill_w > 0:
+            bar_color = LEVEL_COLORS.get(level, ACCENT_COLOR)
+            _draw_rounded_rect(draw, (bar_x, bar_y, bar_x + fill_w, bar_y + bar_h), fill=bar_color, radius=4)
+
+        y += 36
+
+    return y + 10
 
 
 def _draw_equipment_section(
@@ -225,65 +198,139 @@ def _draw_equipment_section(
     equip_icons: dict[str, Image.Image],
 ) -> int:
     draw = ImageDraw.Draw(img)
-    title_font = _font(26)
-    label_font = _font(20)
-    name_font = _font(18)
-    reason_font = _font(16)
+    title_font = _font(24)
+    name_font = _font(16)
+    reason_font = _font(15)
 
     for eq_group in equipments:
         label = eq_group.get("label", "")
         equips = eq_group.get("equips", [])
         reason = eq_group.get("reason", "")
 
-        # Section background
+        # Section label
         _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + 30), fill=SECTION_BG, radius=8)
         draw.text((PAD + 16, y + 4), f"★ {label}", ACCENT_COLOR, title_font)
-        y += 42
+        y += 40
 
-        # Equipment icons row
-        icon_x = PAD + 10
-        for eq in equips:
+        # Equipment grid: 2 per row, each with icon + name
+        col_w = (CARD_W - PAD * 2) // 2
+        for i, eq in enumerate(equips):
+            col = i % 2
+            row = i // 2
+            ex = PAD + col * col_w
+            ey = y + row * (EQUIP_ICON_SIZE + 28)
+
             title = eq.get("title", "")
-            icon_url = eq.get("icon", "")
             icon = equip_icons.get(title)
             if icon:
                 icon_resized = icon.resize((EQUIP_ICON_SIZE, EQUIP_ICON_SIZE), Image.LANCZOS)
-                img.paste(icon_resized, (icon_x, y), icon_resized)
+                img.paste(icon_resized, (ex + 8, ey), icon_resized)
             else:
                 _draw_rounded_rect(
                     draw,
-                    (icon_x, y, icon_x + EQUIP_ICON_SIZE, y + EQUIP_ICON_SIZE),
+                    (ex + 8, ey, ex + 8 + EQUIP_ICON_SIZE, ey + EQUIP_ICON_SIZE),
                     fill=BADGE_BG,
                     radius=8,
                 )
-            # Equipment name below icon
-            short_name = title[:8] + ("..." if len(title) > 8 else "")
-            tw, _ = _text_size(draw, short_name, name_font)
-            draw.text(
-                (icon_x + EQUIP_ICON_SIZE // 2 - tw // 2, y + EQUIP_ICON_SIZE + 4),
-                short_name,
-                SUB_COLOR,
+
+            # Equipment name - allow more space
+            max_name_w = col_w - EQUIP_ICON_SIZE - 28
+            draw_text_by_line(
+                img,
+                (ex + EQUIP_ICON_SIZE + 16, ey + 8),
+                title,
                 name_font,
+                TEXT_COLOR,
+                max_name_w,
             )
-            icon_x += EQUIP_ICON_SIZE + 24
 
-        y += EQUIP_ICON_SIZE + 30
+        rows = (len(equips) + 1) // 2
+        y += rows * (EQUIP_ICON_SIZE + 28) + 8
 
-        # Reason text
+        # Reason text with proper spacing
         if reason:
             y = draw_text_by_line(
                 img,
-                (PAD + 10, y),
+                (PAD + 8, y),
                 reason,
                 reason_font,
                 SUB_COLOR,
-                CARD_W - PAD * 2 - 20,
+                CARD_W - PAD * 2 - 16,
             )
-            y += 8
+            y += 10
 
-        y += 12
+        y += 8
 
     return y
+
+
+def _draw_advance_table(
+    img: Image.Image,
+    y: int,
+    advance_general: list[dict],
+    advance_data: list[dict],
+) -> int:
+    if not advance_general:
+        return y
+
+    draw = ImageDraw.Draw(img)
+    title_font = _font(24)
+    header_font = _font(16)
+    cell_font = _font(15)
+
+    # Section title
+    _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + 30), fill=SECTION_BG, radius=8)
+    draw.text((PAD + 16, y + 4), "进阶总览", ACCENT_COLOR, title_font)
+    y += 40
+
+    # Column widths: Rank | Description | HP | ATK | DEF | SP | CRT | Cost
+    cols = [60, 280, 70, 70, 70, 70, 70, 70]
+    headers = ["阶级", "进阶效果", "生命", "攻击", "防御", "能量", "会心", "碎片"]
+
+    # Header row
+    _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + 30), fill=TABLE_HEADER_BG, radius=6)
+    cx = PAD
+    for i, h in enumerate(headers):
+        draw.text((cx + 6, y + 6), h, SUB_COLOR, header_font)
+        cx += cols[i]
+    y += 32
+
+    # Rank labels
+    rank_labels = ["S", "SS1", "SS2", "SS3", "SSS1", "SSS2", "SSS3", "SSS4", "SSS5"]
+
+    for idx in range(len(advance_general)):
+        gen = advance_general[idx]
+        adv = advance_data[idx] if idx < len(advance_data) else {}
+
+        row_bg = TABLE_ROW_BG1 if idx % 2 == 0 else TABLE_ROW_BG2
+        _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + 32), fill=row_bg, radius=4)
+
+        cx = PAD
+        # Rank label
+        rank_label = rank_labels[idx] if idx < len(rank_labels) else f"{idx+1}"
+        draw.text((cx + 6, y + 7), rank_label, TEXT_COLOR, cell_font)
+        cx += cols[0]
+
+        # Description - truncate if too long
+        desc = gen.get("desc", "")
+        if len(desc) > 20:
+            desc = desc[:20] + "..."
+        draw.text((cx + 6, y + 7), desc, SUB_COLOR, cell_font)
+        cx += cols[1]
+
+        # Stats
+        for j, key in enumerate(["life", "attack", "defense", "energy", "understanding"]):
+            val = str(adv.get(key, "-"))
+            draw.text((cx + 6, y + 7), val, TEXT_COLOR, cell_font)
+            cx += cols[2 + j]
+
+        # Fragment cost
+        cost = str(gen.get("cost", "-"))
+        draw.text((cx + 6, y + 7), cost, ACCENT_COLOR, cell_font)
+
+        y += 34
+
+    return y + 10
 
 
 def _draw_footer(img: Image.Image, y: int) -> int:
@@ -312,17 +359,22 @@ async def draw_role_wiki(detail: dict) -> Image.Image:
     hexagon = evaluation.get("hexagon", [])
     sub_fields = evaluation.get("subFields", [])
     equipments = evaluation.get("equipments", [])
+    advance_general = evaluation.get("advanceGeneral", [])
+    advance_data = evaluation.get("advanceData", [])
 
     # Pre-calculate height
     header_h = 160
-    hexagon_h = 380 if hexagon else 0
+    score_h = 42 + 34 + len(hexagon) * 36 + 20 if hexagon else 0
     equip_h = 0
-    for eq in equipments:
-        equip_h += 52 + EQUIP_ICON_SIZE + 30
-        if eq.get("reason"):
+    for eq_group in equipments:
+        equips = eq_group.get("equips", [])
+        rows = (len(equips) + 1) // 2
+        equip_h += 48 + rows * (EQUIP_ICON_SIZE + 28) + 20
+        if eq_group.get("reason"):
             equip_h += 80
+    advance_h = 40 + 32 + len(advance_general) * 34 + 20 if advance_general else 0
     footer_h = 60
-    total_h = PAD + header_h + hexagon_h + equip_h + footer_h + 40
+    total_h = PAD + header_h + score_h + equip_h + advance_h + footer_h + 60
 
     img = Image.new("RGBA", (CARD_W, total_h), BG_COLOR)
 
@@ -330,13 +382,9 @@ async def draw_role_wiki(detail: dict) -> Image.Image:
     avatar = await _download_image(avatar_url)
     y = await _draw_header(img, avatar, title, basic_info, sub_fields)
 
-    # Hexagon radar chart
+    # Score table (replaces hexagon radar)
     if hexagon:
-        hex_cx = CARD_W // 2
-        hex_cy = y + 150
-        hex_r = 130
-        _draw_hexagon(img, hex_cx, hex_cy, hex_r, hexagon)
-        y = hex_cy + hex_r + 50
+        y = _draw_score_table(img, y, hexagon)
 
     # Equipment icons - try local cache first, then download
     equip_icons: dict[str, Image.Image] = {}
@@ -348,7 +396,6 @@ async def draw_role_wiki(detail: dict) -> Image.Image:
             t = eq.get("title", "")
             url = eq.get("icon", "")
             if t and t not in equip_icons:
-                # Try cached icon first
                 if global_idx in cached_icons:
                     try:
                         icon = Image.open(cached_icons[global_idx]).convert("RGBA")
@@ -356,7 +403,6 @@ async def draw_role_wiki(detail: dict) -> Image.Image:
                         equip_icons[t] = icon
                     except Exception:
                         pass
-                # Fall back to download
                 if t not in equip_icons and url:
                     icon = await _get_icon(url, EQUIP_ICON_SIZE)
                     if icon:
@@ -366,6 +412,10 @@ async def draw_role_wiki(detail: dict) -> Image.Image:
     # Equipment section
     if equipments:
         y = _draw_equipment_section(img, y, equipments, equip_icons)
+
+    # Advance overview table
+    if advance_general:
+        y = _draw_advance_table(img, y, advance_general, advance_data)
 
     # Footer
     y = _draw_footer(img, y)
