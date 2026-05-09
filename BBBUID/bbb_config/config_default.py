@@ -8,6 +8,11 @@ from gsuid_core.utils.plugins_config.models import (
 )
 
 CONFIG_DEFAULT: Dict[str, GSC] = {
+    "BBBPrefix": GsStrConfig(
+        "插件命令前缀（确认无冲突再修改）",
+        "用于设置BBBUID前缀的配置",
+        "bbb",
+    ),
     "SignTime": GsListStrConfig(
         "每晚签到时间设置",
         "每晚米游社签到时间设置（时，分）",
