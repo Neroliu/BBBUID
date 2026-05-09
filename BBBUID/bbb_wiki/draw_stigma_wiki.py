@@ -165,26 +165,28 @@ async def _draw_header(
 def _draw_stigma_skill(
     img: Image.Image,
     y: int,
-    sub_fields: list[dict],
+    stigma_skill: dict,
 ) -> int:
-    skill_text = ""
-    for sf in sub_fields:
-        if sf.get("name") == "圣痕技能":
-            skill_text = sf.get("value", "")
-            break
-    if not skill_text:
+    key = stigma_skill.get("key", "")
+    value = stigma_skill.get("value", "")
+    if not value:
         return y
 
     draw = ImageDraw.Draw(img)
     title_font = _font(24)
-    skill_font = _font(16)
+    name_font = _font(18)
+    desc_font = _font(16)
     max_w = CARD_W - PAD * 2 - _s(16)
 
     _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + _s(30)), fill=SECTION_BG, radius=_s(8))
     draw.text((PAD + _s(16), y + _s(4)), "★ 圣痕技能", ACCENT_COLOR, title_font)
     y += _s(40)
 
-    y = _draw_wrapped_text(img, (PAD + _s(8), y), skill_text, skill_font, SUB_COLOR, max_w)
+    if key:
+        draw.text((PAD + _s(16), y + _s(6)), key, ACCENT_COLOR, name_font)
+        y += _s(30)
+
+    y = _draw_wrapped_text(img, (PAD + _s(8), y), value, desc_font, SUB_COLOR, max_w)
     return y + _s(10)
 
 
@@ -476,6 +478,10 @@ async def _draw_materials(img: Image.Image, y: int, materials: list[dict]) -> in
 def _estimate_height(stigma_data: dict) -> int:
     h = PAD + _s(200)
 
+    stigma_skill = stigma_data.get("stigmaSkill", {})
+    if stigma_skill:
+        h += _s(80)
+
     set_skills = stigma_data.get("setSkills", [])
     if set_skills:
         h += _s(50) + len(set_skills) * _s(80)
@@ -527,9 +533,9 @@ async def draw_stigma_wiki(detail: dict) -> Image.Image:
     y = await _draw_header(img, avatar, title, info)
 
     # Stigma skill
-    sub_fields = info.get("subFields", [])
-    if sub_fields:
-        y = _draw_stigma_skill(img, y, sub_fields)
+    stigma_skill = stigma_data.get("stigmaSkill", {})
+    if stigma_skill:
+        y = _draw_stigma_skill(img, y, stigma_skill)
 
     # Set skills
     set_skills = stigma_data.get("setSkills", [])
