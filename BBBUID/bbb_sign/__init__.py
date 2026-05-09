@@ -7,9 +7,12 @@ from gsuid_core.subscribe import gs_subscribe
 
 from . import until
 from ..utils.hint import BIND_UID_HINT
+from ..bbb_config.bbb_config import BBB_CONFIG
 
 sv_bbb_sign = SV("崩坏3签到")
 sv_bbb_sign_config = SV("崩坏3签到配置", pm=1)
+
+SIGN_TIME = BBB_CONFIG.get_config("SignTime").data
 
 
 @sv_bbb_sign.on_fullmatch("签到")
@@ -32,8 +35,12 @@ async def recheck(bot: Bot, ev: Event):
     await bot.send("🚩 [崩坏3] [全部重签] 执行完成!")
 
 
-@scheduler.scheduled_job("cron", hour="2", minute="00")
+@scheduler.scheduled_job("cron", hour=SIGN_TIME[0], minute=SIGN_TIME[1])
 async def bbb_sign_at_night(force: bool = False):
+    if not BBB_CONFIG.get_config("SchedSignin").data and not force:
+        logger.info("[崩坏3] [定时签到] 定时签到已关闭")
+        return
+
     logger.info("[崩坏3] [定时签到] 开始执行")
     datas = await gs_subscribe.get_subscribe("[崩坏3] 自动签到")
     if not datas:

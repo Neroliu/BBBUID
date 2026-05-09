@@ -4,6 +4,8 @@ from gsuid_core.data_store import get_res_path
 
 MAIN_PATH = get_res_path() / "BBBUID"
 
+CONFIG_PATH = MAIN_PATH / "config.json"
+
 WIKI_PATH = MAIN_PATH / "wiki"
 ALIAS_PATH = MAIN_PATH / "alias"
 USER_CHAR_ALIAS_PATH = ALIAS_PATH / "char_alias.json"
