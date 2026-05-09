@@ -160,7 +160,7 @@ async def send_abyss_info(bot: Bot, ev: Event):
         return await bot.send("[崩坏3] 暂无深渊战报数据")
 
     lines = ["[崩坏3] 深渊战报"]
-    for i, report in enumerate(reports[:3]):
+    for i, report in enumerate(reports):
         score = report.get("score", "?")
         boss = report.get("boss", {})
         boss_name = boss.get("name", "未知")
@@ -193,12 +193,12 @@ async def send_battlefield_info(bot: Bot, ev: Event):
         return await bot.send("[崩坏3] 暂无战场战报数据")
 
     lines = ["[崩坏3] 战场战报"]
-    for report in reports[:2]:
+    for i, report in enumerate(reports):
         score = report.get("score", "?")
         rank = report.get("rank", "?")
         ranking_pct = report.get("ranking_percentage", "?")
         area = report.get("area", "?")
-        lines.append(f"  分数:{score} 段位:{rank} 区:{area} 排名:前{ranking_pct}%")
+        lines.append(f"  #{i+1} 分数:{score} 段位:{rank} 区:{area} 排名:前{ranking_pct}%")
 
         for bi in report.get("battle_infos", []):
             elf = bi.get("elf", {})
@@ -231,7 +231,7 @@ async def send_godwar_info(bot: Bot, ev: Event):
         return await bot.send("[崩坏3] 暂无往世乐土数据")
 
     lines = ["[崩坏3] 往世乐土"]
-    for i, record in enumerate(records[:3]):
+    for i, record in enumerate(records):
         score = record.get("score", "?")
         punish = record.get("punish_level", "?")
         main = record.get("main_avatar", {})
