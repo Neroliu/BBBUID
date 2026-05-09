@@ -65,6 +65,51 @@
       }
     ]
   },
+  "数据查询": {
+    "desc": "崩坏3游戏数据查询",
+    "data": [
+      {
+        "name": "查询",
+        "desc": "查询女武神首页/概况",
+        "eg": "查询",
+        "need_ck": true,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "便笺",
+        "desc": "查询实时便笺(体力/日程)",
+        "eg": "便笺",
+        "need_ck": true,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "深渊",
+        "desc": "查询深渊/超弦空间战报",
+        "eg": "深渊",
+        "need_ck": true,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "战场",
+        "desc": "查询战场战报/记忆战场",
+        "eg": "战场",
+        "need_ck": true,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "往世乐土",
+        "desc": "查询往世乐土记录",
+        "eg": "往世乐土",
+        "need_ck": true,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
   "WIKI图鉴": {
     "desc": "崩坏3百科查询",
     "data": [

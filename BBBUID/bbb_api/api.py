@@ -1,0 +1,16 @@
+from gsuid_core.utils.api.mys.api import GS_BASE, RECORD_BASE
+
+# BH3 Record API Base
+BH3_API = f"{RECORD_BASE}/game_record/app/honkai3rd/api"
+
+# Data Query Endpoints (relative paths, used with base_url)
+BH3_INDEX_API = "/index"
+BH3_NOTE_API = "/note"
+BH3_CHARACTERS_API = "/characters"
+BH3_NEW_ABYSS_API = "/newAbyssReport"
+BH3_OLD_ABYSS_API = "/latestOldAbyssReport"
+BH3_BATTLE_FIELD_API = "/battleFieldReport"
+BH3_GODWAR_API = "/godWar"
+
+# Account API for server lookup
+BH3_BIND_API = f"{GS_BASE}/binding/api/getUserGameRolesByCookie"
