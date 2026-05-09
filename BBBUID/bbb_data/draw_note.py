@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import json
 import random
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from typing import Dict, Union
+from typing import Dict
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
@@ -19,18 +20,16 @@ from ..utils.RESOURCE_PATH import WIKI_PATH
 
 CST = timezone(timedelta(hours=8))
 
-# --- Scale & Dimensions ---
-S = 2
-W = 1786 * 1  # canvas width (match NTEUID)
+# --- Dimensions ---
+W = 1786
 H = 1000
 
-LEFT_W = 800  # portrait area width
-RIGHT_X = LEFT_W  # right panel start x
+LEFT_W = 800
+RIGHT_X = LEFT_W
 RIGHT_W = W - LEFT_W
 
 # --- Colors ---
 BG_DARK = (28, 28, 38)
-BG_MID = (36, 36, 50)
 BG_PANEL = (42, 42, 58)
 TEXT_WHITE = (240, 240, 245)
 TEXT_GRAY = (180, 180, 195)
@@ -38,6 +37,7 @@ TEXT_DIM = (130, 130, 148)
 ACCENT_RED = (235, 80, 100)
 ACCENT_BLUE = (80, 160, 255)
 ACCENT_GREEN = (80, 200, 140)
+ACCENT_LIGHT_GREEN = (140, 230, 180)
 ACCENT_ORANGE = (255, 180, 60)
 SIGN_YES_BG = (40, 140, 80)
 SIGN_NO_BG = (160, 60, 60)
@@ -52,12 +52,7 @@ REGION_MAP = {
 _font_cache: dict[int, ImageFont.FreeTypeFont] = {}
 
 
-def _s(v: int) -> int:
-    return v * S
-
-
 def _font(size: int) -> ImageFont.FreeTypeFont:
-    size = _s(size)
     if size not in _font_cache:
         _font_cache[size] = core_font(size)
     return _font_cache[size]
@@ -111,23 +106,14 @@ async def _download_image(url: str) -> Image.Image | None:
         return None
     try:
         import httpx
+        from io import BytesIO
         async with httpx.AsyncClient() as client:
             resp = await client.get(url, timeout=15)
             if resp.status_code == 200:
-                from io import BytesIO
                 return Image.open(BytesIO(resp.content)).convert("RGBA")
     except Exception as e:
         logger.warning(f"[崩坏3] [便笺渲染] 下载图片失败: {e}")
     return None
-
-
-def _draw_rounded_rect(
-    draw: ImageDraw.ImageDraw,
-    xy: tuple,
-    fill: tuple,
-    radius: int = 16,
-):
-    draw.rounded_rectangle(xy, fill=fill, radius=radius)
 
 
 def _draw_circle_avatar(avatar: Image.Image, size: int) -> Image.Image:
@@ -140,7 +126,7 @@ def _draw_circle_avatar(avatar: Image.Image, size: int) -> Image.Image:
 
 
 def _draw_ring_avatar(avatar: Image.Image, size: int) -> Image.Image:
-    ring_w = _s(4)
+    ring_w = 4
     canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     center = size // 2
     r = center - ring_w
@@ -151,7 +137,35 @@ def _draw_ring_avatar(avatar: Image.Image, size: int) -> Image.Image:
     return canvas
 
 
-async def _get_random_portrait() -> Image.Image | None:
+async def _get_random_char_portrait(uid: str) -> Image.Image | None:
+    """Get a random character portrait from the user's characters (background_path)."""
+    try:
+        chars_data = await bh3_api.get_bbb_characters(uid)
+        if isinstance(chars_data, int):
+            return None
+        characters = chars_data.get("characters", [])
+        if not characters:
+            return None
+        random.shuffle(characters)
+        for char_item in characters[:5]:
+            avatar = char_item.get("character", {}).get("avatar", {})
+            bg_path = avatar.get("background_path", "")
+            if bg_path:
+                img = await _download_image(bg_path)
+                if img:
+                    return img
+            img_path = avatar.get("image_path", "")
+            if img_path:
+                img = await _download_image(img_path)
+                if img:
+                    return img
+    except Exception as e:
+        logger.warning(f"[崩坏3] [便笺渲染] 获取角色立绘失败: {e}")
+    return None
+
+
+async def _get_random_wiki_portrait() -> Image.Image | None:
+    """Fallback: get a random portrait from wiki cached data."""
     char_path = WIKI_PATH / "角色"
     if not char_path.exists():
         return None
@@ -159,7 +173,6 @@ async def _get_random_portrait() -> Image.Image | None:
     if not index_file.exists():
         return None
     try:
-        import json
         index = json.loads(index_file.read_text(encoding="utf-8"))
         if not index:
             return None
@@ -190,18 +203,24 @@ async def draw_note_img(
     canvas = Image.new("RGBA", (W, H), BG_DARK)
     draw = ImageDraw.Draw(canvas)
 
-    # --- Left: Portrait ---
-    portrait = None
+    # --- Bottom: blurred bridge background ---
     head_bg_url = index_data.get("head_background", "")
-    if head_bg_url:
-        portrait = await _download_image(head_bg_url)
+    head_bg = await _download_image(head_bg_url) if head_bg_url else None
+    if head_bg:
+        blurred = _fit_centered(head_bg, (W, H))
+        blurred = blurred.filter(ImageFilter.GaussianBlur(radius=20))
+        dark_overlay = Image.new("RGBA", (W, H), (*BG_DARK, 200))
+        blurred = Image.alpha_composite(blurred, dark_overlay)
+        canvas.alpha_composite(blurred, (0, 0))
 
+    # --- Left: Random character portrait ---
+    portrait = await _get_random_char_portrait(uid)
     if portrait is None:
-        portrait = await _get_random_portrait()
+        portrait = await _get_random_wiki_portrait()
 
     if portrait:
-        fitted = _fit_centered(portrait, (LEFT_W + _s(40), H))
-        canvas.alpha_composite(fitted, (-_s(40), 0))
+        fitted = _fit_centered(portrait, (LEFT_W + 40, H))
+        canvas.alpha_composite(fitted, (-40, 0))
         # Gradient overlay: left transparent, right opaque
         overlay = Image.new("RGBA", (LEFT_W, H), (0, 0, 0, 0))
         overlay_draw = ImageDraw.Draw(overlay)
@@ -210,49 +229,47 @@ async def draw_note_img(
             alpha = int(40 + 215 * (progress ** 1.5))
             overlay_draw.line([(x, 0), (x, H)], fill=(*BG_DARK, alpha))
         canvas.alpha_composite(overlay, (0, 0))
-    else:
-        # Solid dark background as fallback
-        _draw_rounded_rect(draw, (0, 0, LEFT_W, H), BG_DARK, 0)
-
-    # Separator line
-    sep_x = RIGHT_X + _s(20)
-    draw.line([(sep_x, _s(60)), (sep_x, H - _s(60))], fill=(60, 60, 80), width=_s(2))
 
     # --- Right: User Info ---
     role = index_data.get("role", {})
+    stats = index_data.get("stats", {})
     nickname = role.get("nickname", "未知舰长")
     level = role.get("level", "?")
     region = role.get("region", "")
     region_name = REGION_MAP.get(region, region)
+    active_days = stats.get("active_day_number", "?")
 
     # Avatar
     user_avatar = await get_event_avatar(ev)
-    avatar_size = _s(72)
+    avatar_size = 72
     avatar_img = _draw_ring_avatar(user_avatar, avatar_size)
-    ax = RIGHT_X + _s(36)
-    ay = _s(40)
+    ax = RIGHT_X + 36
+    ay = 40
     canvas.alpha_composite(avatar_img, (ax, ay))
 
     # Nickname
-    name_x = ax + avatar_size + _s(16)
-    name_y = ay + _s(4)
+    name_x = ax + avatar_size + 16
+    name_y = ay + 4
     draw.text((name_x, name_y), nickname, font=_font(32), fill=TEXT_WHITE)
 
     # Server & UID
     server_text = f"{region_name}  UID: {uid}"
-    draw.text((name_x, name_y + _s(40)), server_text, font=_font(18), fill=TEXT_GRAY)
+    draw.text((name_x, name_y + 40), server_text, font=_font(18), fill=TEXT_GRAY)
 
-    # Level badge
+    # Level badge (right-aligned)
     level_text = f"Lv.{level}"
     level_font = _font(22)
-    level_w = int(draw.textlength(level_text, font=level_font)) + _s(24)
-    level_h = _s(32)
-    level_x = W - _s(36) - level_w
-    level_y = ay + _s(20)
-    _draw_rounded_rect(draw, (level_x, level_y, level_x + level_w, level_y + level_h), ACCENT_BLUE, _s(8))
-    draw.text((level_x + _s(12), level_y + _s(4)), level_text, font=level_font, fill=TEXT_WHITE)
+    level_w = int(draw.textlength(level_text, font=level_font)) + 24
+    level_h = 32
+    level_x = W - 36 - level_w
+    level_y = ay + 20
+    draw.rounded_rectangle(
+        (level_x, level_y, level_x + level_w, level_y + level_h),
+        fill=ACCENT_BLUE, radius=8,
+    )
+    draw.text((level_x + 12, level_y + 4), level_text, font=level_font, fill=TEXT_WHITE)
 
-    # Sign-in status
+    # Sign-in status (left-aligned) + active days (right-aligned) on same row
     is_signed = False
     try:
         ck = await bh3_api.bbb_get_ck(uid)
@@ -264,20 +281,27 @@ async def draw_note_img(
     except Exception:
         pass
 
+    sign_y = name_y + 80
     sign_text = "今日已签到" if is_signed else "今日未签到"
     sign_bg = SIGN_YES_BG if is_signed else SIGN_NO_BG
     sign_font = _font(16)
-    sign_w = int(draw.textlength(sign_text, font=sign_font)) + _s(20)
-    sign_h = _s(26)
-    sign_x = name_x
-    sign_y = name_y + _s(80)
-    _draw_rounded_rect(draw, (sign_x, sign_y, sign_x + sign_w, sign_y + sign_h), sign_bg, _s(6))
-    draw.text((sign_x + _s(10), sign_y + _s(3)), sign_text, font=sign_font, fill=TEXT_WHITE)
+    sign_w = int(draw.textlength(sign_text, font=sign_font)) + 20
+    sign_h = 26
+    draw.rounded_rectangle(
+        (name_x, sign_y, name_x + sign_w, sign_y + sign_h),
+        fill=sign_bg, radius=6,
+    )
+    draw.text((name_x + 10, sign_y + 3), sign_text, font=sign_font, fill=TEXT_WHITE)
+
+    # Active days (right side of same row)
+    days_text = f"累计登舰: {active_days}天"
+    days_font = _font(16)
+    draw.text((W - 36, sign_y + 3), days_text, font=days_font, fill=TEXT_GRAY, anchor="ra")
 
     # --- Real-time Info Section ---
-    section_y = _s(170)
-    draw.text((RIGHT_X + _s(36), section_y), "实时信息", font=_font(28), fill=TEXT_WHITE)
-    draw.text((RIGHT_X + _s(36) + _s(160), section_y + _s(6)), "REAL-TIME INFO", font=_font(12), fill=TEXT_DIM)
+    section_y = 170
+    draw.text((RIGHT_X + 36, section_y), "实时信息", font=_font(24), fill=TEXT_WHITE)
+    draw.text((RIGHT_X + 36 + 140, section_y + 5), "REAL-TIME INFO", font=_font(10), fill=TEXT_DIM)
 
     # Stamina & Train Score
     cur_stamina = note_data.get("current_stamina", "?")
@@ -286,141 +310,159 @@ async def draw_note_img(
     cur_train = note_data.get("current_train_score", "?")
     max_train = note_data.get("max_train_score", "?")
 
-    card_y = section_y + _s(50)
-    card_h = _s(120)
-    card_w = (RIGHT_W - _s(100)) // 2
+    card_y = section_y + 42
+    card_h = 90
+    card_w = (RIGHT_W - 88) // 2
 
     # Stamina card
-    st_card_x = RIGHT_X + _s(36)
-    _draw_rounded_rect(draw, (st_card_x, card_y, st_card_x + card_w, card_y + card_h), BG_PANEL, _s(12))
-    draw.text((st_card_x + _s(20), card_y + _s(14)), "体力", font=_font(18), fill=TEXT_GRAY)
+    st_card_x = RIGHT_X + 36
+    draw.rounded_rectangle(
+        (st_card_x, card_y, st_card_x + card_w, card_y + card_h),
+        fill=BG_PANEL, radius=12,
+    )
+    draw.text((st_card_x + 16, card_y + 10), "体力", font=_font(14), fill=TEXT_GRAY)
     stamina_val = f"{cur_stamina}/{max_stamina}"
-    draw.text((st_card_x + _s(20), card_y + _s(46)), stamina_val, font=_font(40), fill=ACCENT_RED)
+    draw.text((st_card_x + 16, card_y + 34), stamina_val, font=_font(34), fill=ACCENT_RED)
     if recover > 0:
         recover_text = f"回满: {_fmt_recover(recover)}"
-        draw.text((st_card_x + _s(20), card_y + _s(94)), recover_text, font=_font(14), fill=TEXT_DIM)
+        draw.text((st_card_x + 16, card_y + 70), recover_text, font=_font(12), fill=TEXT_DIM)
 
     # Train score card
-    tr_card_x = st_card_x + card_w + _s(16)
-    _draw_rounded_rect(draw, (tr_card_x, card_y, tr_card_x + card_w, card_y + card_h), BG_PANEL, _s(12))
-    draw.text((tr_card_x + _s(20), card_y + _s(14)), "每日历练", font=_font(18), fill=TEXT_GRAY)
-    train_val = f"{cur_train}/{max_train}"
-    draw.text((tr_card_x + _s(20), card_y + _s(46)), train_val, font=_font(40), fill=ACCENT_ORANGE)
+    tr_card_x = st_card_x + card_w + 16
+    draw.rounded_rectangle(
+        (tr_card_x, card_y, tr_card_x + card_w, card_y + card_h),
+        fill=BG_PANEL, radius=12,
+    )
+    draw.text((tr_card_x + 16, card_y + 10), "每日历练", font=_font(14), fill=TEXT_GRAY)
 
-    # --- Activity Sections (Abyss, Battlefield, Elysian Realm) ---
-    act_y = card_y + card_h + _s(20)
-    act_x = RIGHT_X + _s(36)
-    act_w = RIGHT_W - _s(72)
-    act_h = _s(160)
-    act_gap = _s(12)
+    # If train score is maxed, show green "已达成"
+    try:
+        ct = int(cur_train)
+        mt = int(max_train)
+        train_maxed = ct >= mt > 0
+    except (ValueError, TypeError):
+        train_maxed = False
+
+    if train_maxed:
+        draw.text((tr_card_x + 16, card_y + 34), "已达成", font=_font(34), fill=ACCENT_LIGHT_GREEN)
+    else:
+        train_val = f"{cur_train}/{max_train}"
+        draw.text((tr_card_x + 16, card_y + 34), train_val, font=_font(34), fill=ACCENT_ORANGE)
+
+    # --- Activity Sections ---
+    act_y = card_y + card_h + 14
+    act_x = RIGHT_X + 36
+    act_w = RIGHT_W - 72
+    act_h = 110
+    act_gap = 10
 
     # Ultra Endless (Abyss / Superstring Space)
     ultra = note_data.get("ultra_endless", {})
     greedy = note_data.get("greedy_endless", {})
-    # Use ultra_endless for primary, greedy_endless as fallback
     endless_data = ultra if ultra else greedy
     if endless_data:
-        _draw_rounded_rect(draw, (act_x, act_y, act_x + act_w, act_y + act_h), SECTION_BG, _s(12))
+        draw.rounded_rectangle(
+            (act_x, act_y, act_x + act_w, act_y + act_h),
+            fill=SECTION_BG, radius=12,
+        )
+        draw.text((act_x + 16, act_y + 12), "超弦空间", font=_font(20), fill=TEXT_WHITE)
 
-        # Title
-        draw.text((act_x + _s(20), act_y + _s(16)), "超弦空间", font=_font(24), fill=TEXT_WHITE)
-
-        # Status & remaining time
         is_open = endless_data.get("is_open", False)
         status_text = "开放中" if is_open else "未开放"
         status_color = ACCENT_GREEN if is_open else TEXT_DIM
-        draw.text((act_x + _s(20), act_y + _s(50)), status_text, font=_font(18), fill=status_color)
+        draw.text((act_x + 16, act_y + 38), status_text, font=_font(14), fill=status_color)
 
         schedule_end = endless_data.get("schedule_end", "0")
         remain_text = f"剩余: {_fmt_schedule_end(schedule_end)}" if is_open else ""
         if remain_text:
-            draw.text((act_x + _s(20), act_y + _s(76)), remain_text, font=_font(14), fill=TEXT_DIM)
+            draw.text((act_x + 16, act_y + 58), remain_text, font=_font(12), fill=TEXT_DIM)
 
-        # Score & level icon (right side)
-        right_info_x = act_x + act_w - _s(20)
+        # Score (right-aligned)
+        right_x = act_x + act_w - 16
         challenge_score = endless_data.get("challenge_score", "?")
         if challenge_score != "?":
             score_text = f"积分: {challenge_score}"
-            draw.text((right_info_x - _s(180), act_y + _s(20)), score_text, font=_font(22), fill=ACCENT_ORANGE, anchor="ra")
+            draw.text((right_x, act_y + 14), score_text, font=_font(18), fill=ACCENT_ORANGE, anchor="ra")
 
         # Level icon
         level_icon_url = endless_data.get("level_icon", "")
         if level_icon_url:
             icon_img = await _download_image(level_icon_url)
             if icon_img:
-                icon_size = _s(48)
+                icon_size = 40
                 icon_img = icon_img.resize((icon_size, icon_size), Image.Resampling.LANCZOS)
-                canvas.alpha_composite(icon_img, (right_info_x - icon_size, act_y + _s(56)))
+                canvas.alpha_composite(icon_img, (right_x - icon_size, act_y + 40))
 
-        # Cup number from greedy (if available)
+        # Reward from greedy
         if greedy:
             cur_reward = greedy.get("cur_reward", "?")
             max_reward = greedy.get("max_reward", "?")
             reward_text = f"奖励: {cur_reward}/{max_reward}"
-            draw.text((right_info_x - _s(180), act_y + _s(110)), reward_text, font=_font(14), fill=TEXT_DIM, anchor="ra")
+            draw.text((right_x, act_y + 84), reward_text, font=_font(12), fill=TEXT_DIM, anchor="ra")
 
     act_y += act_h + act_gap
 
     # Battle Field
     bf = note_data.get("battle_field", {})
     if bf:
-        _draw_rounded_rect(draw, (act_x, act_y, act_x + act_w, act_y + act_h), SECTION_BG, _s(12))
-
-        draw.text((act_x + _s(20), act_y + _s(16)), "记忆战场", font=_font(24), fill=TEXT_WHITE)
+        draw.rounded_rectangle(
+            (act_x, act_y, act_x + act_w, act_y + act_h),
+            fill=SECTION_BG, radius=12,
+        )
+        draw.text((act_x + 16, act_y + 12), "记忆战场", font=_font(20), fill=TEXT_WHITE)
 
         is_open = bf.get("is_open", False)
         status_text = "开放中" if is_open else "未开放"
         status_color = ACCENT_GREEN if is_open else TEXT_DIM
-        draw.text((act_x + _s(20), act_y + _s(50)), status_text, font=_font(18), fill=status_color)
+        draw.text((act_x + 16, act_y + 38), status_text, font=_font(14), fill=status_color)
 
         schedule_end = bf.get("schedule_end", "0")
         remain_text = f"剩余: {_fmt_schedule_end(schedule_end)}" if is_open else ""
         if remain_text:
-            draw.text((act_x + _s(20), act_y + _s(76)), remain_text, font=_font(14), fill=TEXT_DIM)
+            draw.text((act_x + 16, act_y + 58), remain_text, font=_font(12), fill=TEXT_DIM)
 
-        # Reward info (right side)
-        right_info_x = act_x + act_w - _s(20)
+        right_x = act_x + act_w - 16
         cur_reward = bf.get("cur_reward", "?")
         max_reward = bf.get("max_reward", "?")
         cur_sss = bf.get("cur_sss_reward", "?")
         max_sss = bf.get("max_sss_reward", "?")
 
         reward_text = f"挑战: {cur_reward}/{max_reward}"
-        draw.text((right_info_x - _s(20), act_y + _s(20)), reward_text, font=_font(18), fill=ACCENT_ORANGE, anchor="ra")
+        draw.text((right_x, act_y + 14), reward_text, font=_font(14), fill=ACCENT_ORANGE, anchor="ra")
 
         sss_text = f"SSS: {cur_sss}/{max_sss}"
-        draw.text((right_info_x - _s(20), act_y + _s(52)), sss_text, font=_font(18), fill=ACCENT_RED, anchor="ra")
+        draw.text((right_x, act_y + 38), sss_text, font=_font(14), fill=ACCENT_RED, anchor="ra")
 
     act_y += act_h + act_gap
 
     # God War (Elysian Realm)
     gw = note_data.get("god_war", {})
     if gw:
-        _draw_rounded_rect(draw, (act_x, act_y, act_x + act_w, act_y + act_h), SECTION_BG, _s(12))
-
-        draw.text((act_x + _s(20), act_y + _s(16)), "往世乐土", font=_font(24), fill=TEXT_WHITE)
+        draw.rounded_rectangle(
+            (act_x, act_y, act_x + act_w, act_y + act_h),
+            fill=SECTION_BG, radius=12,
+        )
+        draw.text((act_x + 16, act_y + 12), "往世乐土", font=_font(20), fill=TEXT_WHITE)
 
         is_open = gw.get("is_open", False)
         status_text = "开放中" if is_open else "未开放"
         status_color = ACCENT_GREEN if is_open else TEXT_DIM
-        draw.text((act_x + _s(20), act_y + _s(50)), status_text, font=_font(18), fill=status_color)
+        draw.text((act_x + 16, act_y + 38), status_text, font=_font(14), fill=status_color)
 
         schedule_end = gw.get("schedule_end", "0")
         remain_text = f"剩余: {_fmt_schedule_end(schedule_end)}" if is_open else ""
         if remain_text:
-            draw.text((act_x + _s(20), act_y + _s(76)), remain_text, font=_font(14), fill=TEXT_DIM)
+            draw.text((act_x + 16, act_y + 58), remain_text, font=_font(12), fill=TEXT_DIM)
 
-        # Score info
-        right_info_x = act_x + act_w - _s(20)
+        right_x = act_x + act_w - 16
         cur_reward = gw.get("cur_reward", "?")
         max_reward = gw.get("max_reward", "?")
         score_text = f"积分: {cur_reward}/{max_reward}"
-        draw.text((right_info_x - _s(20), act_y + _s(36)), score_text, font=_font(22), fill=ACCENT_ORANGE, anchor="ra")
+        draw.text((right_x, act_y + 26), score_text, font=_font(18), fill=ACCENT_ORANGE, anchor="ra")
 
     # --- Footer ---
-    footer_y = H - _s(40)
-    draw.line([(RIGHT_X + _s(36), footer_y), (W - _s(36), footer_y)], fill=(60, 60, 80), width=_s(1))
-    footer_font = _font(12)
-    draw.text((W // 2, footer_y + _s(14)), "BBBUID · 崩坏3", (80, 80, 100), footer_font, anchor="mt")
+    footer_y = H - 30
+    draw.line([(RIGHT_X + 36, footer_y), (W - 36, footer_y)], fill=(60, 60, 80), width=1)
+    draw.text((W // 2, footer_y + 12), "BBBUID · 崩坏3", (80, 80, 100), _font(10), anchor="mt")
 
     return await convert_img(canvas)
