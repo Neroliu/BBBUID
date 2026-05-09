@@ -6,7 +6,7 @@ import httpx
 
 from gsuid_core.logger import logger
 
-from .wiki_api import get_channel_content_list, get_content_detail, parse_evaluation_from_detail, parse_weapon_data_from_detail, parse_stigma_data_from_detail
+from .wiki_api import get_channel_content_list, get_content_detail, parse_evaluation_from_detail, parse_weapon_data_from_detail, parse_stigma_data_from_detail, parse_enemy_data_from_detail, parse_enemy_data_from_detail
 from ..utils.RESOURCE_PATH import CHANNEL_MAP, get_wiki_path
 from ..bbb_alias.name_convert import build_char_meta_from_wiki
 
@@ -143,6 +143,40 @@ async def _download_stigma_equip_icons(content_id: int, detail: dict):
 
 def _remove_stigma_equip_icons(content_id: int):
     icons_dir = get_wiki_path("圣痕") / STIGMA_EQUIP_ICONS_DIR / str(content_id)
+    if icons_dir.exists():
+        for f in icons_dir.iterdir():
+            f.unlink()
+        icons_dir.rmdir()
+
+
+def _get_enemy_icons_dir(content_id: int) -> Path:
+    path = get_wiki_path("敌人") / EQUIP_ICONS_DIR / str(content_id)
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+async def _download_enemy_icons(channel_name: str, content_id: int, detail: dict):
+    enemy_data = detail.get("enemy_data") or parse_enemy_data_from_detail(detail)
+    image_url = enemy_data.get("info", {}).get("image", "")
+    if not image_url:
+        return
+
+    icons_dir = _get_enemy_icons_dir(content_id)
+    icon_path = icons_dir / "monster.png"
+    if icon_path.exists():
+        return
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(image_url, timeout=15)
+            if resp.status_code == 200:
+                icon_path.write_bytes(resp.content)
+                logger.debug(f"[崩坏3] [资源更新] 敌人怪物图已保存: {content_id}")
+    except Exception as e:
+        logger.warning(f"[崩坏3] [资源更新] 敌人怪物图下载异常: {e}")
+
+
+def _remove_enemy_icons(content_id: int):
+    icons_dir = get_wiki_path("敌人") / EQUIP_ICONS_DIR / str(content_id)
     if icons_dir.exists():
         for f in icons_dir.iterdir():
             f.unlink()
@@ -292,6 +326,8 @@ async def update_channel(channel_name: str, channel_id: int):
                 elif channel_name == "圣痕":
                     await _download_stigma_equip_icons(item["content_id"], detail)
                     await _download_material_icons(detail)
+                elif channel_name == "敌人":
+                    await _download_enemy_icons(channel_name, item["content_id"], detail)
 
     for cid in removed:
         json_path = get_wiki_path(channel_name) / f"{cid}.json"
@@ -301,6 +337,8 @@ async def update_channel(channel_name: str, channel_id: int):
         _remove_equipment_icons(channel_name, int(cid))
         if channel_name == "圣痕":
             _remove_stigma_equip_icons(int(cid))
+        elif channel_name == "敌人":
+            _remove_enemy_icons(int(cid))
 
     _save_index(channel_name, new_index)
     logger.info(f"[崩坏3] [资源更新] {channel_name} 更新完成")
@@ -370,4 +408,11 @@ async def save_material_icon(content_id: int, icon_url: str) -> Path | None:
                 return icon_path
     except Exception as e:
         logger.warning(f"[崩坏3] [资源更新] 材料图标下载异常 [{content_id}]: {e}")
+    return None
+
+
+def get_local_enemy_image(content_id: int) -> Path | None:
+    icon_path = get_wiki_path("敌人") / EQUIP_ICONS_DIR / str(content_id) / "monster.png"
+    if icon_path.exists():
+        return icon_path
     return None

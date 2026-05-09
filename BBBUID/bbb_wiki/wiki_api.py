@@ -440,3 +440,44 @@ def _parse_stigma_data(contents: list) -> Dict:
 
 def parse_stigma_data_from_detail(detail: Dict) -> Dict:
     return _parse_stigma_data(detail.get("contents", []))
+
+
+def _parse_enemy_data(contents: list) -> Dict:
+    result: Dict = {
+        "info": {},
+        "skills": [],
+    }
+    for section in contents:
+        parsed = _parse_html_data(section.get("text", ""))
+        if not parsed:
+            continue
+        for item in parsed:
+            tk = f"{item.get('tmplKey', '')}:{item.get('partKey', '')}"
+            data = item.get("data", {})
+            if tk == "monster:main":
+                result["info"] = {
+                    "image": data.get("image", ""),
+                    "mainFields": [
+                        {
+                            "nameL": _strip_html(mf.get("nameL", "")),
+                            "valueL": _strip_html(mf.get("valueL", "")),
+                            "nameR": _strip_html(mf.get("nameR", "")),
+                            "valueR": _strip_html(mf.get("valueR", "")),
+                        }
+                        for mf in data.get("mainFields", [])
+                    ],
+                }
+            elif tk == "valkyrie:skill":
+                for skill_item in data.get("items", []):
+                    outer_name = skill_item.get("name_", "")
+                    for skill in skill_item.get("list", []):
+                        result["skills"].append({
+                            "name": skill.get("name", "") or outer_name,
+                            "icon": skill.get("icon", ""),
+                            "desc": _strip_html(skill.get("desc", "")),
+                        })
+    return result
+
+
+def parse_enemy_data_from_detail(detail: Dict) -> Dict:
+    return _parse_enemy_data(detail.get("contents", []))
