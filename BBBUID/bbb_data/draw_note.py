@@ -105,7 +105,10 @@ async def _download_image(url: str) -> Image.Image | None:
     try:
         import httpx
         from io import BytesIO
-        async with httpx.AsyncClient(follow_redirects=True) as client:
+        async with httpx.AsyncClient(
+            follow_redirects=True,
+            headers={"Accept-Encoding": "identity"},
+        ) as client:
             resp = await client.get(url, timeout=15)
             if resp.status_code == 200:
                 return Image.open(BytesIO(resp.content)).convert("RGBA")
@@ -193,7 +196,7 @@ async def draw_note_img(
     wallpaper = await _get_random_wallpaper()
     if wallpaper:
         blurred = _fit_centered(wallpaper, (W, H))
-        blurred = blurred.filter(ImageFilter.GaussianBlur(radius=20))
+        blurred = blurred.filter(ImageFilter.GaussianBlur(radius=10))
         dark_overlay = Image.new("RGBA", (W, H), (*BG_DARK, 200))
         blurred = Image.alpha_composite(blurred, dark_overlay)
         canvas.alpha_composite(blurred, (0, 0))
@@ -305,7 +308,6 @@ async def draw_note_img(
     if recover > 0:
         recover_text = f"回满: {_fmt_recover(recover)}"
         draw.text((st_card_x + 16, card_y + 60), recover_text, font=_font(12), fill=TEXT_DIM)
-        draw.text((st_card_x + card_w - 16, card_y + 64), f"({cur_stamina}/{max_stamina})", font=_font(12), fill=TEXT_DIM, anchor="ra")
 
     # Train score card
     tr_card_x = st_card_x + card_w + 16
