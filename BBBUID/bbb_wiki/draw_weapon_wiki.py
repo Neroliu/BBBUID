@@ -265,10 +265,12 @@ async def _draw_materials(img: Image.Image, y: int, materials: list[dict]) -> in
         if not mats:
             continue
 
-        # Calculate row height based on number of material items
-        items_per_row = max(1, col_mat_w // (MATERIAL_ICON_SIZE + _s(16)))
+        # Calculate row height: icon + count text below + name + padding
+        item_w = MATERIAL_ICON_SIZE + _s(120)
+        items_per_row = max(1, col_mat_w // item_w)
         mat_rows = (len(mats) + items_per_row - 1) // items_per_row
-        row_h = max(_s(36), mat_rows * (MATERIAL_ICON_SIZE + _s(8)) + _s(8))
+        item_h = MATERIAL_ICON_SIZE + _s(28)  # icon + count text
+        row_h = max(_s(36), mat_rows * item_h + _s(8))
 
         row_bg = TABLE_ROW_BG1 if idx % 2 == 0 else TABLE_ROW_BG2
         _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + row_h), fill=row_bg, radius=_s(4))
@@ -285,7 +287,7 @@ async def _draw_materials(img: Image.Image, y: int, materials: list[dict]) -> in
             col = i % items_per_row
             if col == 0 and i > 0:
                 mat_x = PAD + col_level_w + _s(8)
-                mat_y += MATERIAL_ICON_SIZE + _s(8)
+                mat_y += item_h
 
             name = mat.get("name", "")
             count = mat.get("count", 0)
@@ -373,11 +375,7 @@ async def _draw_roles(img: Image.Image, y: int, roles: list[dict]) -> int:
 
 
 def _estimate_height(weapon_data: dict) -> int:
-    h = PAD + _s(120)
-
-    skills = weapon_data.get("skills", [])
-    if skills:
-        h += _s(50) + len(skills) * _s(80)
+    h = PAD + _s(140)
 
     gain_methods = weapon_data.get("gainMethods", [])
     if gain_methods:
@@ -386,11 +384,11 @@ def _estimate_height(weapon_data: dict) -> int:
     forging = weapon_data.get("forging", {})
     forging_count = len(forging.get("material", [])) + len(forging.get("otherMaterial", []))
     if forging_count:
-        h += _s(80) + forging_count * (MATERIAL_ICON_SIZE + _s(12))
+        h += _s(100) + forging_count * (MATERIAL_ICON_SIZE + _s(40))
 
     materials = weapon_data.get("materials", [])
     if materials:
-        h += _s(80) + len(materials) * (MATERIAL_ICON_SIZE + _s(40))
+        h += _s(80) + len(materials) * (MATERIAL_ICON_SIZE + _s(60))
 
     sync_mats = weapon_data.get("syncMaterials", [])
     if sync_mats:
@@ -398,9 +396,9 @@ def _estimate_height(weapon_data: dict) -> int:
 
     roles = weapon_data.get("roles", [])
     if roles:
-        h += _s(50) + len(roles) * (ROLE_ICON_SIZE + _s(16))
+        h += _s(50) + len(roles) * (ROLE_ICON_SIZE + _s(20))
 
-    h += _s(60)
+    h += _s(80)
     return h
 
 
@@ -411,7 +409,7 @@ async def draw_weapon_wiki(detail: dict) -> Image.Image:
     title = detail.get("title", "未知武器")
     info = weapon_data.get("info", {})
 
-    total_h = _estimate_height(weapon_data)
+    total_h = int(_estimate_height(weapon_data) * 1.5)
 
     weapon_icon_url = info.get("icon", "") or detail.get("icon", "")
     weapon_icon = await _download_image(weapon_icon_url) if weapon_icon_url else None
@@ -421,10 +419,6 @@ async def draw_weapon_wiki(detail: dict) -> Image.Image:
         img = Image.new("RGBA", (CARD_W, total_h), BG_COLOR)
 
     y = _draw_header(img, weapon_icon, title, info)
-
-    skills = weapon_data.get("skills", [])
-    if skills:
-        y = _draw_skills(img, y, skills)
 
     gain_methods = weapon_data.get("gainMethods", [])
     if gain_methods:
