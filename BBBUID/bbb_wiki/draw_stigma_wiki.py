@@ -128,20 +128,6 @@ async def _draw_header(
 
     y = max(y + icon_sz, info_y) + _s(10)
 
-    # Stigma skill description
-    skill_text = ""
-    for sf in info.get("subFields", []):
-        if sf.get("name") == "圣痕技能":
-            skill_text = sf.get("value", "")
-            break
-    if skill_text:
-        skill_font = _font(16)
-        max_w = CARD_W - PAD * 2
-        draw.text((PAD, y), "圣痕技能", ACCENT_COLOR, _font(20))
-        y += _s(30)
-        y = _draw_wrapped_text(img, (PAD, y), skill_text, skill_font, SUB_COLOR, max_w)
-        y += _s(8)
-
     # Relatives (set mates)
     relatives = info.get("relatives", [])
     if relatives and not (len(relatives) == 1 and relatives[0].get("name") == "无"):
@@ -174,6 +160,32 @@ async def _draw_header(
 
     draw.line([(PAD, y), (CARD_W - PAD, y)], fill=(60, 60, 75), width=_s(1))
     return y + _s(20)
+
+
+def _draw_stigma_skill(
+    img: Image.Image,
+    y: int,
+    sub_fields: list[dict],
+) -> int:
+    skill_text = ""
+    for sf in sub_fields:
+        if sf.get("name") == "圣痕技能":
+            skill_text = sf.get("value", "")
+            break
+    if not skill_text:
+        return y
+
+    draw = ImageDraw.Draw(img)
+    title_font = _font(24)
+    skill_font = _font(16)
+    max_w = CARD_W - PAD * 2 - _s(16)
+
+    _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + _s(30)), fill=SECTION_BG, radius=_s(8))
+    draw.text((PAD + _s(16), y + _s(4)), "★ 圣痕技能", ACCENT_COLOR, title_font)
+    y += _s(40)
+
+    y = _draw_wrapped_text(img, (PAD + _s(8), y), skill_text, skill_font, SUB_COLOR, max_w)
+    return y + _s(10)
 
 
 def _draw_set_skills(
@@ -513,6 +525,11 @@ async def draw_stigma_wiki(detail: dict) -> Image.Image:
 
     # Header
     y = await _draw_header(img, avatar, title, info)
+
+    # Stigma skill
+    sub_fields = info.get("subFields", [])
+    if sub_fields:
+        y = _draw_stigma_skill(img, y, sub_fields)
 
     # Set skills
     set_skills = stigma_data.get("setSkills", [])

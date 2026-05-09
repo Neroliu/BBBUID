@@ -88,15 +88,21 @@ def _calc_text_height(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.Free
     if not text:
         return 0
     line_h = font.size + _s(6)
-    line_w = 0
-    lines = 1
-    for ch in text:
-        cw = draw.textlength(ch, font=font)
-        if line_w + cw > max_w:
-            lines += 1
-            line_w = 0
-        line_w += cw
-    return lines * line_h
+    total_h = 0
+    for para in text.split("\n"):
+        if not para:
+            total_h += line_h
+            continue
+        line_w = 0
+        lines = 1
+        for ch in para:
+            cw = draw.textlength(ch, font=font)
+            if line_w + cw > max_w:
+                lines += 1
+                line_w = 0
+            line_w += cw
+        total_h += lines * line_h
+    return total_h
 
 
 def _draw_wrapped_text(
@@ -111,20 +117,24 @@ def _draw_wrapped_text(
     x, y = pos
     draw = ImageDraw.Draw(img)
     line_h = font.size + _s(6)
-    row = ""
-    line_w = 0
-    for ch in text:
-        cw = draw.textlength(ch, font=font)
-        if line_w + cw > max_w and row:
+    for para in text.split("\n"):
+        if not para:
+            y += line_h
+            continue
+        row = ""
+        line_w = 0
+        for ch in para:
+            cw = draw.textlength(ch, font=font)
+            if line_w + cw > max_w and row:
+                draw.text((x, y), row, font=font, fill=fill)
+                y += line_h
+                row = ""
+                line_w = 0
+            row += ch
+            line_w += cw
+        if row:
             draw.text((x, y), row, font=font, fill=fill)
             y += line_h
-            row = ""
-            line_w = 0
-        row += ch
-        line_w += cw
-    if row:
-        draw.text((x, y), row, font=font, fill=fill)
-        y += line_h
     return y
 
 

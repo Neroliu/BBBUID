@@ -56,7 +56,9 @@ def _parse_html_data(html: str) -> List[Dict]:
 
 def _strip_html(html: str) -> str:
     import html as html_mod
-    text = re.sub(r"<[^>]+>", "", html).strip()
+    text = re.sub(r"</p>\s*<p[^>]*>", "\n", html)
+    text = re.sub(r"<br\s*/?>", "\n", text)
+    text = re.sub(r"<[^>]+>", "", text).strip()
     return html_mod.unescape(text)
 
 
@@ -306,12 +308,15 @@ def _parse_stigma_data(contents: list) -> Dict:
             tk = f"{item.get('tmplKey', '')}:{item.get('partKey', '')}"
             data = item.get("data", {})
             if tk == "stigmata:main":
+                sub_fields = []
+                for sf in data.get("subFields", []):
+                    val = _strip_html(sf.get("value", ""))
+                    val = re.sub(r'\s*"?\s*class="[^"]*">\[详情\]', '', val)
+                    val = re.sub(r'\[详情\]', '', val).strip()
+                    sub_fields.append({"name": sf.get("name", ""), "value": val})
                 result["info"] = {
                     "avatar": data.get("avatar", ""),
-                    "subFields": [
-                        {"name": sf.get("name", ""), "value": _strip_html(sf.get("value", ""))}
-                        for sf in data.get("subFields", [])
-                    ],
+                    "subFields": sub_fields,
                     "relatives": data.get("relatives", []),
                 }
             elif tk == "stigmata:basicAttr":
