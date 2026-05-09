@@ -18,6 +18,9 @@ from ..bbb_api import bh3_api
 from ..bbb_sign.until import is_sign
 from ..utils.RESOURCE_PATH import WIKI_PATH
 
+PORTRAIT_ICONS_DIR = "portrait_icons"
+WALLPAPER_ICONS_DIR = "wallpaper_icons"
+
 CST = timezone(timedelta(hours=8))
 
 # --- Dimensions ---
@@ -137,39 +140,46 @@ def _draw_ring_avatar(avatar: Image.Image, size: int) -> Image.Image:
     return canvas
 
 
-async def _get_random_char_portrait(uid: str) -> Image.Image | None:
-    """Get a random character portrait from the user's characters (background_path)."""
+async def _get_random_char_portrait() -> Image.Image | None:
+    """Get a random character portrait from wiki cached 立绘 data."""
+    portrait_path = WIKI_PATH / "立绘"
+    if not portrait_path.exists():
+        return None
+    index_file = portrait_path / "index.json"
+    if not index_file.exists():
+        return None
     try:
-        chars_data = await bh3_api.get_bbb_characters(uid)
-        if isinstance(chars_data, int):
+        index = json.loads(index_file.read_text(encoding="utf-8"))
+        if not index:
             return None
-        characters = chars_data.get("characters", [])
-        if not characters:
-            return None
-        random.shuffle(characters)
-        for char_item in characters[:5]:
-            avatar = char_item.get("character", {}).get("avatar", {})
-            bg_path = avatar.get("background_path", "")
-            if bg_path:
-                img = await _download_image(bg_path)
-                if img:
+        content_ids = list(index.keys())
+        random.shuffle(content_ids)
+        for cid in content_ids:
+            icons_dir = portrait_path / PORTRAIT_ICONS_DIR / str(cid)
+            if not icons_dir.exists():
+                continue
+            files = [f for f in icons_dir.iterdir() if f.is_file() and f.suffix == ".png"]
+            if not files:
+                continue
+            # Pick the largest file (biggest portrait)
+            files.sort(key=lambda f: f.stat().st_size, reverse=True)
+            try:
+                img = Image.open(files[0]).convert("RGBA")
+                if img.width >= 200:
                     return img
-            img_path = avatar.get("image_path", "")
-            if img_path:
-                img = await _download_image(img_path)
-                if img:
-                    return img
+            except Exception:
+                continue
     except Exception as e:
-        logger.warning(f"[崩坏3] [便笺渲染] 获取角色立绘失败: {e}")
+        logger.warning(f"[崩坏3] [便笺渲染] 获取立绘失败: {e}")
     return None
 
 
-async def _get_random_wiki_portrait() -> Image.Image | None:
-    """Fallback: get a random portrait from wiki cached data."""
-    char_path = WIKI_PATH / "角色"
-    if not char_path.exists():
+async def _get_random_wallpaper() -> Image.Image | None:
+    """Get a random wallpaper from wiki cached 壁纸 data."""
+    wp_path = WIKI_PATH / "壁纸"
+    if not wp_path.exists():
         return None
-    index_file = char_path / "index.json"
+    index_file = wp_path / "index.json"
     if not index_file.exists():
         return None
     try:
@@ -179,18 +189,21 @@ async def _get_random_wiki_portrait() -> Image.Image | None:
         content_ids = list(index.keys())
         random.shuffle(content_ids)
         for cid in content_ids[:5]:
-            detail_file = char_path / f"{cid}.json"
-            if not detail_file.exists():
+            icons_dir = wp_path / WALLPAPER_ICONS_DIR / str(cid)
+            if not icons_dir.exists():
                 continue
-            detail = json.loads(detail_file.read_text(encoding="utf-8"))
-            evaluation = detail.get("evaluation", {})
-            avatar_url = evaluation.get("avatar", "")
-            if avatar_url:
-                img = await _download_image(avatar_url)
-                if img and img.width > 100:
+            files = [f for f in icons_dir.iterdir() if f.is_file() and f.suffix == ".png"]
+            if not files:
+                continue
+            f = random.choice(files)
+            try:
+                img = Image.open(f).convert("RGBA")
+                if img.width >= 800:
                     return img
+            except Exception:
+                continue
     except Exception as e:
-        logger.warning(f"[崩坏3] [便笺渲染] 获取随机立绘失败: {e}")
+        logger.warning(f"[崩坏3] [便笺渲染] 获取壁纸失败: {e}")
     return None
 
 
@@ -203,20 +216,17 @@ async def draw_note_img(
     canvas = Image.new("RGBA", (W, H), BG_DARK)
     draw = ImageDraw.Draw(canvas)
 
-    # --- Bottom: blurred bridge background ---
-    head_bg_url = index_data.get("head_background", "")
-    head_bg = await _download_image(head_bg_url) if head_bg_url else None
-    if head_bg:
-        blurred = _fit_centered(head_bg, (W, H))
+    # --- Bottom: blurred wallpaper background ---
+    wallpaper = await _get_random_wallpaper()
+    if wallpaper:
+        blurred = _fit_centered(wallpaper, (W, H))
         blurred = blurred.filter(ImageFilter.GaussianBlur(radius=20))
         dark_overlay = Image.new("RGBA", (W, H), (*BG_DARK, 200))
         blurred = Image.alpha_composite(blurred, dark_overlay)
         canvas.alpha_composite(blurred, (0, 0))
 
     # --- Left: Random character portrait ---
-    portrait = await _get_random_char_portrait(uid)
-    if portrait is None:
-        portrait = await _get_random_wiki_portrait()
+    portrait = await _get_random_char_portrait()
 
     if portrait:
         fitted = _fit_centered(portrait, (LEFT_W + 40, H))

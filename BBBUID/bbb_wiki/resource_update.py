@@ -15,6 +15,8 @@ ICON_SUFFIX = ".png"
 EQUIP_ICONS_DIR = "equip_icons"
 MATERIAL_ICONS_DIR = "material_icons"
 STIGMA_EQUIP_ICONS_DIR = "stigma_equip_icons"
+PORTRAIT_ICONS_DIR = "portrait_icons"
+WALLPAPER_ICONS_DIR = "wallpaper_icons"
 
 
 def _load_index(channel_name: str) -> dict:
@@ -328,6 +330,10 @@ async def update_channel(channel_name: str, channel_id: int):
                     await _download_material_icons(detail)
                 elif channel_name == "敌人":
                     await _download_enemy_icons(channel_name, item["content_id"], detail)
+                elif channel_name == "立绘":
+                    await _download_portrait_icons(item["content_id"], detail)
+                elif channel_name == "壁纸":
+                    await _download_wallpaper_icons(item["content_id"], detail)
 
     for cid in removed:
         json_path = get_wiki_path(channel_name) / f"{cid}.json"
@@ -339,6 +345,10 @@ async def update_channel(channel_name: str, channel_id: int):
             _remove_stigma_equip_icons(int(cid))
         elif channel_name == "敌人":
             _remove_enemy_icons(int(cid))
+        elif channel_name == "立绘":
+            _remove_portrait_icons(int(cid))
+        elif channel_name == "壁纸":
+            _remove_wallpaper_icons(int(cid))
 
     _save_index(channel_name, new_index)
     logger.info(f"[崩坏3] [资源更新] {channel_name} 更新完成")
@@ -416,3 +426,127 @@ def get_local_enemy_image(content_id: int) -> Path | None:
     if icon_path.exists():
         return icon_path
     return None
+
+
+# --- Portrait (立绘) ---
+
+
+def _get_portrait_icons_dir(content_id: int) -> Path:
+    path = get_wiki_path("立绘") / PORTRAIT_ICONS_DIR / str(content_id)
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+async def _download_portrait_icons(content_id: int, detail: dict):
+    icons_dir = _get_portrait_icons_dir(content_id)
+    all_urls = set()
+    for section in detail.get("contents", []):
+        html = section.get("text", "")
+        urls = re.findall(r'https?://[^\s"<>]+[.]png', html)
+        all_urls.update(urls)
+
+    async with httpx.AsyncClient() as client:
+        idx = 0
+        for url in sorted(all_urls):
+            try:
+                resp = await client.head(url, timeout=5, follow_redirects=True)
+                cl = int(resp.headers.get("content-length", 0))
+                if cl < 30000:
+                    continue
+            except Exception:
+                continue
+
+            icon_path = icons_dir / f"{idx}.png"
+            idx += 1
+            if icon_path.exists():
+                continue
+            try:
+                resp = await client.get(url, timeout=15)
+                if resp.status_code == 200:
+                    icon_path.write_bytes(resp.content)
+                    logger.debug(f"[崩坏3] [资源更新] 立绘图片已保存: {content_id}/{icon_path.name}")
+            except Exception as e:
+                logger.warning(f"[崩坏3] [资源更新] 立绘图片下载异常: {e}")
+
+
+def _remove_portrait_icons(content_id: int):
+    icons_dir = _get_portrait_icons_dir(content_id)
+    if icons_dir.exists():
+        for f in icons_dir.iterdir():
+            f.unlink()
+
+
+def get_local_portrait_icons(content_id: int) -> dict[int, Path]:
+    result: dict[int, Path] = {}
+    icons_dir = get_wiki_path("立绘") / PORTRAIT_ICONS_DIR / str(content_id)
+    if icons_dir.exists():
+        for f in icons_dir.iterdir():
+            if f.suffix == ".png":
+                try:
+                    idx = int(f.stem)
+                    result[idx] = f
+                except ValueError:
+                    pass
+    return result
+
+
+# --- Wallpaper (壁纸) ---
+
+
+def _get_wallpaper_icons_dir(content_id: int) -> Path:
+    path = get_wiki_path("壁纸") / WALLPAPER_ICONS_DIR / str(content_id)
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+async def _download_wallpaper_icons(content_id: int, detail: dict):
+    icons_dir = _get_wallpaper_icons_dir(content_id)
+    all_urls = set()
+    for section in detail.get("contents", []):
+        html = section.get("text", "")
+        urls = re.findall(r'https?://[^\s"<>]+[.]png', html)
+        all_urls.update(urls)
+
+    async with httpx.AsyncClient() as client:
+        idx = 0
+        for url in sorted(all_urls):
+            try:
+                resp = await client.head(url, timeout=5, follow_redirects=True)
+                cl = int(resp.headers.get("content-length", 0))
+                if cl < 50000:
+                    continue
+            except Exception:
+                continue
+
+            icon_path = icons_dir / f"{idx}.png"
+            idx += 1
+            if icon_path.exists():
+                continue
+            try:
+                resp = await client.get(url, timeout=30)
+                if resp.status_code == 200:
+                    icon_path.write_bytes(resp.content)
+                    logger.debug(f"[崩坏3] [资源更新] 壁纸已保存: {content_id}/{icon_path.name}")
+            except Exception as e:
+                logger.warning(f"[崩坏3] [资源更新] 壁纸下载异常: {e}")
+
+
+def _remove_wallpaper_icons(content_id: int):
+    icons_dir = _get_wallpaper_icons_dir(content_id)
+    if icons_dir.exists():
+        for f in icons_dir.iterdir():
+            f.unlink()
+
+
+def get_local_wallpaper_icons(content_id: int) -> dict[int, Path]:
+    result: dict[int, Path] = {}
+    icons_dir = get_wiki_path("壁纸") / WALLPAPER_ICONS_DIR / str(content_id)
+    if icons_dir.exists():
+        for f in icons_dir.iterdir():
+            if f.suffix == ".png":
+                try:
+                    idx = int(f.stem)
+                    result[idx] = f
+                except ValueError:
+                    pass
+    return result
