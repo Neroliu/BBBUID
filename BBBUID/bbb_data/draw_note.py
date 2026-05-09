@@ -192,6 +192,11 @@ async def draw_note_img(
     canvas = Image.new("RGBA", (W, H), BG_DARK)
     draw = ImageDraw.Draw(canvas)
 
+    # Debug: log note_data structure for level_icon investigation
+    logger.debug(f"[崩坏3] [便笺渲染] note_data keys: {list(note_data.keys())}")
+    logger.debug(f"[崩坏3] [便笺渲染] ultra_endless: {note_data.get('ultra_endless', {})}")
+    logger.debug(f"[崩坏3] [便笺渲染] greedy_endless: {note_data.get('greedy_endless', {})}")
+
     # --- Full background: blurred wallpaper ---
     wallpaper = await _get_random_wallpaper()
     if wallpaper:
@@ -366,8 +371,11 @@ async def draw_note_img(
             score_text = f"积分: {challenge_score}"
             draw.text((right_x, act_y + 14), score_text, font=_font(18), fill=ACCENT_ORANGE, anchor="ra")
 
-        # Level icon from ultra_endless
-        level_icon_url = endless_data.get("level_icon", "")
+        # Level icon: try ultra_endless first, then greedy_endless
+        level_icon_url = ultra.get("level_icon", "") if ultra else ""
+        if not level_icon_url and greedy:
+            level_icon_url = greedy.get("level_icon", "")
+        logger.debug(f"[崩坏3] [便笺渲染] level_icon_url: {level_icon_url or '(empty)'}")
         if level_icon_url:
             icon_img = await _download_image(level_icon_url)
             if icon_img:
