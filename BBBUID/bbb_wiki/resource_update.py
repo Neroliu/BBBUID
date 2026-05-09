@@ -6,7 +6,7 @@ import httpx
 
 from gsuid_core.logger import logger
 
-from .wiki_api import get_channel_content_list, get_content_detail, parse_evaluation_from_detail, parse_weapon_data_from_detail
+from .wiki_api import get_channel_content_list, get_content_detail, parse_evaluation_from_detail, parse_weapon_data_from_detail, parse_stigma_data_from_detail
 from ..utils.RESOURCE_PATH import CHANNEL_MAP, get_wiki_path
 from ..bbb_alias.name_convert import build_char_meta_from_wiki
 
@@ -14,6 +14,7 @@ INDEX_FILE = "index.json"
 ICON_SUFFIX = ".png"
 EQUIP_ICONS_DIR = "equip_icons"
 MATERIAL_ICONS_DIR = "material_icons"
+STIGMA_EQUIP_ICONS_DIR = "stigma_equip_icons"
 
 
 def _load_index(channel_name: str) -> dict:
@@ -103,6 +104,63 @@ def _remove_equipment_icons(channel_name: str, content_id: int):
         for f in icons_dir.iterdir():
             f.unlink()
         icons_dir.rmdir()
+
+
+def _get_stigma_equip_icons_dir(content_id: int) -> Path:
+    path = get_wiki_path("圣痕") / STIGMA_EQUIP_ICONS_DIR / str(content_id)
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+async def _download_stigma_equip_icons(content_id: int, detail: dict):
+    stigma_data = detail.get("stigma_data") or parse_stigma_data_from_detail(detail)
+    equipments = stigma_data.get("equipments", [])
+    if not equipments:
+        return
+
+    icons_dir = _get_stigma_equip_icons_dir(content_id)
+    async with httpx.AsyncClient() as client:
+        idx = 0
+        for eq_group in equipments:
+            for eq in eq_group.get("equips", []):
+                icon_url = eq.get("icon", "")
+                if not icon_url:
+                    idx += 1
+                    continue
+                icon_path = icons_dir / f"{idx}.png"
+                idx += 1
+                if icon_path.exists():
+                    continue
+                try:
+                    resp = await client.get(icon_url, timeout=15)
+                    if resp.status_code == 200:
+                        icon_path.write_bytes(resp.content)
+                    else:
+                        logger.warning(f"[崩坏3] [资源更新] 圣痕配装图标下载失败 [{resp.status_code}]")
+                except Exception as e:
+                    logger.warning(f"[崩坏3] [资源更新] 圣痕配装图标下载异常: {e}")
+
+
+def _remove_stigma_equip_icons(content_id: int):
+    icons_dir = get_wiki_path("圣痕") / STIGMA_EQUIP_ICONS_DIR / str(content_id)
+    if icons_dir.exists():
+        for f in icons_dir.iterdir():
+            f.unlink()
+        icons_dir.rmdir()
+
+
+def get_local_stigma_equip_icons(content_id: int) -> dict[int, Path]:
+    result: dict[int, Path] = {}
+    icons_dir = get_wiki_path("圣痕") / STIGMA_EQUIP_ICONS_DIR / str(content_id)
+    if icons_dir.exists():
+        for f in icons_dir.iterdir():
+            if f.suffix == ".png":
+                try:
+                    idx = int(f.stem)
+                    result[idx] = f
+                except ValueError:
+                    pass
+    return result
 
 
 def _extract_content_id_from_url(url: str) -> int | None:
@@ -231,6 +289,9 @@ async def update_channel(channel_name: str, channel_id: int):
                     await _download_equipment_icons(channel_name, item["content_id"], detail)
                 elif channel_name == "武器":
                     await _download_material_icons(detail)
+                elif channel_name == "圣痕":
+                    await _download_stigma_equip_icons(item["content_id"], detail)
+                    await _download_material_icons(detail)
 
     for cid in removed:
         json_path = get_wiki_path(channel_name) / f"{cid}.json"
@@ -238,6 +299,8 @@ async def update_channel(channel_name: str, channel_id: int):
             json_path.unlink()
         _remove_icon(channel_name, int(cid))
         _remove_equipment_icons(channel_name, int(cid))
+        if channel_name == "圣痕":
+            _remove_stigma_equip_icons(int(cid))
 
     _save_index(channel_name, new_index)
     logger.info(f"[崩坏3] [资源更新] {channel_name} 更新完成")

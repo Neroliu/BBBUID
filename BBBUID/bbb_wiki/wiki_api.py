@@ -134,6 +134,7 @@ async def get_content_detail(content_id: int) -> Optional[Dict]:
         "evaluation": {},
     }
     is_weapon = False
+    is_stigma = False
     for section in result["contents"]:
         parsed = _parse_html_data(section.get("text", ""))
         if not parsed:
@@ -149,10 +150,14 @@ async def get_content_detail(content_id: int) -> Optional[Dict]:
                 result["basic_info"] = fields
             if item.get("tmplKey") == "weapon" and item.get("partKey") == "info":
                 is_weapon = True
+            if item.get("tmplKey") == "stigmata" and item.get("partKey") == "main":
+                is_stigma = True
         if section.get("name") == "角色评价":
             result["evaluation"] = _parse_role_evaluation(parsed)
     if is_weapon:
         result["weapon_data"] = _parse_weapon_data(result["contents"])
+    if is_stigma:
+        result["stigma_data"] = _parse_stigma_data(result["contents"])
     return result
 
 
@@ -280,3 +285,86 @@ def _parse_weapon_data(contents: list) -> Dict:
 
 def parse_weapon_data_from_detail(detail: Dict) -> Dict:
     return _parse_weapon_data(detail.get("contents", []))
+
+
+def _parse_stigma_data(contents: list) -> Dict:
+    result: Dict = {
+        "info": {},
+        "basicAttr": {},
+        "setSkills": [],
+        "roles": [],
+        "equipments": [],
+        "materials": [],
+        "gainMethods": [],
+    }
+    for section in contents:
+        parsed = _parse_html_data(section.get("text", ""))
+        if not parsed:
+            continue
+        for item in parsed:
+            tk = f"{item.get('tmplKey', '')}:{item.get('partKey', '')}"
+            data = item.get("data", {})
+            if tk == "stigmata:main":
+                result["info"] = {
+                    "avatar": data.get("avatar", ""),
+                    "subFields": [
+                        {"name": sf.get("name", ""), "value": _strip_html(sf.get("value", ""))}
+                        for sf in data.get("subFields", [])
+                    ],
+                    "relatives": data.get("relatives", []),
+                }
+            elif tk == "stigmata:basicAttr":
+                comment_html = data.get("comment", "")
+                result["basicAttr"] = {
+                    "attr": data.get("attr", []),
+                    "comment": _strip_html(comment_html),
+                }
+            elif tk == "stigmata:role":
+                for a in data.get("attr", []):
+                    result["roles"].append({
+                        "icon": a.get("icon", ""),
+                        "key": a.get("key", ""),
+                        "value": _strip_html(a.get("value", "")),
+                    })
+            elif tk == "stigmata:equipmentRecommendation":
+                for eq_group in data.get("equipment", []):
+                    name_ = eq_group.get("name_", "")
+                    equips = []
+                    for eq in eq_group.get("equips", []):
+                        url = eq.get("url", "")
+                        cid = 0
+                        m = re.search(r"/content/(\d+)/detail", url)
+                        if m:
+                            cid = int(m.group(1))
+                        equips.append({
+                            "title": eq.get("title", ""),
+                            "icon": eq.get("icon", ""),
+                            "content_id": cid,
+                        })
+                    result["equipments"].append({
+                        "label": name_,
+                        "equips": equips,
+                        "evaluation": eq_group.get("evaluation", 0),
+                        "reason": _strip_html(eq_group.get("reason", "")),
+                    })
+            elif tk in ("stigmata:material", "general:material"):
+                result["materials"] = data.get("list", [])
+            elif tk == "general:gainMethod":
+                title = data.get("title", "")
+                if "套装技能" in title:
+                    for gm in data.get("gainMethod", []):
+                        result["setSkills"].append({
+                            "key": gm.get("key", ""),
+                            "value": _strip_html(gm.get("value", "")),
+                        })
+                else:
+                    for gm in data.get("gainMethod", []):
+                        result["gainMethods"].append({
+                            "key": gm.get("key", ""),
+                            "value": _strip_html(gm.get("value", "")),
+                        })
+    return result
+
+
+def parse_stigma_data_from_detail(detail: Dict) -> Dict:
+    return _parse_stigma_data(detail.get("contents", []))

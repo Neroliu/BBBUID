@@ -12,6 +12,7 @@ from .draw_wiki import screenshot_wiki
 from .draw_role_wiki import draw_role_wiki
 from .draw_weapon_wiki import draw_weapon_wiki
 from .draw_partner_wiki import draw_partner_wiki
+from .draw_stigma_wiki import draw_stigma_wiki
 from ..bbb_alias.name_convert import alias_to_content_id
 
 sv_bbb_wiki = SV("崩坏3WIKI")
@@ -100,7 +101,16 @@ async def send_weapon_wiki(bot: Bot, ev: Event):
 @sv_bbb_wiki.on_prefix("圣痕图鉴")
 async def send_stigma_wiki(bot: Bot, ev: Event):
     name = " ".join(re.findall("[a-zA-Z_一-龥·☆★()（）]+", ev.text)).strip()
-    await _send_wiki(bot, name, 19, "圣痕")
+    if not name:
+        return await bot.send("[崩坏3] 请输入圣痕名称，例如: bbb圣痕图鉴真理(下)")
+    logger.info(f"[崩坏3] [圣痕图鉴] 查询: {name}")
+    detail = _find_local("圣痕", name)
+    if detail:
+        img = await draw_stigma_wiki(detail)
+        logger.info(f"[崩坏3] [圣痕图鉴] {name} 渲染完成")
+        await bot.send(img)
+    else:
+        await bot.send(f"[崩坏3] 未找到圣痕: {name}")
 
 
 @sv_bbb_wiki.on_prefix("人偶图鉴")
