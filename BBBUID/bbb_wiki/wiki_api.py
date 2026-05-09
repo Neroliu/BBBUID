@@ -354,9 +354,14 @@ def _parse_stigma_data(contents: list) -> Dict:
                 title = data.get("title", "")
                 if "套装技能" in title:
                     for gm in data.get("gainMethod", []):
+                        value = _strip_html(gm.get("value", ""))
+                        # Remove [详情] and residual HTML attribute fragments
+                        value = re.sub(r'\s*"?\s*class="[^"]*">\[详情\]', '', value)
+                        value = re.sub(r'\[详情\]', '', value)
+                        value = value.strip()
                         result["setSkills"].append({
                             "key": gm.get("key", ""),
-                            "value": _strip_html(gm.get("value", "")),
+                            "value": value,
                         })
                 else:
                     for gm in data.get("gainMethod", []):

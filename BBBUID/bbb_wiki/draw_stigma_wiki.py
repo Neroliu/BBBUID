@@ -21,7 +21,6 @@ from .draw_utils import (
     TABLE_HEADER_BG,
     TABLE_ROW_BG1,
     TABLE_ROW_BG2,
-    SCORE_BAR_BG,
     _s,
     _font,
     _download_image,
@@ -175,73 +174,6 @@ async def _draw_header(
 
     draw.line([(PAD, y), (CARD_W - PAD, y)], fill=(60, 60, 75), width=_s(1))
     return y + _s(20)
-
-
-def _draw_basic_attr(
-    img: Image.Image,
-    y: int,
-    basic_attr: dict,
-) -> int:
-    if not basic_attr:
-        return y
-
-    draw = ImageDraw.Draw(img)
-    title_font = _font(24)
-    header_font = _font(18)
-    cell_font = _font(18)
-    bar_h = _s(16)
-
-    # Section title
-    _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + _s(30)), fill=SECTION_BG, radius=_s(8))
-    draw.text((PAD + _s(16), y + _s(4)), "★ 圣痕技能", ACCENT_COLOR, title_font)
-    y += _s(42)
-
-    attrs = basic_attr.get("attr", [])
-    if attrs:
-        # Table header
-        col_w = (CARD_W - PAD * 2) // 4
-        headers = ["属性", "数值", "评分", "评分条"]
-        _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + _s(30)), fill=TABLE_HEADER_BG, radius=_s(6))
-        hx = PAD
-        for i, h in enumerate(headers):
-            draw.text((hx + _s(12), y + _s(6)), h, SUB_COLOR, header_font)
-            hx += col_w
-        y += _s(32)
-
-        # Attribute rows
-        for idx, attr in enumerate(attrs):
-            key = attr.get("key", "")
-            value = attr.get("value", 0)
-            score = min(attr.get("score", 0), 100)
-
-            row_bg = TABLE_ROW_BG1 if idx % 2 == 0 else TABLE_ROW_BG2
-            _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + _s(34)), fill=row_bg, radius=_s(4))
-
-            draw.text((PAD + _s(12), y + _s(7)), key, TEXT_COLOR, cell_font)
-            draw.text((PAD + col_w + _s(12), y + _s(7)), str(value), TEXT_COLOR, cell_font)
-            draw.text((PAD + col_w * 2 + _s(12), y + _s(7)), str(score), SUB_COLOR, cell_font)
-
-            bar_x = PAD + col_w * 3 + _s(12)
-            bar_w = col_w - _s(24)
-            bar_y = y + _s(10)
-            _draw_rounded_rect(draw, (bar_x, bar_y, bar_x + bar_w, bar_y + bar_h), fill=SCORE_BAR_BG, radius=_s(4))
-            fill_w = int(bar_w * score / 100)
-            if fill_w > 0:
-                _draw_rounded_rect(draw, (bar_x, bar_y, bar_x + fill_w, bar_y + bar_h), fill=ACCENT_COLOR, radius=_s(4))
-
-            y += _s(36)
-
-    # Comment
-    comment = basic_attr.get("comment", "")
-    if comment:
-        comment_font = _font(16)
-        max_w = CARD_W - PAD * 2
-        y += _s(4)
-        draw.text((PAD, y), "玩家评价", ACCENT_COLOR, _font(18))
-        y += _s(26)
-        y = _draw_wrapped_text(img, (PAD, y), comment, comment_font, SUB_COLOR, max_w)
-
-    return y + _s(10)
 
 
 def _draw_set_skills(
@@ -532,12 +464,6 @@ async def _draw_materials(img: Image.Image, y: int, materials: list[dict]) -> in
 def _estimate_height(stigma_data: dict) -> int:
     h = PAD + _s(200)
 
-    basic_attr = stigma_data.get("basicAttr", {})
-    if basic_attr.get("attr"):
-        h += _s(50) + len(basic_attr["attr"]) * _s(36)
-    if basic_attr.get("comment"):
-        h += _s(200)
-
     set_skills = stigma_data.get("setSkills", [])
     if set_skills:
         h += _s(50) + len(set_skills) * _s(80)
@@ -587,11 +513,6 @@ async def draw_stigma_wiki(detail: dict) -> Image.Image:
 
     # Header
     y = await _draw_header(img, avatar, title, info)
-
-    # Basic attributes
-    basic_attr = stigma_data.get("basicAttr", {})
-    if basic_attr:
-        y = _draw_basic_attr(img, y, basic_attr)
 
     # Set skills
     set_skills = stigma_data.get("setSkills", [])
