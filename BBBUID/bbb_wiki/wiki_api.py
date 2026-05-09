@@ -44,14 +44,15 @@ async def get_channel_content_list(channel_id: int) -> List[Dict]:
 
 
 def _parse_html_data(html: str) -> List[Dict]:
-    match = re.search(r'data-data="([^"]*)"', html)
-    if not match:
-        return []
-    try:
-        decoded = urllib.parse.unquote(match.group(1))
-        return json.loads(decoded)
-    except (json.JSONDecodeError, ValueError):
-        return []
+    matches = re.findall(r'data-data="([^"]*)"', html)
+    result = []
+    for match in matches:
+        try:
+            decoded = urllib.parse.unquote(match)
+            result.extend(json.loads(decoded))
+        except (json.JSONDecodeError, ValueError):
+            continue
+    return result
 
 
 def _strip_html(html: str) -> str:
