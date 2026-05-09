@@ -26,10 +26,7 @@ CST = timezone(timedelta(hours=8))
 # --- Dimensions ---
 W = 1786
 H = 1000
-
-LEFT_W = 800
-RIGHT_X = LEFT_W
-RIGHT_W = W - LEFT_W
+PAD = 40
 
 # --- Colors ---
 BG_DARK = (28, 28, 38)
@@ -99,8 +96,7 @@ def _fit_centered(img: Image.Image, output_size: tuple[int, int]) -> Image.Image
     resized = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
     left = (new_w - tw) // 2
     top = (new_h - th) // 2
-    cropped = resized.crop((left, top, left + tw, top + th))
-    return cropped
+    return resized.crop((left, top, left + tw, top + th))
 
 
 async def _download_image(url: str) -> Image.Image | None:
@@ -139,37 +135,15 @@ def _draw_ring_avatar(avatar: Image.Image, size: int) -> Image.Image:
     return canvas
 
 
-async def _get_random_char_portrait() -> Image.Image | None:
-    """Get a random character portrait from wiki cached 立绘 data."""
-    portrait_path = WIKI_PATH / "立绘"
-    if not portrait_path.exists():
-        return None
-    index_file = portrait_path / "index.json"
-    if not index_file.exists():
-        return None
-    try:
-        index = json.loads(index_file.read_text(encoding="utf-8"))
-        if not index:
-            return None
-        content_ids = list(index.keys())
-        random.shuffle(content_ids)
-        for cid in content_ids:
-            icons_dir = portrait_path / PORTRAIT_ICONS_DIR / str(cid)
-            if not icons_dir.exists():
-                continue
-            files = [f for f in icons_dir.iterdir() if f.is_file() and f.suffix == ".png"]
-            if not files:
-                continue
-            # Pick the largest file (biggest portrait)
-            files.sort(key=lambda f: f.stat().st_size, reverse=True)
-            try:
-                img = Image.open(files[0]).convert("RGBA")
-                if img.width >= 200:
-                    return img
-            except Exception:
-                continue
-    except Exception as e:
-        logger.warning(f"[崩坏3] [便笺渲染] 获取立绘失败: {e}")
+def _get_stamina_icon() -> Image.Image | None:
+    """Get stamina potion icon from cached 材料 data."""
+    mat_path = WIKI_PATH / "材料"
+    icon_path = mat_path / "1087.png"  # 体力药水 content_id=1087
+    if icon_path.exists():
+        try:
+            return Image.open(icon_path).convert("RGBA")
+        except Exception:
+            pass
     return None
 
 
@@ -215,7 +189,7 @@ async def draw_note_img(
     canvas = Image.new("RGBA", (W, H), BG_DARK)
     draw = ImageDraw.Draw(canvas)
 
-    # --- Bottom: blurred wallpaper background ---
+    # --- Full background: blurred wallpaper ---
     wallpaper = await _get_random_wallpaper()
     if wallpaper:
         blurred = _fit_centered(wallpaper, (W, H))
@@ -224,22 +198,7 @@ async def draw_note_img(
         blurred = Image.alpha_composite(blurred, dark_overlay)
         canvas.alpha_composite(blurred, (0, 0))
 
-    # --- Left: Random character portrait ---
-    portrait = await _get_random_char_portrait()
-
-    if portrait:
-        fitted = _fit_centered(portrait, (LEFT_W + 40, H))
-        canvas.alpha_composite(fitted, (-40, 0))
-        # Gradient overlay: left transparent, right opaque
-        overlay = Image.new("RGBA", (LEFT_W, H), (0, 0, 0, 0))
-        overlay_draw = ImageDraw.Draw(overlay)
-        for x in range(LEFT_W):
-            progress = x / LEFT_W
-            alpha = int(40 + 215 * (progress ** 1.5))
-            overlay_draw.line([(x, 0), (x, H)], fill=(*BG_DARK, alpha))
-        canvas.alpha_composite(overlay, (0, 0))
-
-    # --- Right: User Info ---
+    # --- User Info (full width) ---
     role = index_data.get("role", {})
     stats = index_data.get("stats", {})
     nickname = role.get("nickname", "未知舰长")
@@ -252,8 +211,8 @@ async def draw_note_img(
     user_avatar = await get_event_avatar(ev)
     avatar_size = 72
     avatar_img = _draw_ring_avatar(user_avatar, avatar_size)
-    ax = RIGHT_X + 36
-    ay = 40
+    ax = PAD
+    ay = PAD
     canvas.alpha_composite(avatar_img, (ax, ay))
 
     # Nickname
@@ -270,7 +229,7 @@ async def draw_note_img(
     level_font = _font(22)
     level_w = int(draw.textlength(level_text, font=level_font)) + 24
     level_h = 32
-    level_x = W - 36 - level_w
+    level_x = W - PAD - level_w
     level_y = ay + 20
     draw.rounded_rectangle(
         (level_x, level_y, level_x + level_w, level_y + level_h),
@@ -304,13 +263,12 @@ async def draw_note_img(
 
     # Active days (right side of same row)
     days_text = f"累计登舰: {active_days}天"
-    days_font = _font(16)
-    draw.text((W - 36, sign_y + 3), days_text, font=days_font, fill=TEXT_GRAY, anchor="ra")
+    draw.text((W - PAD, sign_y + 3), days_text, font=_font(16), fill=TEXT_GRAY, anchor="ra")
 
     # --- Real-time Info Section ---
     section_y = 170
-    draw.text((RIGHT_X + 36, section_y), "实时信息", font=_font(24), fill=TEXT_WHITE)
-    draw.text((RIGHT_X + 36 + 140, section_y + 5), "REAL-TIME INFO", font=_font(10), fill=TEXT_DIM)
+    draw.text((PAD, section_y), "实时信息", font=_font(24), fill=TEXT_WHITE)
+    draw.text((PAD + 140, section_y + 5), "REAL-TIME INFO", font=_font(10), fill=TEXT_DIM)
 
     # Stamina & Train Score
     cur_stamina = note_data.get("current_stamina", "?")
@@ -321,20 +279,33 @@ async def draw_note_img(
 
     card_y = section_y + 42
     card_h = 90
-    card_w = (RIGHT_W - 88) // 2
+    card_w = (W - PAD * 2 - 16) // 2
 
     # Stamina card
-    st_card_x = RIGHT_X + 36
+    st_card_x = PAD
     draw.rounded_rectangle(
         (st_card_x, card_y, st_card_x + card_w, card_y + card_h),
         fill=BG_PANEL, radius=12,
     )
-    draw.text((st_card_x + 16, card_y + 10), "体力", font=_font(14), fill=TEXT_GRAY)
+
+    # Stamina icon
+    stamina_icon = _get_stamina_icon()
+    icon_size = 36
+    if stamina_icon:
+        stamina_icon = stamina_icon.resize((icon_size, icon_size), Image.Resampling.LANCZOS)
+        canvas.alpha_composite(stamina_icon, (st_card_x + 16, card_y + 10))
+
+    # "体力" label next to icon
+    draw.text((st_card_x + 16 + icon_size + 8, card_y + 16), "体力", font=_font(14), fill=TEXT_GRAY)
+
+    # Stamina value (right-aligned)
     stamina_val = f"{cur_stamina}/{max_stamina}"
-    draw.text((st_card_x + 16, card_y + 34), stamina_val, font=_font(34), fill=ACCENT_RED)
+    draw.text((st_card_x + card_w - 16, card_y + 16), stamina_val, font=_font(34), fill=ACCENT_RED, anchor="ra")
+
     if recover > 0:
         recover_text = f"回满: {_fmt_recover(recover)}"
-        draw.text((st_card_x + 16, card_y + 70), recover_text, font=_font(12), fill=TEXT_DIM)
+        draw.text((st_card_x + 16, card_y + 60), recover_text, font=_font(12), fill=TEXT_DIM)
+        draw.text((st_card_x + card_w - 16, card_y + 64), f"({cur_stamina}/{max_stamina})", font=_font(12), fill=TEXT_DIM, anchor="ra")
 
     # Train score card
     tr_card_x = st_card_x + card_w + 16
@@ -353,15 +324,15 @@ async def draw_note_img(
         train_maxed = False
 
     if train_maxed:
-        draw.text((tr_card_x + 16, card_y + 34), "已达成", font=_font(34), fill=ACCENT_LIGHT_GREEN)
+        draw.text((tr_card_x + card_w - 16, card_y + 16), "已达成", font=_font(34), fill=ACCENT_LIGHT_GREEN, anchor="ra")
     else:
         train_val = f"{cur_train}/{max_train}"
-        draw.text((tr_card_x + 16, card_y + 34), train_val, font=_font(34), fill=ACCENT_ORANGE)
+        draw.text((tr_card_x + card_w - 16, card_y + 16), train_val, font=_font(34), fill=ACCENT_ORANGE, anchor="ra")
 
     # --- Activity Sections ---
     act_y = card_y + card_h + 14
-    act_x = RIGHT_X + 36
-    act_w = RIGHT_W - 72
+    act_x = PAD
+    act_w = W - PAD * 2
     act_h = 110
     act_gap = 10
 
@@ -386,14 +357,14 @@ async def draw_note_img(
         if remain_text:
             draw.text((act_x + 16, act_y + 58), remain_text, font=_font(12), fill=TEXT_DIM)
 
-        # Score (right-aligned)
+        # Right side: score + level icon
         right_x = act_x + act_w - 16
-        challenge_score = endless_data.get("challenge_score", "?")
-        if challenge_score != "?":
+        challenge_score = endless_data.get("challenge_score")
+        if challenge_score is not None:
             score_text = f"积分: {challenge_score}"
             draw.text((right_x, act_y + 14), score_text, font=_font(18), fill=ACCENT_ORANGE, anchor="ra")
 
-        # Level icon
+        # Level icon from ultra_endless
         level_icon_url = endless_data.get("level_icon", "")
         if level_icon_url:
             icon_img = await _download_image(level_icon_url)
@@ -401,13 +372,6 @@ async def draw_note_img(
                 icon_size = 40
                 icon_img = icon_img.resize((icon_size, icon_size), Image.Resampling.LANCZOS)
                 canvas.alpha_composite(icon_img, (right_x - icon_size, act_y + 40))
-
-        # Reward from greedy
-        if greedy:
-            cur_reward = greedy.get("cur_reward", "?")
-            max_reward = greedy.get("max_reward", "?")
-            reward_text = f"奖励: {cur_reward}/{max_reward}"
-            draw.text((right_x, act_y + 84), reward_text, font=_font(12), fill=TEXT_DIM, anchor="ra")
 
     act_y += act_h + act_gap
 
@@ -471,7 +435,7 @@ async def draw_note_img(
 
     # --- Footer ---
     footer_y = H - 30
-    draw.line([(RIGHT_X + 36, footer_y), (W - 36, footer_y)], fill=(60, 60, 80), width=1)
+    draw.line([(PAD, footer_y), (W - PAD, footer_y)], fill=(60, 60, 80), width=1)
     draw.text((W // 2, footer_y + 12), "BBBUID · 崩坏3", (80, 80, 100), _font(10), anchor="mt")
 
     return await convert_img(canvas)
