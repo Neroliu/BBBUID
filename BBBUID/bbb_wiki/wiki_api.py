@@ -243,7 +243,28 @@ def _parse_weapon_data(contents: list) -> Dict:
                         "value": _strip_html(gm.get("value", "")),
                     })
                 if "同调" in title:
-                    result["syncMaterials"].extend(methods)
+                    # Extract linked items with content IDs for icon lookup
+                    items = []
+                    for gm in data.get("gainMethod", []):
+                        raw_val = gm.get("value", "")
+                        links = re.findall(
+                            r'href="(/bh3/wiki/content/(\d+)/detail)[^"]*"[^>]*>([^<]+)',
+                            raw_val,
+                        )
+                        if links:
+                            for url, cid, name in links:
+                                items.append({
+                                    "name": name.strip(),
+                                    "content_id": int(cid),
+                                    "url": url,
+                                })
+                        else:
+                            items.append({
+                                "name": _strip_html(raw_val),
+                                "content_id": 0,
+                                "url": "",
+                            })
+                    result["syncMaterials"].extend(items)
                 else:
                     result["gainMethods"].extend(methods)
             elif tk == "weapon:role":

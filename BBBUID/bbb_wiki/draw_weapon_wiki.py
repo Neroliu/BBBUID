@@ -325,17 +325,21 @@ async def _draw_sync_materials(img: Image.Image, y: int, sync_mats: list[dict]) 
     draw = ImageDraw.Draw(img)
     y = _draw_section_title(draw, y, "同调素材")
 
-    font = _font(16)
-    max_w = CARD_W - PAD * 2 - _s(16)
+    name_font = _font(16)
 
     for sm in sync_mats:
-        key = sm.get("key", "")
-        value = sm.get("value", "")
-        text = f"{key}: {value}" if key else value
-        if not text:
+        name = sm.get("name", "")
+        cid = sm.get("content_id", 0)
+        if not name:
             continue
-        y = _draw_wrapped_text(img, (PAD + _s(8), y), text, font, SUB_COLOR, max_w)
-        y += _s(4)
+
+        icon = await _get_material_icon(cid) if cid else None
+        if icon:
+            img.paste(icon, (PAD + _s(8), y), icon)
+
+        text_x = PAD + MATERIAL_ICON_SIZE + _s(16)
+        draw.text((text_x, y + _s(12)), name, TEXT_COLOR, name_font)
+        y += MATERIAL_ICON_SIZE + _s(12)
 
     return y + _s(10)
 
