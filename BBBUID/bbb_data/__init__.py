@@ -87,7 +87,7 @@ async def send_index_info(bot: Bot, ev: Event):
 sv_bbb_note = SV("崩坏3便笺")
 
 
-@sv_bbb_note.on_fullmatch(("便笺", "便签", "实时便笺", "体力"), block=True)
+@sv_bbb_note.on_fullmatch(("便笺", "便签", "实时便笺", "体力", "每日", "mr"), block=True)
 async def send_note_info(bot: Bot, ev: Event):
     uid = await get_uid(bot, ev)
     if not uid:
