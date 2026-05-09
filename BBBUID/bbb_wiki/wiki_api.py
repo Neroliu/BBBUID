@@ -107,6 +107,7 @@ def _parse_role_evaluation(parsed_items: List[Dict]) -> Dict:
                     "icon": ag.get("icon", ""),
                     "desc": _strip_html(ag.get("desc", "")),
                     "cost": ag.get("cost", ""),
+                    "starValue": ag.get("starValue", 0),
                 })
         elif part == "advanceData":
             for ad in data.get("advanceData", []):
