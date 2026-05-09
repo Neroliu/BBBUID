@@ -90,18 +90,17 @@ def _fmt_schedule_end(ts: str) -> str:
 
 
 def _fit_centered(img: Image.Image, output_size: tuple[int, int]) -> Image.Image:
+    """等比缩放填满 output_size，长边对齐，短边居中裁剪（cover crop）。"""
     iw, ih = img.size
     tw, th = output_size
-    if iw > ih:
-        scale = tw / iw
-        new_size = (tw, round(ih * scale))
-    else:
-        scale = th / ih
-        new_size = (round(iw * scale), th)
-    resized = img.resize(new_size, Image.Resampling.LANCZOS)
-    out = Image.new("RGBA", output_size, (0, 0, 0, 0))
-    out.paste(resized, ((tw - new_size[0]) // 2, (th - new_size[1]) // 2), resized)
-    return out
+    scale = max(tw / iw, th / ih)
+    new_w = round(iw * scale)
+    new_h = round(ih * scale)
+    resized = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+    left = (new_w - tw) // 2
+    top = (new_h - th) // 2
+    cropped = resized.crop((left, top, left + tw, top + th))
+    return cropped
 
 
 async def _download_image(url: str) -> Image.Image | None:
@@ -110,7 +109,7 @@ async def _download_image(url: str) -> Image.Image | None:
     try:
         import httpx
         from io import BytesIO
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(follow_redirects=True) as client:
             resp = await client.get(url, timeout=15)
             if resp.status_code == 200:
                 return Image.open(BytesIO(resp.content)).convert("RGBA")

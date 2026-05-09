@@ -445,11 +445,11 @@ async def _download_portrait_icons(content_id: int, detail: dict):
         urls = re.findall(r'https?://[^\s"<>]+[.]png', html)
         all_urls.update(urls)
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(follow_redirects=True) as client:
         idx = 0
         for url in sorted(all_urls):
             try:
-                resp = await client.head(url, timeout=5, follow_redirects=True)
+                resp = await client.head(url, timeout=5)
                 cl = int(resp.headers.get("content-length", 0))
                 if cl < 30000:
                     continue
@@ -507,11 +507,11 @@ async def _download_wallpaper_icons(content_id: int, detail: dict):
         urls = re.findall(r'https?://[^\s"<>]+[.]png', html)
         all_urls.update(urls)
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(follow_redirects=True) as client:
         idx = 0
         for url in sorted(all_urls):
             try:
-                resp = await client.head(url, timeout=5, follow_redirects=True)
+                resp = await client.head(url, timeout=5)
                 cl = int(resp.headers.get("content-length", 0))
                 if cl < 50000:
                     continue
