@@ -1,0 +1,285 @@
+from PIL import Image, ImageDraw
+
+from gsuid_core.utils.image.convert import convert_img
+from gsuid_core.utils.image.image_tools import draw_pic_with_ring
+
+from .draw_utils import (
+    S,
+    CARD_W,
+    PAD,
+    BG_COLOR,
+    TEXT_COLOR,
+    SUB_COLOR,
+    ACCENT_COLOR,
+    BADGE_BG,
+    SECTION_BG,
+    TABLE_HEADER_BG,
+    TABLE_ROW_BG1,
+    TABLE_ROW_BG2,
+    _s,
+    _font,
+    _download_image,
+    _get_icon,
+    _draw_rounded_rect,
+    _create_blurred_bg,
+    _draw_wrapped_text,
+    _calc_text_height,
+    _draw_footer,
+)
+
+EQUIP_ICON_SIZE = 64 * S
+
+
+async def _draw_header(
+    img: Image.Image,
+    avatar: Image.Image | None,
+    title: str,
+    evaluation: dict,
+) -> int:
+    draw = ImageDraw.Draw(img)
+    y = PAD
+
+    avatar_x = PAD
+    avatar_sz = _s(120)
+    if avatar:
+        avatar_img = avatar.resize((avatar_sz, avatar_sz), Image.LANCZOS)
+        avatar_img = await draw_pic_with_ring(avatar_img, avatar_sz, bg_color=BG_COLOR, is_ring=True)
+        img.paste(avatar_img, (avatar_x, y), avatar_img)
+
+    text_x = avatar_x + _s(140)
+    name_font = _font(36)
+    draw.text((text_x, y + _s(8)), title, TEXT_COLOR, name_font)
+
+    # Final level badge
+    final_level_url = evaluation.get("finalLevel", "")
+    if final_level_url:
+        badge = await _download_image(final_level_url)
+        if badge:
+            badge_sz = _s(40)
+            badge = badge.resize((badge_sz, badge_sz), Image.LANCZOS)
+            name_w = draw.textlength(title, font=name_font)
+            img.paste(badge, (text_x + int(name_w) + _s(12), y + _s(10)), badge)
+
+    # Sub fields - show 数据信息 and 基本介绍
+    sub_font = _font(16)
+    y_text = y + _s(52)
+    max_w = CARD_W - text_x - PAD
+    for sf in evaluation.get("subFields", []):
+        name = sf.get("name", "")
+        value = sf.get("value", "")
+        if not name or not value:
+            continue
+        draw.text((text_x, y_text), f"【{name}】", ACCENT_COLOR, sub_font)
+        y_text += _s(24)
+        y_text = _draw_wrapped_text(img, (text_x, y_text), value, sub_font, SUB_COLOR, max_w)
+        y_text += _s(8)
+
+    y = max(y + avatar_sz + _s(10), y_text + _s(10))
+    draw.line([(PAD, y), (CARD_W - PAD, y)], fill=(60, 60, 75), width=_s(1))
+    return y + _s(20)
+
+
+async def _draw_pairings(
+    img: Image.Image,
+    y: int,
+    equipments: list[dict],
+) -> int:
+    if not equipments:
+        return y
+
+    draw = ImageDraw.Draw(img)
+    title_font = _font(24)
+    name_font = _font(16)
+    reason_font = _font(15)
+
+    for eq_group in equipments:
+        label = eq_group.get("label", "")
+        equips = eq_group.get("equips", [])
+        reason = eq_group.get("reason", "")
+
+        # Section label
+        _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + _s(30)), fill=SECTION_BG, radius=_s(8))
+        draw.text((PAD + _s(16), y + _s(4)), f"★ {label}", ACCENT_COLOR, title_font)
+        y += _s(40)
+
+        # Valkyrie icons: 2 per row
+        col_w = (CARD_W - PAD * 2) // 2
+        for i, eq in enumerate(equips):
+            col = i % 2
+            row = i // 2
+            ex = PAD + col * col_w
+            ey = y + row * (EQUIP_ICON_SIZE + _s(28))
+
+            title = eq.get("title", "")
+            icon_url = eq.get("icon", "")
+            icon = await _get_icon(icon_url, EQUIP_ICON_SIZE) if icon_url else None
+            if icon:
+                img.paste(icon, (ex + _s(8), ey), icon)
+            else:
+                _draw_rounded_rect(
+                    draw,
+                    (ex + _s(8), ey, ex + _s(8) + EQUIP_ICON_SIZE, ey + EQUIP_ICON_SIZE),
+                    fill=BADGE_BG,
+                    radius=_s(8),
+                )
+
+            # Name
+            max_name_w = col_w - EQUIP_ICON_SIZE - _s(28)
+            _draw_wrapped_text(
+                img,
+                (ex + EQUIP_ICON_SIZE + _s(16), ey + _s(8)),
+                title,
+                name_font,
+                TEXT_COLOR,
+                max_name_w,
+            )
+
+        rows = (len(equips) + 1) // 2
+        y += rows * (EQUIP_ICON_SIZE + _s(28)) + _s(8)
+
+        # Reason text
+        if reason:
+            y = _draw_wrapped_text(
+                img,
+                (PAD + _s(8), y),
+                reason,
+                reason_font,
+                SUB_COLOR,
+                CARD_W - PAD * 2 - _s(16),
+            )
+            y += _s(10)
+
+        y += _s(8)
+
+    return y
+
+
+def _draw_advance_table(
+    img: Image.Image,
+    y: int,
+    advance_general: list[dict],
+    rank_icons: dict[int, Image.Image],
+) -> int:
+    if not advance_general:
+        return y
+
+    draw = ImageDraw.Draw(img)
+    title_font = _font(24)
+    header_font = _font(16)
+    cell_font = _font(15)
+    rank_icon_size = _s(28)
+    min_row_h = _s(36)
+
+    # Section title
+    _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + _s(30)), fill=SECTION_BG, radius=_s(8))
+    draw.text((PAD + _s(16), y + _s(4)), "进阶总览", ACCENT_COLOR, title_font)
+    y += _s(40)
+
+    # Column widths: Rank | Description | Cost
+    cols = [_s(60), _s(600), _s(100)]
+    headers = ["星级", "进阶效果", "碎片"]
+    desc_max_w = cols[1] - _s(12)
+
+    # Header row
+    _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + _s(30)), fill=TABLE_HEADER_BG, radius=_s(6))
+    cx = PAD
+    for i, h in enumerate(headers):
+        draw.text((cx + _s(6), y + _s(6)), h, SUB_COLOR, header_font)
+        cx += cols[i]
+    y += _s(32)
+
+    for idx, ag in enumerate(advance_general):
+        desc = ag.get("desc", "")
+        cost = str(ag.get("cost", "-"))
+
+        desc_h = _calc_text_height(draw, desc, cell_font, desc_max_w)
+        row_h = max(min_row_h, desc_h + _s(12))
+
+        row_bg = TABLE_ROW_BG1 if idx % 2 == 0 else TABLE_ROW_BG2
+        _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + row_h), fill=row_bg, radius=_s(4))
+
+        cx = PAD
+        # Rank icon
+        icon = rank_icons.get(idx)
+        if icon:
+            icon_y = y + (row_h - rank_icon_size) // 2
+            img.paste(icon, (cx + (cols[0] - rank_icon_size) // 2, icon_y), icon)
+        cx += cols[0]
+
+        # Description - left-aligned, vertically centered
+        desc_y = y + (row_h - desc_h) // 2
+        _draw_wrapped_text(img, (cx + _s(6), desc_y), desc, cell_font, SUB_COLOR, desc_max_w)
+        cx += cols[1]
+
+        # Cost - vertically centered
+        cost_y = y + (row_h - _s(18)) // 2
+        draw.text((cx + _s(6), cost_y), cost, ACCENT_COLOR, cell_font)
+
+        y += row_h
+
+    return y + _s(10)
+
+
+def _estimate_height(evaluation: dict) -> int:
+    h = PAD + _s(200)
+
+    sub_fields = evaluation.get("subFields", [])
+    h += len(sub_fields) * _s(200)
+
+    equipments = evaluation.get("equipments", [])
+    for eq_group in equipments:
+        equips = eq_group.get("equips", [])
+        rows = (len(equips) + 1) // 2
+        h += _s(48) + rows * (EQUIP_ICON_SIZE + _s(28)) + _s(20)
+        if eq_group.get("reason"):
+            h += _s(80)
+
+    advance_general = evaluation.get("advanceGeneral", [])
+    h += _s(50) + len(advance_general) * _s(60)
+
+    h += _s(80)
+    return h
+
+
+async def draw_partner_wiki(detail: dict) -> Image.Image:
+    from .wiki_api import parse_evaluation_from_detail
+
+    evaluation = detail.get("evaluation") or parse_evaluation_from_detail(detail)
+    title = detail.get("title", "未知协同者")
+
+    total_h = int(_estimate_height(evaluation) * 1.5)
+
+    avatar_url = evaluation.get("avatar", "")
+    avatar = await _download_image(avatar_url) if avatar_url else None
+    if avatar:
+        img = _create_blurred_bg(avatar, CARD_W, total_h)
+    else:
+        img = Image.new("RGBA", (CARD_W, total_h), BG_COLOR)
+
+    # Header with basic info
+    y = await _draw_header(img, avatar, title, evaluation)
+
+    # Common pairings
+    equipments = evaluation.get("equipments", [])
+    if equipments:
+        y = await _draw_pairings(img, y, equipments)
+
+    # Advance overview
+    advance_general = evaluation.get("advanceGeneral", [])
+    if advance_general:
+        rank_icon_size = _s(28)
+        rank_icons: dict[int, Image.Image] = {}
+        for idx, ag in enumerate(advance_general):
+            icon_url = ag.get("icon", "")
+            if icon_url:
+                icon = await _get_icon(icon_url, rank_icon_size)
+                if icon:
+                    rank_icons[idx] = icon
+        y = _draw_advance_table(img, y, advance_general, rank_icons)
+
+    # Footer
+    y = _draw_footer(img, y)
+
+    img = img.crop((0, 0, CARD_W, y))
+
+    return await convert_img(img)

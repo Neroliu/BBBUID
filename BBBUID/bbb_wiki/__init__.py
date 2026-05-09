@@ -11,6 +11,7 @@ from .resource_update import update_all, get_local_detail, get_local_index
 from .draw_wiki import screenshot_wiki
 from .draw_role_wiki import draw_role_wiki
 from .draw_weapon_wiki import draw_weapon_wiki
+from .draw_partner_wiki import draw_partner_wiki
 from ..bbb_alias.name_convert import alias_to_content_id
 
 sv_bbb_wiki = SV("崩坏3WIKI")
@@ -111,7 +112,16 @@ async def send_elf_wiki(bot: Bot, ev: Event):
 @sv_bbb_wiki.on_prefix("协同者图鉴")
 async def send_partner_wiki(bot: Bot, ev: Event):
     name = " ".join(re.findall("[a-zA-Z_一-龥·]+", ev.text)).strip()
-    await _send_wiki(bot, name, 218, "协同者")
+    if not name:
+        return await bot.send("[崩坏3] 请输入协同者名称，例如: bbb协同者图鉴寻梦者")
+    logger.info(f"[崩坏3] [协同者图鉴] 查询: {name}")
+    detail = _find_local("协同者", name)
+    if detail:
+        img = await draw_partner_wiki(detail)
+        logger.info(f"[崩坏3] [协同者图鉴] {name} 渲染完成")
+        await bot.send(img)
+    else:
+        await bot.send(f"[崩坏3] 未找到协同者: {name}")
 
 
 @sv_bbb_wiki.on_prefix(("崩坏3wiki", "崩坏3WIKI", "bbbwiki", "bbbWIKI"))
