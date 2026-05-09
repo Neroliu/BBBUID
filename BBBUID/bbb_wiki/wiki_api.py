@@ -296,6 +296,7 @@ def _parse_stigma_data(contents: list) -> Dict:
         "equipments": [],
         "materials": [],
         "gainMethods": [],
+        "forgingMaterials": [],
     }
     for section in contents:
         parsed = _parse_html_data(section.get("text", ""))
@@ -359,9 +360,58 @@ def _parse_stigma_data(contents: list) -> Dict:
                         })
                 else:
                     for gm in data.get("gainMethod", []):
+                        key = gm.get("key", "")
+                        raw_val = gm.get("value", "")
+                        if key == "装备锻造":
+                            # Extract materials with content IDs for icon rendering
+                            links = re.findall(
+                                r'href="[^"]*?/content/(\d+)/detail[^"]*"[^>]*>([^<]+)',
+                                raw_val,
+                            )
+                            # Also extract plain text materials (no link)
+                            # Split by <p> tags to get each material line
+                            lines = re.findall(r'<p[^>]*>(.*?)</p>', raw_val, re.DOTALL)
+                            forging_mats = []
+                            for line in lines:
+                                line_text = re.sub(r'<[^>]+>', '', line).strip()
+                                if not line_text:
+                                    continue
+                                # Check if this line has a link
+                                link_match = re.search(
+                                    r'href="[^"]*?/content/(\d+)/detail[^"]*"[^>]*>([^<]+)',
+                                    line,
+                                )
+                                if link_match:
+                                    cid = int(link_match.group(1))
+                                    name_match = re.search(r'>([^<]+)<', line)
+                                    name = name_match.group(1).strip() if name_match else ""
+                                    # Extract count after the link
+                                    count_match = re.search(r'\*(\d+)', line_text)
+                                    count = int(count_match.group(1)) if count_match else 0
+                                    forging_mats.append({
+                                        "name": name,
+                                        "content_id": cid,
+                                        "count": count,
+                                    })
+                                else:
+                                    # Plain text material like "凝萃的紫晶*200"
+                                    count_match = re.search(r'(.+?)\*(\d+)', line_text)
+                                    if count_match:
+                                        forging_mats.append({
+                                            "name": count_match.group(1).strip(),
+                                            "content_id": 0,
+                                            "count": int(count_match.group(2)),
+                                        })
+                                    else:
+                                        forging_mats.append({
+                                            "name": line_text,
+                                            "content_id": 0,
+                                            "count": 0,
+                                        })
+                            result["forgingMaterials"] = forging_mats
                         result["gainMethods"].append({
-                            "key": gm.get("key", ""),
-                            "value": _strip_html(gm.get("value", "")),
+                            "key": key,
+                            "value": _strip_html(raw_val),
                         })
     return result
 

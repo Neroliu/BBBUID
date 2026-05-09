@@ -121,11 +121,13 @@ async def _draw_header(
         value = sf.get("value", "")
         if name and value and name != "圣痕技能":
             info_parts.append(f"{name}: {value}")
+    info_y = y + _s(44)
     if info_parts:
         info_text = " | ".join(info_parts)
-        draw.text((text_x, y + _s(44)), info_text, SUB_COLOR, info_font)
+        info_max_w = CARD_W - text_x - PAD
+        info_y = _draw_wrapped_text(img, (text_x, info_y), info_text, info_font, SUB_COLOR, info_max_w)
 
-    y = max(y + icon_sz, y + _s(70)) + _s(10)
+    y = max(y + icon_sz, info_y) + _s(10)
 
     # Stigma skill description
     skill_text = ""
@@ -405,10 +407,11 @@ async def _draw_equipments(
     return y
 
 
-def _draw_gain_methods(
+async def _draw_gain_methods(
     img: Image.Image,
     y: int,
     gain_methods: list[dict],
+    forging_materials: list[dict] | None = None,
 ) -> int:
     if not gain_methods:
         return y
@@ -416,6 +419,7 @@ def _draw_gain_methods(
     draw = ImageDraw.Draw(img)
     title_font = _font(24)
     font = _font(16)
+    count_font = _font(14)
     max_w = CARD_W - PAD * 2 - _s(16)
 
     _draw_rounded_rect(draw, (PAD, y, CARD_W - PAD, y + _s(30)), fill=SECTION_BG, radius=_s(8))
@@ -425,11 +429,29 @@ def _draw_gain_methods(
     for gm in gain_methods:
         key = gm.get("key", "")
         value = gm.get("value", "")
-        text = f"{key}: {value}" if key else value
-        if not text:
+        if not value:
             continue
-        y = _draw_wrapped_text(img, (PAD + _s(8), y), text, font, SUB_COLOR, max_w)
-        y += _s(4)
+        if key == "装备锻造" and forging_materials:
+            draw.text((PAD + _s(8), y), f"{key}:", ACCENT_COLOR, _font(18))
+            y += _s(28)
+            for mat in forging_materials:
+                mat_name = mat.get("name", "")
+                mat_count = mat.get("count", 0)
+                mat_cid = mat.get("content_id", 0)
+
+                icon = await _get_material_icon(mat_cid) if mat_cid else None
+                if icon:
+                    img.paste(icon, (PAD + _s(8), y), icon)
+
+                text_x = PAD + MATERIAL_ICON_SIZE + _s(12)
+                draw.text((text_x, y + _s(4)), mat_name, TEXT_COLOR, font)
+                if mat_count:
+                    draw.text((text_x, y + _s(28)), f"x{mat_count}", SUB_COLOR, count_font)
+                y += MATERIAL_ICON_SIZE + _s(8)
+        else:
+            text = f"{key}: {value}" if key else value
+            y = _draw_wrapped_text(img, (PAD + _s(8), y), text, font, SUB_COLOR, max_w)
+            y += _s(4)
 
     return y + _s(10)
 
@@ -535,6 +557,9 @@ def _estimate_height(stigma_data: dict) -> int:
     gain_methods = stigma_data.get("gainMethods", [])
     if gain_methods:
         h += _s(50) + len(gain_methods) * _s(30)
+    forging_materials = stigma_data.get("forgingMaterials", [])
+    if forging_materials:
+        h += len(forging_materials) * (MATERIAL_ICON_SIZE + _s(12))
 
     materials = stigma_data.get("materials", [])
     if materials:
@@ -586,7 +611,8 @@ async def draw_stigma_wiki(detail: dict) -> Image.Image:
     # Gain methods
     gain_methods = stigma_data.get("gainMethods", [])
     if gain_methods:
-        y = _draw_gain_methods(img, y, gain_methods)
+        forging_materials = stigma_data.get("forgingMaterials", [])
+        y = await _draw_gain_methods(img, y, gain_methods, forging_materials)
 
     # Evolution materials
     materials = stigma_data.get("materials", [])
