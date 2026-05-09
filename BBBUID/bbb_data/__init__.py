@@ -93,49 +93,16 @@ async def send_note_info(bot: Bot, ev: Event):
     if not uid:
         return await bot.send(BIND_UID_HINT)
 
-    data = await bh3_api.get_bbb_note(uid)
-    if isinstance(data, int):
-        return await bot.send(bbb_error_reply(data))
+    index_data = await bh3_api.get_bbb_index(uid)
+    if isinstance(index_data, int):
+        return await bot.send(bbb_error_reply(index_data))
+    note_data = await bh3_api.get_bbb_note(uid)
+    if isinstance(note_data, int):
+        return await bot.send(bbb_error_reply(note_data))
 
-    cur = data.get("current_stamina", "?")
-    mx = data.get("max_stamina", "?")
-    recover = data.get("stamina_recover_time", 0)
-    hours = recover // 3600
-    minutes = (recover % 3600) // 60
-
-    lines = [
-        f"[崩坏3] 实时便笺",
-        f"体力: {cur}/{mx}",
-    ]
-    if recover > 0:
-        lines.append(f"体力回满: {hours}时{minutes}分后")
-
-    # 深渊升降机
-    ultra = data.get("ultra_endless", {})
-    if ultra:
-        is_open = "开放中" if ultra.get("is_open") else "未开放"
-        end = _fmt_ts(ultra.get("schedule_end", "0"))
-        lines.append(f"深渊升降机: {is_open} (结束{end})")
-
-    # 战场升降机
-    bf = data.get("battle_field", {})
-    if bf:
-        is_open = "开放中" if bf.get("is_open") else "未开放"
-        end = _fmt_ts(bf.get("schedule_end", "0"))
-        cur_r = bf.get("cur_reward", "?")
-        max_r = bf.get("max_reward", "?")
-        lines.append(f"战场升降机: {is_open} (结束{end}) 奖励{cur_r}/{max_r}")
-
-    # 往世乐土
-    gw = data.get("god_war", {})
-    if gw:
-        is_open = "开放中" if gw.get("is_open") else "未开放"
-        end = _fmt_ts(gw.get("schedule_end", "0"))
-        cur_r = gw.get("cur_reward", "?")
-        max_r = gw.get("max_reward", "?")
-        lines.append(f"往世乐土: {is_open} (结束{end}) 奖励{cur_r}/{max_r}")
-
-    await bot.send("\n".join(lines))
+    from .draw_note import draw_note_img
+    img = await draw_note_img(ev, uid, index_data, note_data)
+    await bot.send(img)
 
 
 # --- 深渊 (Abyss) ---
