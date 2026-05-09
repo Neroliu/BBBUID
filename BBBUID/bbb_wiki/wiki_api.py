@@ -85,7 +85,7 @@ def _parse_role_evaluation(parsed_items: List[Dict]) -> Dict:
         elif part == "equipmentRecommendation":
             for eq_group in data.get("equipment", []):
                 name_ = eq_group.get("name_", "")
-                if "推荐" not in name_:
+                if "推荐" not in name_ and "搭配" not in name_:
                     continue
                 equips = []
                 for eq in eq_group.get("equips", []):
