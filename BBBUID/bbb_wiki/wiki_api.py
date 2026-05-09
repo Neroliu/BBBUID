@@ -187,7 +187,7 @@ async def search_content(keyword: str, channel_id: Optional[int] = None) -> List
 
 def parse_evaluation_from_detail(detail: Dict) -> Dict:
     for section in detail.get("contents", []):
-        if section.get("name") in ("角色评价", "协同者评价"):
+        if section.get("name") in ("角色评价", "协同者评价", "人偶评价"):
             parsed = _parse_html_data(section.get("text", ""))
             if parsed:
                 return _parse_role_evaluation(parsed)
