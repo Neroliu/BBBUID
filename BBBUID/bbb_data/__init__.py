@@ -79,6 +79,38 @@ async def send_index_info(bot: Bot, ev: Event):
         comp_score = pref.get("comprehensive_score", "?")
         lines.append(f"综合评价: {comp}({comp_score}分)")
 
+    # Character list
+    char_data = await bh3_api.get_bbb_characters(uid)
+    if isinstance(char_data, int):
+        lines.append("")
+        lines.append(f"[角色列表获取失败: {char_data}]")
+    else:
+        characters = char_data.get("characters", [])
+        if characters:
+            lines.append("")
+            lines.append(f"=== 女武神列表 ({len(characters)}) ===")
+            for i, item in enumerate(characters):
+                char = item.get("character", {})
+                avatar = char.get("avatar", {})
+                weapon = char.get("weapon", {})
+                stigmatas = char.get("stigmatas", [])
+                elf = char.get("elf", {})
+
+                name = avatar.get("name", "?")
+                star = avatar.get("star", "?")
+                level = avatar.get("level", "?")
+                attr = avatar.get("attribute_id", "?")
+                weapon_name = weapon.get("name", "无")
+                weapon_rarity = weapon.get("rarity", "?")
+                stigma_names = "/".join(s.get("name", "?") for s in stigmatas) if stigmatas else "无"
+                elf_name = elf.get("name", "") if elf else ""
+
+                lines.append(f"  {i+1}. {name} ★{star} Lv.{level} 属性:{attr}")
+                lines.append(f"     武器: {weapon_name}(★{weapon_rarity})")
+                lines.append(f"     圣痕: {stigma_names}")
+                if elf_name:
+                    lines.append(f"     人偶: {elf_name}")
+
     await bot.send("\n".join(lines))
 
 
