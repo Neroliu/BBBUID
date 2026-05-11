@@ -31,87 +31,19 @@ async def send_index_info(bot: Bot, ev: Event):
     if not uid:
         return await bot.send(BIND_UID_HINT)
 
-    data = await bh3_api.get_bbb_index(uid)
-    if isinstance(data, int):
-        return await bot.send(bbb_error_reply(data))
+    index_data = await bh3_api.get_bbb_index(uid)
+    if isinstance(index_data, int):
+        return await bot.send(bbb_error_reply(index_data))
 
-    role = data.get("role", {})
-    stats = data.get("stats", {})
-    pref = data.get("preference", {})
-    nickname = role.get("nickname", "未知")
-    level = role.get("level", "?")
-
-    lines = [
-        f"舰长: {nickname} Lv.{level}",
-        f"UID: {uid}",
-        "",
-    ]
-
-    if stats:
-        stat_map = {
-            "active_day_number": "活跃天数",
-            "armor_number": "女武神",
-            "sss_armor_number": "SSS女武神",
-            "stigmata_number": "圣痕",
-            "five_star_stigmata_number": "五星圣痕",
-            "weapon_number": "武器",
-            "five_star_weapon_number": "五星武器",
-        }
-        for key, label in stat_map.items():
-            if key in stats:
-                lines.append(f"{label}: {stats[key]}")
-
-        new_abyss = stats.get("new_abyss", {})
-        if new_abyss:
-            lines.append(f"超弦空间: 级别{new_abyss.get('level', '?')} 奖杯{new_abyss.get('cup_number', '?')}")
-        if "abyss_score" in stats:
-            lines.append(f"深渊分数: {stats['abyss_score']}")
-        if "battle_field_score" in stats:
-            lines.append(f"战场分数: {stats['battle_field_score']}")
-        if "battle_field_ranking_percentage" in stats:
-            lines.append(f"战场排名: 前{stats['battle_field_ranking_percentage']}%")
-        if "god_war_max_challenge_score" in stats:
-            lines.append(f"乐土最高分: {stats['god_war_max_challenge_score']}")
-
-    if pref:
-        lines.append("")
-        comp = pref.get("comprehensive_rating", "?")
-        comp_score = pref.get("comprehensive_score", "?")
-        lines.append(f"综合评价: {comp}({comp_score}分)")
-
-    # Character list
     char_data = await bh3_api.get_bbb_characters(uid)
     if isinstance(char_data, int):
-        lines.append("")
-        lines.append(f"[角色列表获取失败: {char_data}]")
-    else:
-        characters = char_data.get("characters", [])
-        if characters:
-            lines.append("")
-            lines.append(f"=== 女武神列表 ({len(characters)}) ===")
-            for i, item in enumerate(characters):
-                char = item.get("character", {})
-                avatar = char.get("avatar", {})
-                weapon = char.get("weapon", {})
-                stigmatas = char.get("stigmatas", [])
-                elf = char.get("elf", {})
+        return await bot.send(bbb_error_reply(char_data))
 
-                name = avatar.get("name", "?")
-                star = avatar.get("star", "?")
-                level = avatar.get("level", "?")
-                attr = avatar.get("attribute_id", "?")
-                weapon_name = weapon.get("name", "无")
-                weapon_rarity = weapon.get("rarity", "?")
-                stigma_names = "/".join(s.get("name", "?") for s in stigmatas) if stigmatas else "无"
-                elf_name = elf.get("name", "") if elf else ""
+    characters = char_data.get("characters", [])
 
-                lines.append(f"  {i+1}. {name} ★{star} Lv.{level} 属性:{attr}")
-                lines.append(f"     武器: {weapon_name}(★{weapon_rarity})")
-                lines.append(f"     圣痕: {stigma_names}")
-                if elf_name:
-                    lines.append(f"     人偶: {elf_name}")
-
-    await bot.send("\n".join(lines))
+    from .draw_query import draw_query_card
+    img = await draw_query_card(ev, uid, index_data, characters)
+    await bot.send(img)
 
 
 # --- 便笺 (Real-time Notes) ---

@@ -49,6 +49,9 @@ async def draw_title(
     region_name: str,
     index_data: Dict,
     char_count: int,
+    sss_count: int = 0,
+    five_star_stigma: int = 0,
+    five_star_weapon: int = 0,
 ) -> Image.Image:
     """Draw title section with avatar, name, UID, level, evaluation, and info."""
     bg_path = TITLE_DIR / "title_bg.png"
@@ -88,7 +91,7 @@ async def draw_title(
         canvas.alpha_composite(level_bg, (W - 210, 230))
         draw.text((W - 210 + new_w // 2, 230 + new_h // 2), f"Lv.{level}", font=_font(24), fill=TEXT_WHITE, anchor="mm")
 
-    # Info Section
+    # Info Section - 5 cards
     stats = index_data.get("stats", {})
     active_days = stats.get("active_day_number", "?")
 
@@ -104,22 +107,24 @@ async def draw_title(
     info_gap = 8
 
     # Calculate positions: 8px gap between value bottom and title top
-    # Value font size: 36, Title font size: 28
-    value_y = info_y + 35  # Value centered at this position
-    value_bottom = value_y + 18  # 36/2 = 18
-    title_y = value_bottom + 8 + 14  # 8px gap + 28/2 = 14
+    value_y = info_y + 35
+    value_bottom = value_y + 18
+    title_y = value_bottom + 8 + 14
 
-    # Info 1
-    if info_bg_img:
-        canvas.alpha_composite(info_bg_img, (info_start_x, info_y))
-    draw.text((info_start_x + info_w // 2, value_y), f"{active_days}天", font=_font(36), fill=TEXT_WHITE, anchor="mm")
-    draw.text((info_start_x + info_w // 2, title_y), "累计登舰", font=_font(28), fill=TEXT_DIM, anchor="mm")
+    # Info data: (value, title)
+    info_items = [
+        (f"{active_days}天", "累计登舰"),
+        (str(char_count), "装甲数"),
+        (str(sss_count), "SSS女武神"),
+        (str(five_star_stigma), "五星圣痕"),
+        (str(five_star_weapon), "五星武器"),
+    ]
 
-    # Info 2
-    card2_x = info_start_x + info_w + info_gap
-    if info_bg_img:
-        canvas.alpha_composite(info_bg_img, (card2_x, info_y))
-    draw.text((card2_x + info_w // 2, value_y), str(char_count), font=_font(36), fill=TEXT_WHITE, anchor="mm")
-    draw.text((card2_x + info_w // 2, title_y), "装甲数", font=_font(28), fill=TEXT_DIM, anchor="mm")
+    for i, (value, title) in enumerate(info_items):
+        card_x = info_start_x + i * (info_w + info_gap)
+        if info_bg_img:
+            canvas.alpha_composite(info_bg_img, (card_x, info_y))
+        draw.text((card_x + info_w // 2, value_y), value, font=_font(36), fill=TEXT_WHITE, anchor="mm")
+        draw.text((card_x + info_w // 2, title_y), title, font=_font(28), fill=TEXT_DIM, anchor="mm")
 
     return canvas
