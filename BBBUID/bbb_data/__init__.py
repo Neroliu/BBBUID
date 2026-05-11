@@ -8,6 +8,7 @@ from gsuid_core.models import Event
 from ..bbb_api import bh3_api
 from ..utils.uid import get_uid
 from ..utils.hint import BIND_UID_HINT, bbb_error_reply
+from ..utils.char_data_cache import load_char_data, save_char_data, clear_char_data
 
 CST = timezone(timedelta(hours=8))
 
@@ -35,11 +36,40 @@ async def send_index_info(bot: Bot, ev: Event):
     if isinstance(index_data, int):
         return await bot.send(bbb_error_reply(index_data))
 
+    # Try load from cache first
+    characters = load_char_data(uid)
+    if characters is None:
+        # No cache, fetch from API
+        char_data = await bh3_api.get_bbb_characters(uid)
+        if isinstance(char_data, int):
+            return await bot.send(bbb_error_reply(char_data))
+        characters = char_data.get("characters", [])
+        save_char_data(uid, characters)
+
+    from .draw_query import draw_query_card
+    img = await draw_query_card(ev, uid, index_data, characters)
+    await bot.send(img)
+
+
+@sv_bbb_query.on_fullmatch(("刷新面板", "更新面板"), block=True)
+async def send_refresh_panel(bot: Bot, ev: Event):
+    uid = await get_uid(bot, ev)
+    if not uid:
+        return await bot.send(BIND_UID_HINT)
+
+    # Clear cache and re-fetch
+    clear_char_data(uid)
+
+    index_data = await bh3_api.get_bbb_index(uid)
+    if isinstance(index_data, int):
+        return await bot.send(bbb_error_reply(index_data))
+
     char_data = await bh3_api.get_bbb_characters(uid)
     if isinstance(char_data, int):
         return await bot.send(bbb_error_reply(char_data))
 
     characters = char_data.get("characters", [])
+    save_char_data(uid, characters)
 
     from .draw_query import draw_query_card
     img = await draw_query_card(ev, uid, index_data, characters)

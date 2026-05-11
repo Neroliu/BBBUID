@@ -10,6 +10,7 @@ WIKI_PATH = MAIN_PATH / "wiki"
 ALIAS_PATH = MAIN_PATH / "alias"
 AVATAR_CACHE_PATH = MAIN_PATH / "avatar_cache"
 STAR_ICON_CACHE_PATH = MAIN_PATH / "star_icons"
+CHAR_DATA_CACHE_PATH = MAIN_PATH / "char_data_cache"
 USER_CHAR_ALIAS_PATH = ALIAS_PATH / "char_alias.json"
 CHAR_META_PATH = MAIN_PATH / "char_meta.json"
 

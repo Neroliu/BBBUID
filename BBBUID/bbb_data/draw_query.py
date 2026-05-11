@@ -1,6 +1,7 @@
 """Query card rendering module for BBBUID."""
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Dict, List
 
 from PIL import Image
@@ -73,9 +74,17 @@ async def draw_query_card(
     grid_w = CHARS_PER_ROW * CHAR_CARD_W + (CHARS_PER_ROW - 1) * CHAR_CARD_GAP
     grid_h = num_rows * CHAR_CARD_H + (num_rows - 1) * CHAR_CARD_GAP
 
+    # Footer
+    footer_path = Path(__file__).parent / "footer.png"
+    footer_h = 0
+    footer_img = None
+    if footer_path.exists():
+        footer_img = Image.open(footer_path).convert("RGBA")
+        footer_h = footer_img.height + 10
+
     # Total canvas size
     canvas_w = max(title_img.width, grid_w + 40)  # 40px padding on sides for grid
-    canvas_h = title_h + title_gap + grid_h + 20  # 20px bottom padding
+    canvas_h = title_h + title_gap + grid_h + footer_h + 20  # footer + bottom padding
 
     # Create canvas
     canvas = Image.new("RGBA", (canvas_w, canvas_h), BG_DARK)
@@ -106,5 +115,11 @@ async def draw_query_card(
         card_y = grid_start_y + row * (CHAR_CARD_H + CHAR_CARD_GAP)
 
         canvas.alpha_composite(char_card, (card_x, card_y))
+
+    # Draw footer
+    if footer_img:
+        fx = (canvas_w - footer_img.width) // 2
+        fy = canvas_h - footer_img.height - 6
+        canvas.alpha_composite(footer_img, (fx, fy))
 
     return await convert_img(canvas)
