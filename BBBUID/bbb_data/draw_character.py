@@ -16,10 +16,7 @@ CHAR_RES_DIR = PROJECT_RES_DIR / "char"
 
 # Wiki icon cache
 CHAR_ICON_CACHE_DIR = WIKI_PATH / "角色" / "icons"
-STAR_ICON_CACHE_DIR = WIKI_PATH / "star_icon"
-
-# External resource for star icons (fallback)
-EXTERNAL_RES_DIR = Path("/root/resource/bbbResource")
+STAR_ICON_CACHE_DIR = PROJECT_RES_DIR / "char" / "star_icon"
 
 # Colors
 TEXT_WHITE = (240, 240, 245)
@@ -45,7 +42,7 @@ STAR_TO_ICON = {
 
 
 async def _get_cached_char_icon(char_name: str) -> Image.Image:
-    """Get character icon from wiki cache by character name."""
+    """Get character icon from wiki cache by character name (supports alias lookup)."""
     # Resolve alias to standard name, then get content_id
     standard_name = alias_to_char_name(char_name)
     if not standard_name:
@@ -64,23 +61,13 @@ async def _get_cached_char_icon(char_name: str) -> Image.Image:
 
 
 async def _get_cached_star_icon(star: int) -> Image.Image | None:
-    """Get star icon from cache, copy from external resource if not exists."""
+    """Get star icon from project resource cache."""
     star_icon_name = STAR_TO_ICON.get(star, "StarElf_B.png")
-    cache_path = STAR_ICON_CACHE_DIR / star_icon_name
-    external_path = EXTERNAL_RES_DIR / "elfstar" / star_icon_name
+    star_path = STAR_ICON_CACHE_DIR / star_icon_name
 
-    if cache_path.exists():
+    if star_path.exists():
         try:
-            return Image.open(cache_path).convert("RGBA")
-        except Exception:
-            pass
-
-    if external_path.exists():
-        try:
-            img = Image.open(external_path).convert("RGBA")
-            cache_path.parent.mkdir(parents=True, exist_ok=True)
-            img.save(cache_path, "PNG")
-            return img
+            return Image.open(star_path).convert("RGBA")
         except Exception:
             pass
 
@@ -109,7 +96,7 @@ async def draw_character_card(
     draw = ImageDraw.Draw(canvas)
     W, H = canvas.size
 
-    # Get character icon from wiki cache by name
+    # Get character icon from wiki cache by name (with alias support)
     char_icon = await _get_cached_char_icon(char_name)
 
     # Resize character icon: width fills card, maintain aspect ratio
