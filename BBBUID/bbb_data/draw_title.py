@@ -62,9 +62,9 @@ async def draw_title(
     ax, ay = 80, 70
     canvas.alpha_composite(avatar_img, (ax, ay))
 
-    # Nickname (keep current position)
+    # Nickname (distance from top: 100)
     name_x = ax + 200
-    name_y = ay
+    name_y = 100
     draw.text((name_x, name_y), nickname, font=_font(40), fill=TEXT_WHITE)
 
     # UID (below nickname)
@@ -106,14 +106,14 @@ async def draw_title(
     # Info 1
     if info_bg_img:
         canvas.alpha_composite(info_bg_img, (info_start_x, info_y))
-    draw.text((info_start_x + info_w // 2, info_y + 35), f"{active_days}天", font=_font(48), fill=TEXT_WHITE, anchor="mm")
+    draw.text((info_start_x + info_w // 2, info_y + 35), f"{active_days}天", font=_font(30), fill=TEXT_WHITE, anchor="mm")
     draw.text((info_start_x + info_w // 2, info_y + 60), "累计登舰", font=_font(28), fill=TEXT_DIM, anchor="mm")
 
     # Info 2
     card2_x = info_start_x + info_w + info_gap
     if info_bg_img:
         canvas.alpha_composite(info_bg_img, (card2_x, info_y))
-    draw.text((card2_x + info_w // 2, info_y + 35), str(char_count), font=_font(48), fill=TEXT_WHITE, anchor="mm")
+    draw.text((card2_x + info_w // 2, info_y + 35), str(char_count), font=_font(30), fill=TEXT_WHITE, anchor="mm")
     draw.text((card2_x + info_w // 2, info_y + 60), "装甲数", font=_font(28), fill=TEXT_DIM, anchor="mm")
 
     return canvas
