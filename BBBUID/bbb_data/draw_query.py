@@ -1,15 +1,12 @@
 """Query card rendering module for BBBUID."""
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import Dict, List
 
-from PIL import Image, ImageDraw
+from PIL import Image
 
 from gsuid_core.utils.image.convert import convert_img
 
-from ..utils.RESOURCE_PATH import WIKI_PATH
 from .draw_title import draw_title
 from .draw_character import draw_character_card
 
@@ -99,23 +96,11 @@ async def draw_query_card(
         star = avatar.get("star", 0)
         level = avatar.get("level", 1)
 
-        # Get content_id for cache key
+        # Get content_id for cache key (used to look up icon in cache path)
         content_id = str(avatar.get("id", ""))
 
-        # Use icon_path from API, fallback to wiki cache
-        icon_url = avatar.get("icon_path")
-        if not icon_url:
-            # Try to get icon from wiki cache
-            wiki_path = WIKI_PATH / "角色" / f"{content_id}.json"
-            if wiki_path.exists():
-                try:
-                    wiki_data = json.loads(wiki_path.read_text(encoding="utf-8"))
-                    icon_url = wiki_data.get("icon")
-                except Exception:
-                    pass
-
-        # Draw character card
-        char_card = await draw_character_card(name, star, level, content_id, icon_url)
+        # Draw character card (icon loaded from wiki cache path only)
+        char_card = await draw_character_card(name, star, level, content_id)
 
         # Calculate position
         row = i // CHARS_PER_ROW

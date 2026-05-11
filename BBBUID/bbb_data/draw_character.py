@@ -44,52 +44,16 @@ STAR_TO_ICON = {
 }
 
 
-async def _download_image(url: str) -> Image.Image | None:
-    """Download image from URL."""
-    if not url:
-        return None
-    try:
-        import httpx
-        from io import BytesIO
-        async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
-            resp = await client.get(url)
-            if resp.status_code == 200:
-                return Image.open(BytesIO(resp.content)).convert("RGBA")
-    except Exception:
-        pass
-    return None
-
-
-async def _get_cached_char_icon(content_id: str, icon_url: str | None = None) -> Image.Image:
-    """Get character icon from cache, download if not exists or if new URL provides higher resolution."""
+async def _get_cached_char_icon(content_id: str) -> Image.Image:
+    """Get character icon from local cache path only."""
     cache_path = CHAR_ICON_CACHE_DIR / f"{content_id}.png"
 
-    # Check if cached version exists
-    cached_img = None
-    cached_size = 0
     if cache_path.exists():
         try:
-            cached_img = Image.open(cache_path).convert("RGBA")
-            cached_size = cached_img.width * cached_img.height
+            return Image.open(cache_path).convert("RGBA")
         except Exception:
-            cached_img = None
+            pass
 
-    # If we have a new URL, try to download and compare
-    if icon_url:
-        new_img = await _download_image(icon_url)
-        if new_img:
-            new_size = new_img.width * new_img.height
-            # Update cache if new image is larger/higher resolution
-            if new_size > cached_size:
-                cache_path.parent.mkdir(parents=True, exist_ok=True)
-                new_img.save(cache_path, "PNG")
-                return new_img
-
-    # Return cached image if exists
-    if cached_img:
-        return cached_img
-
-    # Fallback
     return Image.new("RGBA", (100, 100), (100, 100, 100, 255))
 
 
@@ -137,7 +101,6 @@ async def draw_character_card(
     star: int,
     level: int,
     content_id: str,
-    icon_url: str | None = None,
 ) -> Image.Image:
     """Draw a character card with avatar background, character icon, star rating, level, and name."""
     # Load background from project directory
@@ -147,7 +110,7 @@ async def draw_character_card(
     W, H = canvas.size
 
     # Get character icon from cache
-    char_icon = await _get_cached_char_icon(content_id, icon_url)
+    char_icon = await _get_cached_char_icon(content_id)
 
     # Resize character icon: width fills card, maintain aspect ratio
     icon_width = W - 23
