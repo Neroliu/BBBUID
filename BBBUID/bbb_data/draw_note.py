@@ -169,7 +169,7 @@ async def draw_note_img(
     index_data: Dict,
     note_data: Dict,
 ) -> bytes:
-    from .draw_title import draw_title, draw_info_section
+    from .draw_title import draw_title
 
     canvas = Image.new("RGBA", (W, H), BG_DARK)
     draw = ImageDraw.Draw(canvas)
@@ -197,21 +197,15 @@ async def draw_note_img(
     char_data = await bh3_api.get_bbb_characters(uid)
     char_count = len(char_data.get("characters", [])) if not isinstance(char_data, int) else stats.get("armor_number", "?")
 
-    # Draw title
-    title_img = await draw_title(ev, uid, nickname, level, rating, region_name)
+    # Draw title (includes avatar, name, UID, level, eval, info section)
+    title_img = await draw_title(ev, uid, nickname, level, rating, region_name, index_data, char_count if isinstance(char_count, int) else 0)
     # Center title
     title_x = (W - title_img.width) // 2
     title_y = PAD
     canvas.alpha_composite(title_img, (title_x, title_y))
 
-    # --- Info Section ---
-    info_img = await draw_info_section(index_data, char_count if isinstance(char_count, int) else 0)
-    info_x = (W - info_img.width) // 2
-    info_y = title_y + title_img.height + 20
-    canvas.alpha_composite(info_img, (info_x, info_y))
-
     # --- Real-time Info Section ---
-    section_y = info_y + info_img.height + 20
+    section_y = title_y + title_img.height + 20
     draw.text((PAD, section_y), "实时信息", font=_font(24), fill=TEXT_WHITE)
     draw.text((PAD + 140, section_y + 5), "REAL-TIME INFO", font=_font(10), fill=TEXT_DIM)
 
