@@ -99,8 +99,8 @@ async def draw_title(
         info_bg_img = Image.open(info_bg_path).convert("RGBA")
         info_w, info_h = info_bg_img.size
 
-    info_start_x = 75  # Distance from left edge
-    info_y = H - info_h - 30
+    info_start_x = 65  # Distance from left edge
+    info_y = H - info_h - 30  # Distance from bottom: 30
     info_gap = 20
 
     # Calculate positions: 8px gap between value bottom and title top
