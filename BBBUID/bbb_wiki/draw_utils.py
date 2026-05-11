@@ -139,6 +139,16 @@ def _draw_wrapped_text(
 
 
 def _draw_footer(img: Image.Image, y: int) -> int:
+    from pathlib import Path
+    footer_path = Path(__file__).parent.parent / "bbb_data" / "footer.png"
+    if footer_path.exists():
+        footer_img = Image.open(footer_path).convert("RGBA")
+        fw, fh = footer_img.size
+        fx = (CARD_W - fw) // 2
+        fy = y + _s(8)
+        img.alpha_composite(footer_img, (fx, fy))
+        return fy + fh
+    # Fallback: text footer
     draw = ImageDraw.Draw(img)
     footer_font = _font(14)
     draw.line([(PAD, y), (CARD_W - PAD, y)], fill=(60, 60, 75), width=_s(1))

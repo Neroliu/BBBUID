@@ -442,8 +442,12 @@ async def draw_note_img(
         draw.text((right_x, act_y + 26), score_text, font=_font(18), fill=ACCENT_ORANGE, anchor="ra")
 
     # --- Footer ---
-    footer_y = H - 30
-    draw.line([(PAD, footer_y), (W - PAD, footer_y)], fill=(60, 60, 80), width=1)
-    draw.text((W // 2, footer_y + 12), "BBBUID · 崩坏3", (80, 80, 100), _font(10), anchor="mt")
+    footer_path = Path(__file__).parent / "footer.png"
+    if footer_path.exists():
+        footer_img = Image.open(footer_path).convert("RGBA")
+        fw, fh = footer_img.size
+        fx = (W - fw) // 2
+        fy = H - fh - 6
+        canvas.alpha_composite(footer_img, (fx, fy))
 
     return await convert_img(canvas)
