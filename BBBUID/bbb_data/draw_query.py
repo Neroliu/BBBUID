@@ -96,11 +96,13 @@ async def draw_query_card(
         star = avatar.get("star", 0)
         level = avatar.get("level", 1)
 
-        # Get content_id for cache key (used to look up icon in cache path)
+        # Get content_id for cache key
         content_id = str(avatar.get("id", ""))
+        # Use API icon_path for download if cache miss
+        icon_url = avatar.get("icon_path")
 
-        # Draw character card (icon loaded from wiki cache path only)
-        char_card = await draw_character_card(name, star, level, content_id)
+        # Draw character card (icon from project cache, download if missing)
+        char_card = await draw_character_card(name, star, level, content_id, icon_url)
 
         # Calculate position
         row = i // CHARS_PER_ROW

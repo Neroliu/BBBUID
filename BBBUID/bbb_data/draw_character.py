@@ -14,9 +14,9 @@ from ..utils.RESOURCE_PATH import WIKI_PATH
 PROJECT_RES_DIR = Path(__file__).parent / "res"
 CHAR_RES_DIR = PROJECT_RES_DIR / "char"
 
-# Cache directories
-CHAR_ICON_CACHE_DIR = WIKI_PATH / "角色" / "icons"
-STAR_ICON_CACHE_DIR = WIKI_PATH / "star_icon"
+# Project cache directories (independent from wiki cache)
+CHAR_ICON_CACHE_DIR = PROJECT_RES_DIR / "char" / "icons"
+STAR_ICON_CACHE_DIR = PROJECT_RES_DIR / "char" / "star_icon"
 
 # External resource for star icons (fallback)
 EXTERNAL_RES_DIR = Path("/root/resource/bbbResource")
@@ -44,8 +44,8 @@ STAR_TO_ICON = {
 }
 
 
-async def _get_cached_char_icon(content_id: str) -> Image.Image:
-    """Get character icon from local cache path, try download from wiki if missing."""
+async def _get_cached_char_icon(content_id: str, icon_url: str | None = None) -> Image.Image:
+    """Get character icon from project cache, download if missing."""
     cache_path = CHAR_ICON_CACHE_DIR / f"{content_id}.png"
 
     if cache_path.exists():
@@ -54,22 +54,10 @@ async def _get_cached_char_icon(content_id: str) -> Image.Image:
         except Exception:
             pass
 
-    # Not in cache, try download from wiki
-    import json
-    import httpx
-    from io import BytesIO
-
-    wiki_path = WIKI_PATH / "角色" / f"{content_id}.json"
-    icon_url = None
-    if wiki_path.exists():
-        try:
-            wiki_data = json.loads(wiki_path.read_text(encoding="utf-8"))
-            icon_url = wiki_data.get("icon")
-        except Exception:
-            pass
-
     if icon_url:
         try:
+            import httpx
+            from io import BytesIO
             async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
                 resp = await client.get(icon_url)
                 if resp.status_code == 200:
@@ -127,6 +115,7 @@ async def draw_character_card(
     star: int,
     level: int,
     content_id: str,
+    icon_url: str | None = None,
 ) -> Image.Image:
     """Draw a character card with avatar background, character icon, star rating, level, and name."""
     # Load background from project directory
@@ -136,7 +125,7 @@ async def draw_character_card(
     W, H = canvas.size
 
     # Get character icon from cache
-    char_icon = await _get_cached_char_icon(content_id)
+    char_icon = await _get_cached_char_icon(content_id, icon_url)
 
     # Resize character icon: width fills card, maintain aspect ratio
     icon_width = W - 23
