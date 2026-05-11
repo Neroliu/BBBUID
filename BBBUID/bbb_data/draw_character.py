@@ -8,15 +8,15 @@ from PIL import Image, ImageDraw
 
 from gsuid_core.utils.fonts.fonts import core_font
 
-from ..utils.RESOURCE_PATH import WIKI_PATH
+from ..utils.RESOURCE_PATH import CHAR_ICON_CACHE_PATH
 
 # Project resource paths
 PROJECT_RES_DIR = Path(__file__).parent / "res"
 CHAR_RES_DIR = PROJECT_RES_DIR / "char"
 
-# Project cache directories (independent from wiki cache)
-CHAR_ICON_CACHE_DIR = PROJECT_RES_DIR / "char" / "icons"
-STAR_ICON_CACHE_DIR = PROJECT_RES_DIR / "char" / "star_icon"
+# Character icon cache (in main data dir, not project dir)
+CHAR_ICON_CACHE_DIR = CHAR_ICON_CACHE_PATH
+STAR_ICON_CACHE_DIR = CHAR_ICON_CACHE_PATH / "star_icon"
 
 # External resource for star icons (fallback)
 EXTERNAL_RES_DIR = Path("/root/resource/bbbResource")
@@ -136,8 +136,8 @@ async def draw_character_card(
     icon_x = (W - icon_width) // 2 + 1
     icon_y = 17  # 8 + 1 + 8
 
-    # Add rounded corners (radius 4)
-    char_icon = _add_rounded_corners(char_icon, 4)
+    # Add rounded corners (radius 1)
+    char_icon = _add_rounded_corners(char_icon, 1)
 
     canvas.alpha_composite(char_icon, (icon_x, icon_y))
 
