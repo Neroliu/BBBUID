@@ -100,7 +100,7 @@ async def draw_title(
         info_w, info_h = info_bg_img.size
 
     info_start_x = 65  # Distance from left edge
-    info_y = H - info_h - 30  # Distance from bottom: 30
+    info_y = H - info_h - 60  # Distance from bottom: 60
     info_gap = 20
 
     # Calculate positions: 8px gap between value bottom and title top
