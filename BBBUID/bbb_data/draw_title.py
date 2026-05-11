@@ -59,16 +59,16 @@ async def draw_title(
     # Avatar
     user_avatar = await get_cached_avatar(ev, ev.user_id)
     avatar_img = draw_decorated_avatar(user_avatar, 179)
-    ax, ay = 80, 75
+    ax, ay = 80, 80
     canvas.alpha_composite(avatar_img, (ax, ay))
 
     # Nickname
     name_x = ax + 200
-    name_y = 120
+    name_y = 130
     draw.text((name_x, name_y), nickname, font=_font(40), fill=TEXT_WHITE)
 
     # UID (below nickname)
-    draw.text((name_x, name_y + 48), f"UID: {uid}", font=_font(24), fill=TEXT_GRAY)
+    draw.text((name_x, name_y + 58), f"UID: {uid}", font=_font(24), fill=TEXT_GRAY)
 
     # Evaluation icon
     icon_name = EVAL_RATING_TO_ICON.get(rating.upper(), "SealedDanIcon01.png")
@@ -99,21 +99,21 @@ async def draw_title(
         info_bg_img = Image.open(info_bg_path).convert("RGBA")
         info_w, info_h = info_bg_img.size
 
-    info_start_x = ax  # Align with avatar left side
-    info_y = H - info_h - 30  # Distance from bottom: 30
-    info_gap = 30
+    info_start_x = 30  # Distance from left edge
+    info_y = H - info_h - 30
+    info_gap = 25
 
     # Info 1
     if info_bg_img:
         canvas.alpha_composite(info_bg_img, (info_start_x, info_y))
-    draw.text((info_start_x + info_w // 2, info_y + 35), f"{active_days}天", font=_font(32), fill=TEXT_WHITE, anchor="mm")
-    draw.text((info_start_x + info_w // 2, info_y + 60), "累计登舰", font=_font(26), fill=TEXT_DIM, anchor="mm")
+    draw.text((info_start_x + info_w // 2, info_y + 35), f"{active_days}天", font=_font(36), fill=TEXT_WHITE, anchor="mm")
+    draw.text((info_start_x + info_w // 2, info_y + 43), "累计登舰", font=_font(28), fill=TEXT_DIM, anchor="mm")
 
     # Info 2
     card2_x = info_start_x + info_w + info_gap
     if info_bg_img:
         canvas.alpha_composite(info_bg_img, (card2_x, info_y))
-    draw.text((card2_x + info_w // 2, info_y + 35), str(char_count), font=_font(32), fill=TEXT_WHITE, anchor="mm")
-    draw.text((card2_x + info_w // 2, info_y + 60), "装甲数", font=_font(26), fill=TEXT_DIM, anchor="mm")
+    draw.text((card2_x + info_w // 2, info_y + 35), str(char_count), font=_font(36), fill=TEXT_WHITE, anchor="mm")
+    draw.text((card2_x + info_w // 2, info_y + 43), "装甲数", font=_font(28), fill=TEXT_DIM, anchor="mm")
 
     return canvas
