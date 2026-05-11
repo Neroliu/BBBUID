@@ -163,7 +163,7 @@ async def draw_character_card(
     # Draw level text
     level_text = f"Lv.{level}"
     level_x = W - 30  # Right margin
-    level_y = icon_y + icon_height + 30  # 30px below character icon bottom
+    level_y = icon_y + icon_height + 20  # 20px below character icon bottom
     draw.text((level_x, level_y), level_text, font=_font(26), fill=TEXT_BLACK, anchor="rm")
 
     # Draw character name at bottom
