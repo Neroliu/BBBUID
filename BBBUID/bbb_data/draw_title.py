@@ -65,36 +65,36 @@ async def draw_title(
     draw = ImageDraw.Draw(canvas)
     W, H = canvas.size
 
-    # --- Avatar ---
+    # --- Avatar (keep position unchanged) ---
     user_avatar = await get_cached_avatar(ev, ev.user_id)
     avatar_img = draw_decorated_avatar(user_avatar, 179)
     ax = 80
     ay = 130
     canvas.alpha_composite(avatar_img, (ax, ay))
 
-    # --- Nickname ---
+    # --- Nickname (adjusted position relative to avatar) ---
     name_x = ax + 200
-    name_y = ay + 20
+    name_y = ay + 10
     draw.text((name_x, name_y), nickname, font=_font(40), fill=TEXT_WHITE)
 
     # --- UID (no region) ---
     uid_text = f"UID: {uid}"
-    draw.text((name_x, name_y + 55), uid_text, font=_font(24), fill=TEXT_GRAY)
+    draw.text((name_x, name_y + 50), uid_text, font=_font(24), fill=TEXT_GRAY)
 
-    # --- Evaluation icon ---
+    # --- Evaluation icon (top-right) ---
     icon_name = EVAL_RATING_TO_ICON.get(rating.upper(), "SealedDanIcon01.png")
     icon_path = EVAL_ICON_DIR / icon_name
     if icon_path.exists():
         eval_icon = Image.open(icon_path).convert("RGBA")
         eval_icon = eval_icon.resize((130, 130), Image.Resampling.LANCZOS)
-        ex = W - 250
-        ey = 110
+        ex = W - 200
+        ey = 80
         canvas.alpha_composite(eval_icon, (ex, ey))
 
-    # --- Level badge ---
+    # --- Level badge (top-right, below eval) ---
     level_bg_path = TITLE_DIR / "level_bg.png"
-    level_x = W - 250
-    level_y = 250
+    level_x = W - 200
+    level_y = 220
 
     if level_bg_path.exists():
         level_bg = Image.open(level_bg_path).convert("RGBA")
@@ -109,7 +109,6 @@ async def draw_title(
         draw.text((level_x + new_w // 2, level_y + new_h // 2), level_text, font=_font(24), fill=TEXT_WHITE, anchor="mm")
 
     # --- Info Section ---
-    # Value above, title below, both inside bg, left-aligned layout
     stats = index_data.get("stats", {})
     active_days = stats.get("active_day_number", "?")
 
@@ -130,16 +129,14 @@ async def draw_title(
     card1_x = info_start_x
     if info_bg_img:
         canvas.alpha_composite(info_bg_img, (card1_x, info_y))
-    # Value above (upper part of bg)
-    draw.text((card1_x + info_w // 2, info_y + 30), f"{active_days}天", font=_font(28), fill=TEXT_WHITE, anchor="mm")
-    # Title below (lower part of bg)
-    draw.text((card1_x + info_w // 2, info_y + info_h - 25), "累计登舰", font=_font(16), fill=TEXT_DIM, anchor="mm")
+    draw.text((card1_x + info_w // 2, info_y + 40), f"{active_days}天", font=_font(28), fill=TEXT_WHITE, anchor="mm")
+    draw.text((card1_x + info_w // 2, info_y + 70), "累计登舰", font=_font(16), fill=TEXT_DIM, anchor="mm")
 
     # Info 2: 装甲数
     card2_x = info_start_x + info_w + info_gap
     if info_bg_img:
         canvas.alpha_composite(info_bg_img, (card2_x, info_y))
-    draw.text((card2_x + info_w // 2, info_y + 30), str(char_count), font=_font(28), fill=TEXT_WHITE, anchor="mm")
-    draw.text((card2_x + info_w // 2, info_y + info_h - 25), "装甲数", font=_font(16), fill=TEXT_DIM, anchor="mm")
+    draw.text((card2_x + info_w // 2, info_y + 40), str(char_count), font=_font(28), fill=TEXT_WHITE, anchor="mm")
+    draw.text((card2_x + info_w // 2, info_y + 70), "装甲数", font=_font(16), fill=TEXT_DIM, anchor="mm")
 
     return canvas
