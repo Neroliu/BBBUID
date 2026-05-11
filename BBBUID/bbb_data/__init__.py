@@ -41,12 +41,6 @@ async def send_index_info(bot: Bot, ev: Event):
 
     characters = char_data.get("characters", [])
 
-    # Log first character data for debugging
-    if characters:
-        first_char = characters[0].get("character", {})
-        first_avatar = first_char.get("avatar", {})
-        logger.info(f"[崩坏3] [查询] 角色数据示例: {first_avatar}")
-
     from .draw_query import draw_query_card
     img = await draw_query_card(ev, uid, index_data, characters)
     await bot.send(img)

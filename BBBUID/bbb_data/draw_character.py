@@ -7,16 +7,16 @@ from PIL import Image, ImageDraw
 
 from gsuid_core.utils.fonts.fonts import core_font
 
-from ..utils.RESOURCE_PATH import WIKI_PATH, STAR_ICON_CACHE_PATH
+from ..utils.RESOURCE_PATH import WIKI_PATH
 from ..bbb_alias.name_convert import alias_to_char_name, char_name_to_content_id
 
 # Project resource paths
 PROJECT_RES_DIR = Path(__file__).parent / "res"
 CHAR_RES_DIR = PROJECT_RES_DIR / "char"
+STAR_ICON_RES_DIR = PROJECT_RES_DIR / "char" / "star_icon"
 
 # Wiki icon cache
 CHAR_ICON_CACHE_DIR = WIKI_PATH / "角色" / "icons"
-STAR_ICON_CACHE_DIR = STAR_ICON_CACHE_PATH
 
 # Colors
 TEXT_WHITE = (240, 240, 245)
@@ -31,13 +31,13 @@ def _font(size: int) -> Image.Font.FreeTypeFont:
     return _font_cache[size]
 
 
-# Star mapping: star value -> icon filename
+# Star mapping: API star value (1-5) -> icon filename
 STAR_TO_ICON = {
-    0: "StarElf_B.png",  # B
-    1: "StarElf_A.png",  # A
-    2: "StarElf_S.png",  # S
-    3: "StarElf_SS.png",  # SS
-    4: "StarElf_SSS.png",  # SSS
+    1: "StarElf_B.png",   # 1 star = B
+    2: "StarElf_A.png",   # 2 star = A
+    3: "StarElf_S.png",   # 3 star = S
+    4: "StarElf_SS.png",  # 4 star = SS
+    5: "StarElf_SSS.png", # 5 star = SSS
 }
 
 
@@ -61,9 +61,9 @@ async def _get_cached_char_icon(char_name: str) -> Image.Image:
 
 
 async def _get_cached_star_icon(star: int) -> Image.Image | None:
-    """Get star icon from project resource cache."""
+    """Get star icon from project resources."""
     star_icon_name = STAR_TO_ICON.get(star, "StarElf_B.png")
-    star_path = STAR_ICON_CACHE_DIR / star_icon_name
+    star_path = STAR_ICON_RES_DIR / star_icon_name
 
     if star_path.exists():
         try:
