@@ -99,21 +99,27 @@ async def draw_title(
         info_bg_img = Image.open(info_bg_path).convert("RGBA")
         info_w, info_h = info_bg_img.size
 
-    info_start_x = 30  # Distance from left edge
+    info_start_x = 75  # Distance from left edge
     info_y = H - info_h - 30
-    info_gap = 25
+    info_gap = 20
+
+    # Calculate positions: 8px gap between value bottom and title top
+    # Value font size: 36, Title font size: 28
+    value_y = info_y + 35  # Value centered at this position
+    value_bottom = value_y + 18  # 36/2 = 18
+    title_y = value_bottom + 8 + 14  # 8px gap + 28/2 = 14
 
     # Info 1
     if info_bg_img:
         canvas.alpha_composite(info_bg_img, (info_start_x, info_y))
-    draw.text((info_start_x + info_w // 2, info_y + 35), f"{active_days}天", font=_font(36), fill=TEXT_WHITE, anchor="mm")
-    draw.text((info_start_x + info_w // 2, info_y + 43), "累计登舰", font=_font(28), fill=TEXT_DIM, anchor="mm")
+    draw.text((info_start_x + info_w // 2, value_y), f"{active_days}天", font=_font(36), fill=TEXT_WHITE, anchor="mm")
+    draw.text((info_start_x + info_w // 2, title_y), "累计登舰", font=_font(28), fill=TEXT_DIM, anchor="mm")
 
     # Info 2
     card2_x = info_start_x + info_w + info_gap
     if info_bg_img:
         canvas.alpha_composite(info_bg_img, (card2_x, info_y))
-    draw.text((card2_x + info_w // 2, info_y + 35), str(char_count), font=_font(36), fill=TEXT_WHITE, anchor="mm")
-    draw.text((card2_x + info_w // 2, info_y + 43), "装甲数", font=_font(28), fill=TEXT_DIM, anchor="mm")
+    draw.text((card2_x + info_w // 2, value_y), str(char_count), font=_font(36), fill=TEXT_WHITE, anchor="mm")
+    draw.text((card2_x + info_w // 2, title_y), "装甲数", font=_font(28), fill=TEXT_DIM, anchor="mm")
 
     return canvas
