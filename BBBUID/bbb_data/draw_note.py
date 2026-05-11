@@ -12,21 +12,21 @@ from gsuid_core.logger import logger
 from gsuid_core.models import Event
 from gsuid_core.utils.fonts.fonts import core_font
 from gsuid_core.utils.image.convert import convert_img
-from gsuid_core.utils.image.image_tools import get_event_avatar
 
 from ..bbb_api import bh3_api
 from ..bbb_sign.until import is_sign
-from ..utils.RESOURCE_PATH import WIKI_PATH, AVATAR_CACHE_PATH
+from ..utils.RESOURCE_PATH import WIKI_PATH
+
+from .avatar_utils import get_cached_avatar, draw_decorated_avatar
 
 PORTRAIT_ICONS_DIR = "portrait_icons"
 WALLPAPER_ICONS_DIR = "wallpaper_icons"
-AVATAR_RES_DIR = Path(__file__).parent / "avatar"
 
 CST = timezone(timedelta(hours=8))
 
 # --- Dimensions ---
 W = 1786
-H = 1000
+H = 1200
 PAD = 40
 
 # --- Colors ---
@@ -118,122 +118,6 @@ async def _download_image(url: str) -> Image.Image | None:
     return None
 
 
-def _draw_circle_avatar(avatar: Image.Image, size: int) -> Image.Image:
-    avatar = avatar.convert("RGBA").resize((size, size), Image.Resampling.LANCZOS)
-    mask = Image.new("L", (size, size), 0)
-    ImageDraw.Draw(mask).ellipse((0, 0, size, size), fill=255)
-    out = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    out.paste(avatar, (0, 0), mask)
-    return out
-
-
-def _draw_ring_avatar(avatar: Image.Image, size: int) -> Image.Image:
-    ring_w = 4
-    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    center = size // 2
-    r = center - ring_w
-    inner_avatar = _draw_circle_avatar(avatar, r * 2)
-    canvas.paste(inner_avatar, (ring_w, ring_w), inner_avatar)
-    draw = ImageDraw.Draw(canvas)
-    draw.ellipse((0, 0, size - 1, size - 1), outline=ACCENT_BLUE, width=ring_w)
-    return canvas
-
-
-async def _get_cached_avatar(ev: Event, user_id: str) -> Image.Image:
-    """Get avatar with 24h cache. Refresh if cache is stale."""
-    import httpx
-    from io import BytesIO
-
-    AVATAR_CACHE_PATH.mkdir(parents=True, exist_ok=True)
-    cache_file = AVATAR_CACHE_PATH / f"{user_id}.png"
-    meta_file = AVATAR_CACHE_PATH / "avatar_meta.json"
-
-    # Load metadata
-    meta = {}
-    if meta_file.exists():
-        try:
-            meta = json.loads(meta_file.read_text(encoding="utf-8"))
-        except Exception:
-            pass
-
-    now = datetime.now(tz=CST)
-    cached_time = meta.get(user_id)
-    should_refresh = True
-
-    if cache_file.exists() and cached_time:
-        try:
-            last_update = datetime.fromisoformat(cached_time)
-            if (now - last_update) < timedelta(hours=24):
-                should_refresh = False
-        except Exception:
-            pass
-
-    # Return cached avatar if fresh
-    if not should_refresh and cache_file.exists():
-        try:
-            return Image.open(cache_file).convert("RGBA")
-        except Exception:
-            pass
-
-    # Fetch fresh avatar from event
-    avatar = await get_event_avatar(ev)
-
-    # Save to cache
-    try:
-        avatar.save(cache_file, "PNG")
-        meta[user_id] = now.isoformat()
-        meta_file.write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
-    except Exception as e:
-        logger.warning(f"[崩坏3] [便笺渲染] 保存头像缓存失败: {e}")
-
-    return avatar
-
-
-def _draw_decorated_avatar(avatar: Image.Image, size: int) -> Image.Image:
-    """Draw avatar with mask and foreground decoration."""
-    mask_path = AVATAR_RES_DIR / "avatar_mask.png"
-    fg_path = AVATAR_RES_DIR / "avatar_fg.png"
-
-    # Load resources
-    mask_img = None
-    fg_img = None
-    if mask_path.exists():
-        mask_img = Image.open(mask_path).convert("RGBA")
-    if fg_path.exists():
-        fg_img = Image.open(fg_path).convert("RGBA")
-
-    # If no decoration resources, fallback to ring avatar
-    if not mask_img or not fg_img:
-        return _draw_ring_avatar(avatar, size)
-
-    # Create canvas with decoration size
-    mw, mh = mask_img.size
-    canvas = Image.new("RGBA", (mw, mh), (0, 0, 0, 0))
-
-    # Resize avatar to fit mask (ellipse area, slightly smaller than mask)
-    avatar_size = min(mw, mh) - 10
-    avatar_resized = avatar.resize((avatar_size, avatar_size), Image.Resampling.LANCZOS)
-    avatar_x = (mw - avatar_size) // 2
-    avatar_y = (mh - avatar_size) // 2
-
-    # Draw avatar
-    canvas.alpha_composite(avatar_resized, (avatar_x, avatar_y))
-
-    # Apply mask (use mask's alpha channel)
-    mask_alpha = mask_img.getchannel("A")
-    result = Image.new("RGBA", (mw, mh), (0, 0, 0, 0))
-    result.paste(canvas, (0, 0), mask_alpha)
-
-    # Draw foreground decoration on top
-    result.alpha_composite(fg_img, (0, 0))
-
-    # Scale to requested size
-    if size != mw:
-        result = result.resize((size, int(size * mh / mw)), Image.Resampling.LANCZOS)
-
-    return result
-
-
 def _get_stamina_icon() -> Image.Image | None:
     """Get stamina potion icon from cached 材料 data."""
     mat_path = WIKI_PATH / "材料"
@@ -285,6 +169,8 @@ async def draw_note_img(
     index_data: Dict,
     note_data: Dict,
 ) -> bytes:
+    from .draw_title import draw_title, draw_info_section
+
     canvas = Image.new("RGBA", (W, H), BG_DARK)
     draw = ImageDraw.Draw(canvas)
 
@@ -297,75 +183,35 @@ async def draw_note_img(
         blurred = Image.alpha_composite(blurred, dark_overlay)
         canvas.alpha_composite(blurred, (0, 0))
 
-    # --- User Info (full width) ---
+    # --- Title Section ---
     role = index_data.get("role", {})
     stats = index_data.get("stats", {})
+    pref = index_data.get("preference", {})
     nickname = role.get("nickname", "未知舰长")
     level = role.get("level", "?")
     region = role.get("region", "")
     region_name = REGION_MAP.get(region, region)
-    active_days = stats.get("active_day_number", "?")
+    rating = pref.get("comprehensive_rating", "C")
 
-    # Avatar
-    user_avatar = await _get_cached_avatar(ev, ev.user_id)
-    avatar_size = 72
-    avatar_img = _draw_decorated_avatar(user_avatar, avatar_size)
-    ax = PAD
-    ay = PAD
-    canvas.alpha_composite(avatar_img, (ax, ay))
+    # Get character count
+    char_data = await bh3_api.get_bbb_characters(uid)
+    char_count = len(char_data.get("characters", [])) if not isinstance(char_data, int) else stats.get("armor_number", "?")
 
-    # Nickname
-    name_x = ax + avatar_size + 16
-    name_y = ay + 4
-    draw.text((name_x, name_y), nickname, font=_font(32), fill=TEXT_WHITE)
+    # Draw title
+    title_img = await draw_title(ev, uid, nickname, level, rating, region_name)
+    # Center title
+    title_x = (W - title_img.width) // 2
+    title_y = PAD
+    canvas.alpha_composite(title_img, (title_x, title_y))
 
-    # Server & UID
-    server_text = f"{region_name}  UID: {uid}"
-    draw.text((name_x, name_y + 40), server_text, font=_font(18), fill=TEXT_GRAY)
-
-    # Level badge (right-aligned)
-    level_text = f"Lv.{level}"
-    level_font = _font(22)
-    level_w = int(draw.textlength(level_text, font=level_font)) + 24
-    level_h = 32
-    level_x = W - PAD - level_w
-    level_y = ay + 20
-    draw.rounded_rectangle(
-        (level_x, level_y, level_x + level_w, level_y + level_h),
-        fill=ACCENT_BLUE, radius=8,
-    )
-    draw.text((level_x + 12, level_y + 4), level_text, font=level_font, fill=TEXT_WHITE)
-
-    # Sign-in status (left-aligned) + active days (right-aligned) on same row
-    is_signed = False
-    try:
-        ck = await bh3_api.bbb_get_ck(uid)
-        server = await bh3_api.get_bbb_server(uid)
-        if ck and server:
-            sign_data = await is_sign(region=server, uid=uid, cookie=ck)
-            if not isinstance(sign_data, int) and sign_data.get("data"):
-                is_signed = sign_data["data"].get("is_sign", False)
-    except Exception:
-        pass
-
-    sign_y = name_y + 80
-    sign_text = "今日已签到" if is_signed else "今日未签到"
-    sign_bg = SIGN_YES_BG if is_signed else SIGN_NO_BG
-    sign_font = _font(16)
-    sign_w = int(draw.textlength(sign_text, font=sign_font)) + 20
-    sign_h = 26
-    draw.rounded_rectangle(
-        (name_x, sign_y, name_x + sign_w, sign_y + sign_h),
-        fill=sign_bg, radius=6,
-    )
-    draw.text((name_x + 10, sign_y + 3), sign_text, font=sign_font, fill=TEXT_WHITE)
-
-    # Active days (right side of same row)
-    days_text = f"累计登舰: {active_days}天"
-    draw.text((W - PAD, sign_y + 3), days_text, font=_font(16), fill=TEXT_GRAY, anchor="ra")
+    # --- Info Section ---
+    info_img = await draw_info_section(index_data, char_count if isinstance(char_count, int) else 0)
+    info_x = (W - info_img.width) // 2
+    info_y = title_y + title_img.height + 20
+    canvas.alpha_composite(info_img, (info_x, info_y))
 
     # --- Real-time Info Section ---
-    section_y = 170
+    section_y = info_y + info_img.height + 20
     draw.text((PAD, section_y), "实时信息", font=_font(24), fill=TEXT_WHITE)
     draw.text((PAD + 140, section_y + 5), "REAL-TIME INFO", font=_font(10), fill=TEXT_DIM)
 
