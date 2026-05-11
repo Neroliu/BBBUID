@@ -101,7 +101,7 @@ async def draw_title(
 
     info_start_x = 65  # Distance from left edge
     info_y = H - info_h - 60  # Distance from bottom: 60
-    info_gap = 20
+    info_gap = 10
 
     # Calculate positions: 8px gap between value bottom and title top
     # Value font size: 36, Title font size: 28
