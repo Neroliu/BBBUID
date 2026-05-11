@@ -17,8 +17,6 @@ CHAR_RES_DIR = PROJECT_RES_DIR / "char"
 # Cache directories
 CHAR_ICON_CACHE_DIR = WIKI_PATH / "角色" / "icons"
 STAR_ICON_CACHE_DIR = WIKI_PATH / "star_icon"
-CHAR_ICON_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-STAR_ICON_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 # External resource for star icons (fallback)
 EXTERNAL_RES_DIR = Path("/root/resource/bbbResource")

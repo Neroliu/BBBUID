@@ -12,6 +12,7 @@ from ..bbb_alias.name_convert import build_char_meta_from_wiki
 
 INDEX_FILE = "index.json"
 ICON_SUFFIX = ".png"
+ICONS_DIR = "icons"  # Subdirectory for cached icons
 EQUIP_ICONS_DIR = "equip_icons"
 MATERIAL_ICONS_DIR = "material_icons"
 STIGMA_EQUIP_ICONS_DIR = "stigma_equip_icons"
@@ -46,7 +47,9 @@ def _save_detail(channel_name: str, content_id: int, data: dict):
 async def _download_icon(channel_name: str, content_id: int, url: str):
     if not url:
         return
-    icon_path = get_wiki_path(channel_name) / f"{content_id}{ICON_SUFFIX}"
+    icons_dir = get_wiki_path(channel_name) / ICONS_DIR
+    icons_dir.mkdir(parents=True, exist_ok=True)
+    icon_path = icons_dir / f"{content_id}{ICON_SUFFIX}"
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.get(url, timeout=15)
@@ -60,7 +63,7 @@ async def _download_icon(channel_name: str, content_id: int, url: str):
 
 
 def _remove_icon(channel_name: str, content_id: int):
-    icon_path = get_wiki_path(channel_name) / f"{content_id}{ICON_SUFFIX}"
+    icon_path = get_wiki_path(channel_name) / ICONS_DIR / f"{content_id}{ICON_SUFFIX}"
     if icon_path.exists():
         icon_path.unlink()
 
@@ -307,6 +310,8 @@ async def update_channel(channel_name: str, channel_id: int):
 
     total = len(added) + len(updated)
     if not total and not removed:
+        # Check for missing icons even if no data update needed
+        await _check_missing_icons(channel_name, channel_id, items)
         logger.info(f"[崩坏3] [资源更新] {channel_name} 无更新 ({len(items)} 条)")
         return
 
@@ -354,6 +359,34 @@ async def update_channel(channel_name: str, channel_id: int):
     logger.info(f"[崩坏3] [资源更新] {channel_name} 更新完成")
 
 
+async def _check_missing_icons(channel_name: str, channel_id: int, items: list):
+    """Check and download missing icons for existing data."""
+    missing_count = 0
+    icons_dir = get_wiki_path(channel_name) / ICONS_DIR
+    icons_dir.mkdir(parents=True, exist_ok=True)
+
+    for item in items:
+        cid = item["content_id"]
+        icon_path = icons_dir / f"{cid}{ICON_SUFFIX}"
+        if icon_path.exists():
+            continue
+
+        # Load detail to get icon URL
+        detail = _load_detail(channel_name, cid)
+        if not detail:
+            continue
+
+        icon_url = detail.get("icon", "")
+        if not icon_url:
+            continue
+
+        missing_count += 1
+        await _download_icon(channel_name, cid, icon_url)
+
+    if missing_count > 0:
+        logger.info(f"[崩坏3] [资源更新] {channel_name} 补充下载 {missing_count} 个缺失图标")
+
+
 async def update_all():
     for name, cid in CHANNEL_MAP.items():
         try:
@@ -377,7 +410,7 @@ def get_local_index(channel_name: str) -> dict:
 
 
 def get_local_icon(channel_name: str, content_id: int) -> Path | None:
-    icon_path = get_wiki_path(channel_name) / f"{content_id}{ICON_SUFFIX}"
+    icon_path = get_wiki_path(channel_name) / ICONS_DIR / f"{content_id}{ICON_SUFFIX}"
     if icon_path.exists():
         return icon_path
     return None

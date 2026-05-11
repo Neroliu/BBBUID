@@ -28,6 +28,9 @@ CHANNEL_MAP = {
 def get_wiki_path(channel_name: str) -> Path:
     path = WIKI_PATH / channel_name
     path.mkdir(parents=True, exist_ok=True)
+    # Ensure icons subdirectory exists
+    icons_path = path / "icons"
+    icons_path.mkdir(parents=True, exist_ok=True)
     return path
 
 
