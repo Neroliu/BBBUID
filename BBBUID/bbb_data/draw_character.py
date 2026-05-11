@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw
 
 from gsuid_core.utils.fonts.fonts import core_font
 
-from ..utils.RESOURCE_PATH import WIKI_PATH
+from ..utils.RESOURCE_PATH import WIKI_PATH, STAR_ICON_CACHE_PATH
 from ..bbb_alias.name_convert import alias_to_char_name, char_name_to_content_id
 
 # Project resource paths
@@ -16,7 +16,7 @@ CHAR_RES_DIR = PROJECT_RES_DIR / "char"
 
 # Wiki icon cache
 CHAR_ICON_CACHE_DIR = WIKI_PATH / "角色" / "icons"
-STAR_ICON_CACHE_DIR = PROJECT_RES_DIR / "char" / "star_icon"
+STAR_ICON_CACHE_DIR = STAR_ICON_CACHE_PATH
 
 # Colors
 TEXT_WHITE = (240, 240, 245)
