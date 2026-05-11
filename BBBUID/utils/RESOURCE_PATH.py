@@ -12,8 +12,6 @@ AVATAR_CACHE_PATH = MAIN_PATH / "avatar_cache"
 USER_CHAR_ALIAS_PATH = ALIAS_PATH / "char_alias.json"
 CHAR_META_PATH = MAIN_PATH / "char_meta.json"
 
-# Character icon cache (separate from wiki cache)
-CHAR_ICON_CACHE_PATH = MAIN_PATH / "char_icons"
 
 CHANNEL_MAP = {
     "角色": 18,
