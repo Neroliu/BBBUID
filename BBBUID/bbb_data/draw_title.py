@@ -104,7 +104,7 @@ async def draw_title(
 
     info_start_x = 65  # Distance from left edge
     info_y = H - info_h - 60  # Distance from bottom: 60
-    info_gap = 8
+    info_gap = 5
 
     # Calculate positions: 8px gap between value bottom and title top
     value_y = info_y + 35

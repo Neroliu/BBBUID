@@ -99,18 +99,20 @@ async def draw_query_card(
         star = avatar.get("star", 0)
         level = avatar.get("level", 1)
 
-        # Get content_id from wiki cache to get icon URL
+        # Get content_id for cache key
         content_id = str(avatar.get("id", ""))
-        icon_url = None
 
-        # Try to get icon from wiki cache
-        wiki_path = WIKI_PATH / "角色" / f"{content_id}.json"
-        if wiki_path.exists():
-            try:
-                wiki_data = json.loads(wiki_path.read_text(encoding="utf-8"))
-                icon_url = wiki_data.get("icon")
-            except Exception:
-                pass
+        # Use icon_path from API, fallback to wiki cache
+        icon_url = avatar.get("icon_path")
+        if not icon_url:
+            # Try to get icon from wiki cache
+            wiki_path = WIKI_PATH / "角色" / f"{content_id}.json"
+            if wiki_path.exists():
+                try:
+                    wiki_data = json.loads(wiki_path.read_text(encoding="utf-8"))
+                    icon_url = wiki_data.get("icon")
+                except Exception:
+                    pass
 
         # Draw character card
         char_card = await draw_character_card(name, star, level, content_id, icon_url)
