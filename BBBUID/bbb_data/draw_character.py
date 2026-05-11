@@ -45,12 +45,38 @@ STAR_TO_ICON = {
 
 
 async def _get_cached_char_icon(content_id: str) -> Image.Image:
-    """Get character icon from local cache path only."""
+    """Get character icon from local cache path, try download from wiki if missing."""
     cache_path = CHAR_ICON_CACHE_DIR / f"{content_id}.png"
 
     if cache_path.exists():
         try:
             return Image.open(cache_path).convert("RGBA")
+        except Exception:
+            pass
+
+    # Not in cache, try download from wiki
+    import json
+    import httpx
+    from io import BytesIO
+
+    wiki_path = WIKI_PATH / "角色" / f"{content_id}.json"
+    icon_url = None
+    if wiki_path.exists():
+        try:
+            wiki_data = json.loads(wiki_path.read_text(encoding="utf-8"))
+            icon_url = wiki_data.get("icon")
+        except Exception:
+            pass
+
+    if icon_url:
+        try:
+            async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
+                resp = await client.get(icon_url)
+                if resp.status_code == 200:
+                    img = Image.open(BytesIO(resp.content)).convert("RGBA")
+                    cache_path.parent.mkdir(parents=True, exist_ok=True)
+                    img.save(cache_path, "PNG")
+                    return img
         except Exception:
             pass
 
