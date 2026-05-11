@@ -3,9 +3,33 @@ from gsuid_core.bot import Bot
 from gsuid_core.models import Event
 from gsuid_core.utils.database.models import GsBind
 
+from ..bbb_api import bh3_api
+
 GAME_NAME = "bbb"
 
+REGION_MAP = {
+    "android01": "安卓1区",
+    "ios01": "iOS1区",
+    "pc01": "PC1区",
+}
+
 sv_bbb_user = SV("崩坏3用户信息")
+
+
+@sv_bbb_user.on_fullmatch(("查看", "查看uid", "uid列表"), block=True)
+async def view_bindings(bot: Bot, ev: Event):
+    uid_list = await GsBind.get_uid_list_by_game(ev.user_id, ev.bot_id, GAME_NAME)
+    if not uid_list:
+        return await bot.send("[崩坏3] 你还没有绑定任何UID！")
+
+    current_uid = await GsBind.get_uid_by_game(ev.user_id, ev.bot_id, GAME_NAME)
+    lines = [f"[崩坏3] 已绑定 {len(uid_list)} 个UID"]
+    for i, uid in enumerate(uid_list, 1):
+        tag = "（当前）" if uid == current_uid else ""
+        server = await bh3_api.get_bbb_server(uid)
+        region_name = REGION_MAP.get(server, server or "未知区服")
+        lines.append(f"  {i}. {uid} {region_name}{tag}")
+    await bot.send("\n".join(lines))
 
 
 @sv_bbb_user.on_command(
