@@ -121,6 +121,19 @@ async def _get_cached_star_icon(star: int) -> Image.Image | None:
     return None
 
 
+def _add_rounded_corners(img: Image.Image, radius: int) -> Image.Image:
+    """Add rounded corners to an image."""
+    w, h = img.size
+    # Create a rounded rectangle mask
+    mask = Image.new("L", (w, h), 0)
+    draw = ImageDraw.Draw(mask)
+    draw.rounded_rectangle((0, 0, w - 1, h - 1), radius=radius, fill=255)
+    # Apply mask
+    result = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    result.paste(img, (0, 0), mask)
+    return result
+
+
 async def draw_character_card(
     char_name: str,
     star: int,
@@ -146,6 +159,10 @@ async def draw_character_card(
     # Position: shift right 1, down
     icon_x = (W - icon_width) // 2 + 1
     icon_y = 17  # 8 + 1 + 8
+
+    # Add rounded corners (radius 4)
+    char_icon = _add_rounded_corners(char_icon, 4)
+
     canvas.alpha_composite(char_icon, (icon_x, icon_y))
 
     # Draw star icon from cache - proportional scaling 0.8x
