@@ -31,12 +31,16 @@ async def manual_sign(bot: Bot, ev: Event):
 async def recheck(bot: Bot, ev: Event):
     logger.info("开始执行[崩坏3全部重签]")
     await bot.send("🚩 [崩坏3] [全部重签] 已开始执行!")
-    await bbb_sign_at_night(True)
+    await _do_sign(force=True)
     await bot.send("🚩 [崩坏3] [全部重签] 执行完成!")
 
 
 @scheduler.scheduled_job("cron", hour=SIGN_TIME[0], minute=SIGN_TIME[1])
-async def bbb_sign_at_night(force: bool = False):
+async def bbb_sign_at_night():
+    await _do_sign()
+
+
+async def _do_sign(force: bool = False):
     if not BBB_CONFIG.get_config("SchedSignin").data and not force:
         logger.info("[崩坏3] [定时签到] 定时签到已关闭")
         return
