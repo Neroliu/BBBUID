@@ -25,6 +25,14 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
+      },
+      {
+        "name": "查看UID",
+        "desc": "查看已绑定的UID列表",
+        "eg": "查看uid",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
       }
     ]
   },
@@ -107,6 +115,14 @@
         "need_ck": true,
         "need_sk": false,
         "need_admin": false
+      },
+      {
+        "name": "刷新面板",
+        "desc": "刷新角色数据缓存",
+        "eg": "刷新面板",
+        "need_ck": true,
+        "need_sk": false,
+        "need_admin": false
       }
     ]
   },
@@ -157,6 +173,35 @@
         "name": "WIKI搜索",
         "desc": "关键词搜索百科",
         "eg": "bbbwiki薪炎",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
+  "别名管理": {
+    "desc": "角色别名自定义",
+    "data": [
+      {
+        "name": "添加角色别名",
+        "desc": "为角色添加别名",
+        "eg": "添加琪亚娜别名草履虫",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "删除角色别名",
+        "desc": "删除角色的别名",
+        "eg": "删除琪亚娜别名草履虫",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "角色别名列表",
+        "desc": "查看角色的所有别名",
+        "eg": "琪亚娜别名",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
