@@ -66,8 +66,12 @@ async def sign(qid: str, bot_id: str = "onebot") -> tuple[str, bool]:
 
         is_data = is_data["data"]
         if is_data["is_sign"]:
-            getitem = checkin_rewards[int(is_data["total_sign_day"]) - 1]
-            return_data += f"舰长:{nickname} 今天已经签到过了~\n今天获得的奖励是{getitem['name']}x{getitem['cnt']}\n"
+            day_idx = int(is_data["total_sign_day"]) - 1
+            if 0 <= day_idx < len(checkin_rewards):
+                getitem = checkin_rewards[day_idx]
+                return_data += f"舰长:{nickname} 今天已经签到过了~\n今天获得的奖励是{getitem['name']}x{getitem['cnt']}\n"
+            else:
+                return_data += f"舰长:{nickname} 今天已经签到过了~\n"
             flag = True
             continue
 
@@ -98,28 +102,35 @@ async def sign(qid: str, bot_id: str = "onebot") -> tuple[str, bool]:
                     break
 
             if sign_data and "data" in sign_data and sign_data["data"]:
-                if "risk_code" in sign_data["data"]:
-                    if sign_data["data"]["risk_code"] == 5001:
-                        gt = sign_data["data"]["gt"]
-                        ch = sign_data["data"]["challenge"]
-                        vl, ch = await mys_api._pass(gt, ch, Header)
-                        if vl:
-                            Header["x-rpc-challenge"] = ch
-                            Header["x-rpc-validate"] = vl
-                            Header["x-rpc-seccode"] = f"{vl}|jordan"
-                            await asyncio.sleep(1)
-                        else:
-                            await asyncio.sleep(300 + random.randint(1, 120))
-                        continue
+                risk_code = sign_data["data"].get("risk_code", -1)
+                if risk_code == 5001:
+                    gt = sign_data["data"]["gt"]
+                    ch = sign_data["data"]["challenge"]
+                    vl, ch = await mys_api._pass(gt, ch, Header)
+                    if vl:
+                        Header["x-rpc-challenge"] = ch
+                        Header["x-rpc-validate"] = vl
+                        Header["x-rpc-seccode"] = f"{vl}|jordan"
+                        await asyncio.sleep(1)
                     else:
-                        getitem = checkin_rewards[int(is_data["total_sign_day"]) - 1 + 1]
+                        await asyncio.sleep(300 + random.randint(1, 120))
+                    continue
+                elif risk_code == 0:
+                    day_idx = int(is_data["total_sign_day"])
+                    if 0 <= day_idx < len(checkin_rewards):
+                        getitem = checkin_rewards[day_idx]
                         return_data += f"舰长:{nickname} 签到成功~\n今天获得的奖励是{getitem['name']}x{getitem['cnt']}\n"
-                        flag = True
-                        signed = True
-                        break
-                else:
-                    return_data += f"舰长:{nickname} 签到失败~出现验证码\n"
+                    else:
+                        return_data += f"舰长:{nickname} 签到成功~\n"
+                    flag = True
+                    signed = True
                     break
+                else:
+                    return_data += f"舰长:{nickname} 签到失败~risk_code:{risk_code}\n"
+                    break
+            else:
+                return_data += f"舰长:{nickname} 签到失败~响应异常\n"
+                break
         if not signed and f"舰长:{nickname}" not in return_data:
             return_data += f"舰长:{nickname} 签到失败~\n"
 

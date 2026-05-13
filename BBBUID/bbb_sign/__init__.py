@@ -37,7 +37,10 @@ async def recheck(bot: Bot, ev: Event):
 
 @scheduler.scheduled_job("cron", hour=SIGN_TIME[0], minute=SIGN_TIME[1])
 async def bbb_sign_at_night():
-    await _do_sign()
+    try:
+        await _do_sign()
+    except Exception as e:
+        logger.error(f"[崩坏3] [定时签到] 定时任务异常: {e}")
 
 
 async def _do_sign(force: bool = False):
