@@ -54,8 +54,8 @@ async def _do_sign(force: bool = False):
     success_cnt = 0
     fail_cnt = 0
     for data in datas:
-        qid = str(data.get("user_id", ""))
-        bot_id = str(data.get("bot_id", "onebot"))
+        qid = str(data.user_id or "")
+        bot_id = str(data.bot_id or "onebot")
         if not qid:
             continue
         try:
@@ -64,9 +64,8 @@ async def _do_sign(force: bool = False):
                 success_cnt += 1
             else:
                 fail_cnt += 1
-            event = data.get("event")
-            if event and result:
-                await event.send(result)
+            if result:
+                await data.send(result)
         except Exception as e:
             logger.error(f"[崩坏3] [定时签到] {qid} 签到异常: {e}")
             fail_cnt += 1
