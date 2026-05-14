@@ -23,4 +23,9 @@ CONFIG_DEFAULT: Dict[str, GSC] = {
         "开启后每晚将按设定时间自动签到",
         True,
     ),
+    "PrivateSignReport": GsBoolConfig(
+        "私聊签到推送",
+        "开启后签到结果将私聊推送给对应用户",
+        False,
+    ),
 }

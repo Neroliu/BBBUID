@@ -34,6 +34,106 @@ async def get_account_list(cookie) -> list:
     return data
 
 
+async def sign_by_uid(uid: str) -> str:
+    """通过uid签到，供muti_task调用，返回结果文本。"""
+    cookie = await GsUser.get_user_cookie_by_uid(uid, "bh3_cn")
+    if not cookie:
+        return "签到失败~未找到Cookie"
+
+    account_data = await get_account_list(cookie)
+    if isinstance(account_data, int):
+        return "获取账号列表失败！"
+
+    account_list = []
+    for i in account_data["data"]["list"]:
+        account_list.append([i["nickname"], i["game_uid"], i["region"]])
+    if not account_list:
+        return "未获取到账号信息"
+
+    checkin_rewards = await get_checkin_rewards()
+    if isinstance(checkin_rewards, int):
+        return "获取签到奖励列表失败"
+    checkin_rewards = checkin_rewards["data"]["awards"]
+
+    return_data = ""
+    for nickname, game_uid, region in account_list:
+        if game_uid != uid:
+            continue
+        is_data = await is_sign(region=region, uid=game_uid, cookie=cookie)
+        if isinstance(is_data, int):
+            return_data += f"舰长:{nickname} 获取签到信息失败！\n"
+            continue
+
+        is_data = is_data["data"]
+        if is_data["is_sign"]:
+            day_idx = int(is_data["total_sign_day"]) - 1
+            if 0 <= day_idx < len(checkin_rewards):
+                getitem = checkin_rewards[day_idx]
+                return_data += f"舰长:{nickname} 今天已经签到过了~\n今天获得的奖励是{getitem['name']}x{getitem['cnt']}\n"
+            else:
+                return_data += f"舰长:{nickname} 今天已经签到过了~\n"
+            continue
+
+        Header = {}
+        fp = await GsUser.get_user_attr_by_uid(uid, "fp", "bh3_cn")
+        if fp:
+            Header["x-rpc-device_fp"] = fp
+        device_id = await GsUser.get_user_attr_by_uid(uid, "device_id", "bh3_cn")
+        if device_id:
+            Header["x-rpc-device_id"] = device_id
+
+        signed = False
+        for index in range(4):
+            sign_data = await sign_req(
+                uid=game_uid,
+                server_id=region,
+                cookie=cookie,
+                Header=Header,
+            )
+            if isinstance(sign_data, int):
+                if sign_data == -500001:
+                    delay = 60 + random.randint(1, 30)
+                    await asyncio.sleep(delay)
+                    continue
+                else:
+                    return_data += f"舰长:{nickname} 签到失败~错误码:{sign_data}\n"
+                    break
+
+            if sign_data and "data" in sign_data and sign_data["data"]:
+                risk_code = sign_data["data"].get("risk_code", -1)
+                if risk_code == 5001:
+                    gt = sign_data["data"]["gt"]
+                    ch = sign_data["data"]["challenge"]
+                    vl, ch = await mys_api._pass(gt, ch, Header)
+                    if vl:
+                        Header["x-rpc-challenge"] = ch
+                        Header["x-rpc-validate"] = vl
+                        Header["x-rpc-seccode"] = f"{vl}|jordan"
+                        await asyncio.sleep(1)
+                    else:
+                        await asyncio.sleep(300 + random.randint(1, 120))
+                    continue
+                elif risk_code == 0:
+                    day_idx = int(is_data["total_sign_day"])
+                    if 0 <= day_idx < len(checkin_rewards):
+                        getitem = checkin_rewards[day_idx]
+                        return_data += f"舰长:{nickname} 签到成功~\n今天获得的奖励是{getitem['name']}x{getitem['cnt']}\n"
+                    else:
+                        return_data += f"舰长:{nickname} 签到成功~\n"
+                    signed = True
+                    break
+                else:
+                    return_data += f"舰长:{nickname} 签到失败~risk_code:{risk_code}\n"
+                    break
+            else:
+                return_data += f"舰长:{nickname} 签到失败~响应异常\n"
+                break
+        if not signed and f"舰长:{nickname}" not in return_data:
+            return_data += f"舰长:{nickname} 签到失败~\n"
+
+    return return_data if return_data else "签到失败~"
+
+
 async def sign(qid: str, bot_id: str = "onebot") -> tuple[str, bool]:
     """签到入口，接收QQ用户ID和bot_id，返回(结果文本, 是否成功)。"""
     return_data = ""

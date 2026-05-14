@@ -13,6 +13,7 @@ sv_bbb_sign = SV("崩坏3签到")
 sv_bbb_sign_config = SV("崩坏3签到配置", pm=1)
 
 SIGN_TIME = BBB_CONFIG.get_config("SignTime").data
+IS_REPORT = BBB_CONFIG.get_config("PrivateSignReport").data
 
 
 @sv_bbb_sign.on_fullmatch("签到")
@@ -43,6 +44,10 @@ async def bbb_sign_at_night():
         logger.error(f"[崩坏3] [定时签到] 定时任务异常: {e}")
 
 
+async def sign_in_task(uid: str):
+    return await until.sign_by_uid(uid)
+
+
 async def _do_sign(force: bool = False):
     if not BBB_CONFIG.get_config("SchedSignin").data and not force:
         logger.info("[崩坏3] [定时签到] 定时签到已关闭")
@@ -54,23 +59,20 @@ async def _do_sign(force: bool = False):
         logger.info("[崩坏3] [定时签到] 无订阅用户")
         return
 
-    success_cnt = 0
-    fail_cnt = 0
-    for data in datas:
-        qid = str(data.user_id or "")
-        bot_id = str(data.bot_id or "onebot")
-        if not qid:
-            continue
-        try:
-            result, flag = await until.sign(qid, bot_id)
-            if flag:
-                success_cnt += 1
-            else:
-                fail_cnt += 1
-            if result:
-                await data.send(result)
-        except Exception as e:
-            logger.error(f"[崩坏3] [定时签到] {qid} 签到异常: {e}")
-            fail_cnt += 1
+    priv_result, group_result = await gs_subscribe.muti_task(datas, sign_in_task, "uid")
 
-    logger.info(f"[崩坏3] [定时签到] 完成: 成功{success_cnt} 失败{fail_cnt}")
+    if not IS_REPORT:
+        priv_result = {}
+
+    for _, data in priv_result.items():
+        im = "\n".join(data["im"])
+        event = data["event"]
+        await event.send(im)
+
+    for _, data in group_result.items():
+        im = "✅ 崩坏3今日自动签到已完成！\n"
+        im += f"📝 本群共签到成功{data['success']}人，共签到失败{data['fail']}人。"
+        event = data["event"]
+        await event.send(im)
+
+    logger.info("[崩坏3] [定时签到] 群聊推送完成")
