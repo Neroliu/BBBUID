@@ -33,6 +33,14 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
+      },
+      {
+        "name": "更新记录",
+        "desc": "查看插件更新记录",
+        "eg": "更新记录",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
       }
     ]
   },
