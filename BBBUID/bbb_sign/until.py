@@ -36,7 +36,7 @@ async def get_account_list(cookie) -> list:
 
 async def sign_by_uid(uid: str) -> str:
     """通过uid签到，供muti_task调用，返回结果文本。"""
-    cookie = await GsUser.get_user_cookie_by_uid(uid, "bh3_cn")
+    cookie = await GsUser.get_user_cookie_by_uid(uid, "bbb")
     if not cookie:
         return "签到失败~未找到Cookie"
 
@@ -75,10 +75,10 @@ async def sign_by_uid(uid: str) -> str:
             continue
 
         Header = {}
-        fp = await GsUser.get_user_attr_by_uid(uid, "fp", "bh3_cn")
+        fp = await GsUser.get_user_attr_by_uid(uid, "fp", "bbb")
         if fp:
             Header["x-rpc-device_fp"] = fp
-        device_id = await GsUser.get_user_attr_by_uid(uid, "device_id", "bh3_cn")
+        device_id = await GsUser.get_user_attr_by_uid(uid, "device_id", "bbb")
         if device_id:
             Header["x-rpc-device_id"] = device_id
 
