@@ -1,3 +1,5 @@
+import traceback
+
 from gsuid_core.sv import SV
 from gsuid_core.aps import scheduler
 from gsuid_core.bot import Bot
@@ -41,7 +43,7 @@ async def bbb_sign_at_night():
     try:
         await _do_sign()
     except Exception as e:
-        logger.error(f"[崩坏3] [定时签到] 定时任务异常: {e}")
+        logger.error(f"[崩坏3] [定时签到] 定时任务异常: {e}\n{traceback.format_exc()}")
 
 
 async def sign_in_task(uid: str):
@@ -65,7 +67,10 @@ async def _do_sign(force: bool = False):
         priv_result = {}
 
     for _, data in priv_result.items():
-        im = "\n".join(data["im"])
+        msgs = data.get("im", [])
+        if not msgs:
+            continue
+        im = "\n".join(msgs)
         event = data["event"]
         await event.send(im)
 

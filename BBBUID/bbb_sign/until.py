@@ -44,16 +44,19 @@ async def sign_by_uid(uid: str) -> str:
     if isinstance(account_data, int):
         return "获取账号列表失败！"
 
+    items = (account_data.get("data") or {}).get("list", [])
+    if not items:
+        return "签到失败~未获取到账号信息"
     account_list = []
-    for i in account_data["data"]["list"]:
-        account_list.append([i["nickname"], i["game_uid"], i["region"]])
-    if not account_list:
-        return "未获取到账号信息"
+    for i in items:
+        account_list.append([i.get("nickname", "?"), i.get("game_uid", ""), i.get("region", "")])
 
     checkin_rewards = await get_checkin_rewards()
     if isinstance(checkin_rewards, int):
-        return "获取签到奖励列表失败"
-    checkin_rewards = checkin_rewards["data"]["awards"]
+        return "签到失败~获取签到奖励列表失败"
+    checkin_rewards = (checkin_rewards.get("data") or {}).get("awards", [])
+    if not checkin_rewards:
+        return "签到失败~签到奖励列表为空"
 
     return_data = ""
     for nickname, game_uid, region in account_list:
@@ -64,9 +67,12 @@ async def sign_by_uid(uid: str) -> str:
             return_data += f"舰长:{nickname} 获取签到信息失败！\n"
             continue
 
-        is_data = is_data["data"]
-        if is_data["is_sign"]:
-            day_idx = int(is_data["total_sign_day"]) - 1
+        is_data = is_data.get("data")
+        if not is_data:
+            return_data += f"舰长:{nickname} 获取签到信息失败~\n"
+            continue
+        if is_data.get("is_sign"):
+            day_idx = int(is_data.get("total_sign_day", 0)) - 1
             if 0 <= day_idx < len(checkin_rewards):
                 getitem = checkin_rewards[day_idx]
                 return_data += f"舰长:{nickname} 今天已经签到过了~\n今天获得的奖励是{getitem['name']}x{getitem['cnt']}\n"
@@ -114,7 +120,7 @@ async def sign_by_uid(uid: str) -> str:
                         await asyncio.sleep(300 + random.randint(1, 120))
                     continue
                 elif risk_code == 0:
-                    day_idx = int(is_data["total_sign_day"])
+                    day_idx = int(is_data.get("total_sign_day", 0))
                     if 0 <= day_idx < len(checkin_rewards):
                         getitem = checkin_rewards[day_idx]
                         return_data += f"舰长:{nickname} 签到成功~\n今天获得的奖励是{getitem['name']}x{getitem['cnt']}\n"
@@ -147,16 +153,19 @@ async def sign(qid: str, bot_id: str = "onebot") -> tuple[str, bool]:
     if isinstance(account_data, int):
         return return_data + "获取账号列表失败！", flag
 
+    items = (account_data.get("data") or {}).get("list", [])
+    if not items:
+        return return_data + "签到失败~未获取到账号信息", flag
     account_list = []
-    for i in account_data["data"]["list"]:
-        account_list.append([i["nickname"], i["game_uid"], i["region"]])
-    if not account_list:
-        return return_data + "未获取到账号信息", flag
+    for i in items:
+        account_list.append([i.get("nickname", "?"), i.get("game_uid", ""), i.get("region", "")])
 
     checkin_rewards = await get_checkin_rewards()
     if isinstance(checkin_rewards, int):
-        return return_data + "获取签到奖励列表失败", flag
-    checkin_rewards = checkin_rewards["data"]["awards"]
+        return return_data + "签到失败~获取签到奖励列表失败", flag
+    checkin_rewards = (checkin_rewards.get("data") or {}).get("awards", [])
+    if not checkin_rewards:
+        return return_data + "签到失败~签到奖励列表为空", flag
 
     for nickname, game_uid, region in account_list:
         is_data = await is_sign(region=region, uid=game_uid, cookie=cookie)
@@ -164,9 +173,12 @@ async def sign(qid: str, bot_id: str = "onebot") -> tuple[str, bool]:
             return_data += f"舰长:{nickname} 获取签到信息失败！\n"
             continue
 
-        is_data = is_data["data"]
-        if is_data["is_sign"]:
-            day_idx = int(is_data["total_sign_day"]) - 1
+        is_data = is_data.get("data")
+        if not is_data:
+            return_data += f"舰长:{nickname} 获取签到信息失败~\n"
+            continue
+        if is_data.get("is_sign"):
+            day_idx = int(is_data.get("total_sign_day", 0)) - 1
             if 0 <= day_idx < len(checkin_rewards):
                 getitem = checkin_rewards[day_idx]
                 return_data += f"舰长:{nickname} 今天已经签到过了~\n今天获得的奖励是{getitem['name']}x{getitem['cnt']}\n"
@@ -177,10 +189,10 @@ async def sign(qid: str, bot_id: str = "onebot") -> tuple[str, bool]:
 
         # 执行签到
         Header = {}
-        fp = await GsUser.get_user_attr_by_user_id(qid, "fp")
+        fp = await GsUser.get_user_attr(qid, bot_id, "fp")
         if fp:
             Header["x-rpc-device_fp"] = fp
-        device_id = await GsUser.get_user_attr_by_user_id(qid, "device_id")
+        device_id = await GsUser.get_user_attr(qid, bot_id, "device_id")
         if device_id:
             Header["x-rpc-device_id"] = device_id
 
@@ -216,7 +228,7 @@ async def sign(qid: str, bot_id: str = "onebot") -> tuple[str, bool]:
                         await asyncio.sleep(300 + random.randint(1, 120))
                     continue
                 elif risk_code == 0:
-                    day_idx = int(is_data["total_sign_day"])
+                    day_idx = int(is_data.get("total_sign_day", 0))
                     if 0 <= day_idx < len(checkin_rewards):
                         getitem = checkin_rewards[day_idx]
                         return_data += f"舰长:{nickname} 签到成功~\n今天获得的奖励是{getitem['name']}x{getitem['cnt']}\n"
