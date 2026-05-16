@@ -57,7 +57,7 @@ async def sign_by_uid(uid: str) -> str:
 
     return_data = ""
     for nickname, game_uid, region in account_list:
-        if game_uid != uid:
+        if str(game_uid) != str(uid):
             continue
         is_data = await is_sign(region=region, uid=game_uid, cookie=cookie)
         if isinstance(is_data, int):
