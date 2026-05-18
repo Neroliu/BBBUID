@@ -308,18 +308,14 @@ async def draw_note_img(
     # --- Background ---
     wallpaper = await _get_random_wallpaper()
     if wallpaper:
-        # 右侧纯色暗底（去除毛玻璃）
-        right_bg = Image.new("RGBA", (W, H), (15, 15, 25, 255))
-        canvas.alpha_composite(right_bg, (0, 0))
+        # 壁纸铺满全画布（原图，不模糊）
+        bg = _fit_centered(wallpaper, (W, H))
+        canvas.alpha_composite(bg, (0, 0))
 
         # 左侧角色立绘（原图，不模糊，占左半部分）
         char_img = _fit_centered(wallpaper, (600, H))
         char_img = char_img.resize((600, H), Image.Resampling.LANCZOS)
         canvas.alpha_composite(char_img, (-50, 0))
-    else:
-        # 无壁纸时纯色背景
-        solid_bg = Image.new("RGBA", (W, H), (15, 15, 25, 255))
-        canvas.alpha_composite(solid_bg, (0, 0))
 
     # --- FG Overlays ---
     fg1 = _load_res("FG01.png")
