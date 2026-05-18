@@ -61,23 +61,56 @@ async def _do_sign(force: bool = False):
         logger.info("[崩坏3] [定时签到] 无订阅用户")
         return
 
+    logger.info(f"[崩坏3] [定时签到] 共 {len(datas)} 个订阅用户")
+    for i, d in enumerate(datas):
+        logger.debug(
+            f"[崩坏3] [定时签到] 订阅[{i}] uid={d.uid} user_type={d.user_type} "
+            f"user_id={d.user_id} group_id={d.group_id} WS_BOT_ID={d.WS_BOT_ID}"
+        )
+
     priv_result, group_result = await gs_subscribe.muti_task(datas, sign_in_task, "uid")
 
+    logger.info(
+        f"[崩坏3] [定时签到] muti_task 完成: "
+        f"priv_result={len(priv_result)} group_result={len(group_result)}"
+    )
+
     if not IS_REPORT:
+        logger.info("[崩坏3] [定时签到] PrivateSignReport 已关闭，跳过私聊推送")
         priv_result = {}
 
-    for _, data in priv_result.items():
+    for sid, data in priv_result.items():
         msgs = data.get("im", [])
         if not msgs:
             continue
         im = "\n".join(msgs)
         event = data["event"]
-        await event.send(im)
+        try:
+            ret = await event.send(im)
+            if ret == -1:
+                logger.error(f"[崩坏3] [定时签到] 私聊通知发送失败 sid={sid} user_id={event.user_id}")
+            else:
+                logger.info(f"[崩坏3] [定时签到] 私聊通知已发送 sid={sid} user_id={event.user_id}")
+        except Exception as e:
+            logger.error(f"[崩坏3] [定时签到] 私聊通知异常 sid={sid}: {e}")
 
-    for _, data in group_result.items():
+    for sid, data in group_result.items():
         im = "✅ 崩坏3今日自动签到已完成！\n"
         im += f"📝 本群共签到成功{data['success']}人，共签到失败{data['fail']}人。"
         event = data["event"]
-        await event.send(im)
+        try:
+            ret = await event.send(im)
+            if ret == -1:
+                logger.error(
+                    f"[崩坏3] [定时签到] 群聊通知发送失败 sid={sid} "
+                    f"group_id={event.group_id} WS_BOT_ID={event.WS_BOT_ID}"
+                )
+            else:
+                logger.info(
+                    f"[崩坏3] [定时签到] 群聊通知已发送 sid={sid} "
+                    f"group_id={event.group_id} success={data['success']} fail={data['fail']}"
+                )
+        except Exception as e:
+            logger.error(f"[崩坏3] [定时签到] 群聊通知异常 sid={sid}: {e}")
 
     logger.info("[崩坏3] [定时签到] 群聊推送完成")

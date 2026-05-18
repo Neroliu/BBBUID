@@ -26,6 +26,6 @@ CONFIG_DEFAULT: Dict[str, GSC] = {
     "PrivateSignReport": GsBoolConfig(
         "私聊签到推送",
         "开启后签到结果将私聊推送给对应用户",
-        False,
+        True,
     ),
 }
