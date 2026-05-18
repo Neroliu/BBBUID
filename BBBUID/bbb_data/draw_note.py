@@ -6,7 +6,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Dict
 
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFont
 
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
@@ -231,6 +231,7 @@ def _draw_player_info(
     level: int,
     active_days: int,
     rating: str,
+    avatar_img: Image.Image | None = None,
 ) -> None:
     draw = ImageDraw.Draw(canvas)
 
@@ -246,12 +247,11 @@ def _draw_player_info(
 
     # 头像 (左侧，参考 draw_title 的 179 大小)
     avatar_size = 120
-    try:
-        avatar = get_cached_avatar(ev, ev.user_id)
-        avatar_img = draw_decorated_avatar(avatar, avatar_size)
-        canvas.alpha_composite(avatar_img, (bar_x + 30, y + (bar_h - avatar_size) // 2))
-    except Exception:
-        pass
+    if avatar_img is not None:
+        try:
+            canvas.alpha_composite(avatar_img, (bar_x + 30, y + (bar_h - avatar_size) // 2))
+        except Exception:
+            pass
 
     text_x = bar_x + 30 + avatar_size + 24
 
@@ -305,20 +305,21 @@ async def draw_note_img(
     canvas = Image.new("RGBA", (W, H), (20, 20, 30, 255))
     draw = ImageDraw.Draw(canvas)
 
-    # --- Background: blurred wallpaper ---
+    # --- Background ---
     wallpaper = await _get_random_wallpaper()
     if wallpaper:
-        # 模糊背景
-        bg = _fit_centered(wallpaper, (W, H))
-        bg = bg.filter(ImageFilter.GaussianBlur(radius=15))
-        dark_overlay = Image.new("RGBA", (W, H), (15, 15, 25, 200))
-        bg = Image.alpha_composite(bg, dark_overlay)
-        canvas.alpha_composite(bg, (0, 0))
+        # 右侧纯色暗底（去除毛玻璃）
+        right_bg = Image.new("RGBA", (W, H), (15, 15, 25, 255))
+        canvas.alpha_composite(right_bg, (0, 0))
 
         # 左侧角色立绘（原图，不模糊，占左半部分）
         char_img = _fit_centered(wallpaper, (600, H))
         char_img = char_img.resize((600, H), Image.Resampling.LANCZOS)
         canvas.alpha_composite(char_img, (-50, 0))
+    else:
+        # 无壁纸时纯色背景
+        solid_bg = Image.new("RGBA", (W, H), (15, 15, 25, 255))
+        canvas.alpha_composite(solid_bg, (0, 0))
 
     # --- FG Overlays ---
     fg1 = _load_res("FG01.png")
@@ -418,10 +419,23 @@ async def draw_note_img(
     rating = pref.get("comprehensive_rating", "C")
     active_days = stats.get("active_day_number", "?")
 
+    # 头像（参考 bbb查询 在 async 中 await 获取）
+    avatar_img = None
+    try:
+        avatar = await get_cached_avatar(ev, ev.user_id)
+        avatar_img = draw_decorated_avatar(avatar, 120)
+    except Exception:
+        pass
+
     info_bar = _load_res("player_info_bar_long.png")
     bar_h = info_bar.height if info_bar else 192
     info_y = H - fh - 15 - bar_h
-    _draw_player_info(canvas, info_y, ev, nickname, uid, int(level) if str(level).isdigit() else 0, int(active_days) if str(active_days).isdigit() else 0, rating)
+    _draw_player_info(
+        canvas, info_y, ev, nickname, uid,
+        int(level) if str(level).isdigit() else 0,
+        int(active_days) if str(active_days).isdigit() else 0,
+        rating, avatar_img,
+    )
 
     # --- Footer ---
     if footer_img:
