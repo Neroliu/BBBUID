@@ -240,55 +240,66 @@ def _draw_player_info(
 ) -> None:
     draw = ImageDraw.Draw(canvas)
 
-    # 绘制背景条 (圆角矩形，深色半透明)
-    bar_h = 140
-    bar_pad = 50
-    draw.rounded_rectangle(
-        (bar_pad, y, W - bar_pad, y + bar_h),
-        radius=16,
-        fill=(35, 30, 50, 200),
-    )
+    # 使用 player_info_bar_long.png 作为背景
+    info_bar = _load_res("player_info_bar_long.png")
+    if info_bar:
+        bar_w, bar_h = info_bar.size
+        bar_x = (W - bar_w) // 2
+        canvas.paste(info_bar, (bar_x, y), info_bar)
+    else:
+        bar_x = 50
+        bar_h = 192
 
-    # 头像 (左侧，圆形)
-    avatar_size = 100
+    # 头像 (左侧，参考 draw_title 的 179 大小)
+    avatar_size = 120
     try:
         avatar = get_cached_avatar(ev, ev.user_id)
         avatar_img = draw_decorated_avatar(avatar, avatar_size)
-        canvas.alpha_composite(avatar_img, (bar_pad + 20, y + (bar_h - avatar_size) // 2))
+        canvas.alpha_composite(avatar_img, (bar_x + 30, y + (bar_h - avatar_size) // 2))
     except Exception:
         pass
 
-    text_x = bar_pad + 20 + avatar_size + 24
+    text_x = bar_x + 30 + avatar_size + 24
 
     # 昵称
-    draw.text((text_x, y + 28), nickname, font=_font(30), fill=TEXT_WHITE)
+    draw.text((text_x, y + 36), nickname, font=_font(34), fill=TEXT_WHITE)
 
     # UID
-    draw.text((text_x, y + 72), f"UID {uid}", font=_font(18), fill=TEXT_DIM)
+    draw.text((text_x, y + 88), f"UID {uid}", font=_font(20), fill=TEXT_DIM)
 
-    # 等级徽章
-    level_text = f"Lv.{level}"
-    lw = int(draw.textlength(level_text, font=_font(16)))
-    badge_x = text_x + int(draw.textlength(f"UID {uid}", font=_font(18))) + 16
-    badge_y = y + 68
-    draw.rounded_rectangle(
-        (badge_x, badge_y, badge_x + lw + 16, badge_y + 26),
-        radius=4,
-        fill=ACCENT_BLUE,
-    )
-    draw.text((badge_x + 8 + lw // 2, badge_y + 13), level_text, font=_font(16), fill=TEXT_WHITE, anchor="mm")
+    # 等级徽章（参考 draw_title.py 使用 level_bg.png）
+    level_bg_path = Path(__file__).parent / "res" / "title" / "level_bg.png"
+    if level_bg_path.exists():
+        level_bg = Image.open(level_bg_path).convert("RGBA")
+        orig_w, orig_h = level_bg.size
+        scale = 110 / orig_w
+        new_w, new_h = int(orig_w * scale), int(orig_h * scale)
+        level_bg = level_bg.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        lv_x = text_x + int(draw.textlength(f"UID {uid}", font=_font(20))) + 16
+        lv_y = y + 80
+        canvas.alpha_composite(level_bg, (lv_x, lv_y))
+        draw.text((lv_x + new_w // 2, lv_y + new_h // 2), f"Lv.{level}", font=_font(20), fill=TEXT_WHITE, anchor="mm")
+    else:
+        # fallback
+        level_text = f"Lv.{level}"
+        lw = int(draw.textlength(level_text, font=_font(20)))
+        lv_x = text_x + int(draw.textlength(f"UID {uid}", font=_font(20))) + 16
+        lv_y = y + 82
+        draw.rounded_rectangle((lv_x, lv_y, lv_x + lw + 16, lv_y + 28), radius=4, fill=ACCENT_BLUE)
+        draw.text((lv_x + 8 + lw // 2, lv_y + 14), level_text, font=_font(20), fill=TEXT_WHITE, anchor="mm")
 
     # 累计登舰 (右侧偏左)
-    days_x = W - bar_pad - 280
-    draw.text((days_x, y + 32), str(active_days), font=_font(40), fill=TEXT_WHITE, anchor="mm")
-    draw.text((days_x, y + 78), "累计登舰", font=_font(16), fill=TEXT_DIM, anchor="mm")
+    days_x = bar_x + bar_w - 280 if info_bar else W - 280
+    draw.text((days_x, y + 42), str(active_days), font=_font(42), fill=TEXT_WHITE, anchor="mm")
+    draw.text((days_x, y + 96), "累计登舰", font=_font(18), fill=TEXT_DIM, anchor="mm")
 
-    # 评级图标 (最右侧)
+    # 评级图标 (最右侧，参考 draw_title.py)
     icon_name = EVAL_RATING_TO_ICON.get(rating.upper(), "SealedDanIcon01.png")
     icon_path = Path(__file__).parent / "res" / "eval_icon" / icon_name
     if icon_path.exists():
-        eval_icon = Image.open(icon_path).convert("RGBA").resize((90, 90), Image.Resampling.LANCZOS)
-        canvas.alpha_composite(eval_icon, (W - bar_pad - 130, y + 25))
+        eval_icon = Image.open(icon_path).convert("RGBA").resize((110, 110), Image.Resampling.LANCZOS)
+        icon_x = bar_x + bar_w - 160 if info_bar else W - 210
+        canvas.alpha_composite(eval_icon, (icon_x, y + 40))
 
 
 async def draw_note_img(
