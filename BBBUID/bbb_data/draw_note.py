@@ -332,12 +332,6 @@ async def draw_note_img(
         bg = _fit_centered(wallpaper, (W, H))
         canvas.alpha_composite(bg, (0, 0))
 
-        # 左侧角色立绘（从本地 wiki 缓存随机选一张）
-        char_img = _get_random_portrait()
-        if char_img:
-            char_img = _fit_centered(char_img, (600, H))
-            canvas.alpha_composite(char_img, (-50, 0))
-
     # --- FG Overlays ---
     fg1 = _load_res("FG01.png")
     if fg1:
