@@ -370,25 +370,6 @@ async def draw_note_img(
     # --- Activity Bars ---
     activities = []
 
-    # 超弦空间
-    ultra = note_data.get("ultra_endless", {})
-    greedy = note_data.get("greedy_endless", {})
-    endless = ultra if ultra else greedy
-    if endless:
-        score = endless.get("challenge_score", "?")
-        is_open = endless.get("is_open", False)
-        remain = _fmt_schedule_end(endless.get("schedule_end", "0")) if is_open else ""
-        activities.append(("超弦空间", str(score), f"剩余时间 {remain}" if remain else "", is_open, "bar02.png"))
-
-    # 记忆战场
-    bf = note_data.get("battle_field", {})
-    if bf:
-        cur_r = bf.get("cur_reward", "?")
-        max_r = bf.get("max_reward", "?")
-        is_open = bf.get("is_open", False)
-        remain = _fmt_schedule_end(bf.get("schedule_end", "0")) if is_open else ""
-        activities.append(("记忆战场", f"{cur_r} / {max_r}", f"剩余时间 {remain}" if remain else "", is_open, "bar03.png"))
-
     # 往世乐土
     gw = note_data.get("god_war", {})
     if gw:
