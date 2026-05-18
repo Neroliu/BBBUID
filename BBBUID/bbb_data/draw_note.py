@@ -136,6 +136,26 @@ async def _get_random_wallpaper() -> Image.Image | None:
     return None
 
 
+def _get_random_portrait() -> Image.Image | None:
+    """从本地 wiki 立绘缓存中随机选一张角色立绘。"""
+    portrait_path = WIKI_PATH / "立绘" / PORTRAIT_ICONS_DIR
+    if not portrait_path.exists():
+        return None
+    all_files: list[Path] = []
+    for cid_dir in portrait_path.iterdir():
+        if not cid_dir.is_dir():
+            continue
+        for f in cid_dir.iterdir():
+            if f.is_file() and f.suffix == ".png":
+                all_files.append(f)
+    if not all_files:
+        return None
+    try:
+        return Image.open(random.choice(all_files)).convert("RGBA")
+    except Exception:
+        return None
+
+
 def _load_res(name: str) -> Image.Image | None:
     path = RES_DIR / name
     if path.exists():
@@ -312,9 +332,8 @@ async def draw_note_img(
         bg = _fit_centered(wallpaper, (W, H))
         canvas.alpha_composite(bg, (0, 0))
 
-        # 左侧角色立绘（从 API head_background 下载，与壁纸独立）
-        portrait_url = index_data.get("head_background")
-        char_img = await _download_image(portrait_url)
+        # 左侧角色立绘（从本地 wiki 缓存随机选一张）
+        char_img = _get_random_portrait()
         if char_img:
             char_img = _fit_centered(char_img, (600, H))
             canvas.alpha_composite(char_img, (-50, 0))
