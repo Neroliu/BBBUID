@@ -13,7 +13,7 @@ from gsuid_core.models import Event
 from gsuid_core.utils.fonts.fonts import core_font
 from gsuid_core.utils.image.convert import convert_img
 
-from ..utils.RESOURCE_PATH import MAIN_PATH, WIKI_PATH
+from ..utils.RESOURCE_PATH import WIKI_PATH
 from .avatar_utils import get_cached_avatar, draw_decorated_avatar
 from .draw_title import EVAL_RATING_TO_ICON
 
@@ -86,36 +86,19 @@ def _fit_centered(img: Image.Image, output_size: tuple[int, int]) -> Image.Image
     return resized.crop((left, top, left + tw, top + th))
 
 
-_IMAGE_CACHE_DIR = MAIN_PATH / "image_cache"
-_IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-
-
 async def _download_image(url: str) -> Image.Image | None:
     if not url:
         return None
     try:
-        import hashlib
         import httpx
         from io import BytesIO
-
-        # 本地缓存查找
-        url_hash = hashlib.md5(url.encode("utf-8")).hexdigest()
-        cache_file = _IMAGE_CACHE_DIR / f"{url_hash}.png"
-        if cache_file.exists():
-            return Image.open(cache_file).convert("RGBA")
-
         async with httpx.AsyncClient(
             follow_redirects=True,
             headers={"Accept-Encoding": "identity"},
         ) as client:
             resp = await client.get(url, timeout=15)
             if resp.status_code == 200:
-                img = Image.open(BytesIO(resp.content)).convert("RGBA")
-                try:
-                    img.save(cache_file, "PNG")
-                except Exception:
-                    pass
-                return img
+                return Image.open(BytesIO(resp.content)).convert("RGBA")
     except Exception as e:
         logger.warning(f"[崩坏3] [便笺渲染] 下载图片失败: {e}")
     return None
