@@ -15,6 +15,7 @@ from gsuid_core.utils.image.convert import convert_img
 
 from ..utils.RESOURCE_PATH import WIKI_PATH
 from .avatar_utils import get_cached_avatar, draw_decorated_avatar
+from .draw_title import EVAL_RATING_TO_ICON
 
 PORTRAIT_ICONS_DIR = "portrait_icons"
 WALLPAPER_ICONS_DIR = "wallpaper_icons"
@@ -238,36 +239,56 @@ def _draw_player_info(
     rating: str,
 ) -> None:
     draw = ImageDraw.Draw(canvas)
-    info_bar = _load_res("参考条.png")
-    if info_bar:
-        iw, ih = info_bar.size
-        ix = (W - iw) // 2
-        canvas.paste(info_bar, (ix, y), info_bar)
 
-    # 头像 (左侧)
+    # 绘制背景条 (圆角矩形，深色半透明)
+    bar_h = 140
+    bar_pad = 50
+    draw.rounded_rectangle(
+        (bar_pad, y, W - bar_pad, y + bar_h),
+        radius=16,
+        fill=(35, 30, 50, 200),
+    )
+
+    # 头像 (左侧，圆形)
+    avatar_size = 100
     try:
         avatar = get_cached_avatar(ev, ev.user_id)
-        avatar_img = draw_decorated_avatar(avatar, 120)
-        canvas.alpha_composite(avatar_img, (80, y + 30))
+        avatar_img = draw_decorated_avatar(avatar, avatar_size)
+        canvas.alpha_composite(avatar_img, (bar_pad + 20, y + (bar_h - avatar_size) // 2))
     except Exception:
         pass
 
+    text_x = bar_pad + 20 + avatar_size + 24
+
     # 昵称
-    draw.text((220, y + 45), nickname, font=_font(32), fill=TEXT_WHITE)
+    draw.text((text_x, y + 28), nickname, font=_font(30), fill=TEXT_WHITE)
 
-    # UID + 等级
-    draw.text((220, y + 90), f"UID {uid}", font=_font(20), fill=TEXT_DIM)
+    # UID
+    draw.text((text_x, y + 72), f"UID {uid}", font=_font(18), fill=TEXT_DIM)
+
+    # 等级徽章
     level_text = f"Lv.{level}"
-    lw = int(draw.textlength(level_text, font=_font(18)))
-    draw.rounded_rectangle((320, y + 88, 330 + lw + 16, y + 112), radius=4, fill=ACCENT_BLUE)
-    draw.text((328 + lw // 2, y + 100), level_text, font=_font(18), fill=TEXT_WHITE, anchor="mm")
+    lw = int(draw.textlength(level_text, font=_font(16)))
+    badge_x = text_x + int(draw.textlength(f"UID {uid}", font=_font(18))) + 16
+    badge_y = y + 68
+    draw.rounded_rectangle(
+        (badge_x, badge_y, badge_x + lw + 16, badge_y + 26),
+        radius=4,
+        fill=ACCENT_BLUE,
+    )
+    draw.text((badge_x + 8 + lw // 2, badge_y + 13), level_text, font=_font(16), fill=TEXT_WHITE, anchor="mm")
 
-    # 累计登舰
-    draw.text((900, y + 55), str(active_days), font=_font(42), fill=TEXT_WHITE, anchor="mm")
-    draw.text((900, y + 100), "累计登舰", font=_font(18), fill=TEXT_DIM, anchor="mm")
+    # 累计登舰 (右侧偏左)
+    days_x = W - bar_pad - 280
+    draw.text((days_x, y + 32), str(active_days), font=_font(40), fill=TEXT_WHITE, anchor="mm")
+    draw.text((days_x, y + 78), "累计登舰", font=_font(16), fill=TEXT_DIM, anchor="mm")
 
-    # 评级
-    draw.text((1050, y + 55), rating, font=_font(42), fill=ACCENT_ORANGE, anchor="mm")
+    # 评级图标 (最右侧)
+    icon_name = EVAL_RATING_TO_ICON.get(rating.upper(), "SealedDanIcon01.png")
+    icon_path = Path(__file__).parent / "res" / "eval_icon" / icon_name
+    if icon_path.exists():
+        eval_icon = Image.open(icon_path).convert("RGBA").resize((90, 90), Image.Resampling.LANCZOS)
+        canvas.alpha_composite(eval_icon, (W - bar_pad - 130, y + 25))
 
 
 async def draw_note_img(
