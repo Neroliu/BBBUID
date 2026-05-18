@@ -407,6 +407,14 @@ async def draw_note_img(
         _draw_activity_bar(canvas, bar_x, act_y, name, score, remain, is_open)
         act_y += 140 + act_gap
 
+    # --- Footer sizing (loaded first to position player info bar above it) ---
+    footer_path = Path(__file__).parent / "footer.png"
+    fh = 0
+    footer_img = None
+    if footer_path.exists():
+        footer_img = Image.open(footer_path).convert("RGBA")
+        _, fh = footer_img.size
+
     # --- Player Info Bar ---
     role = index_data.get("role", {})
     stats = index_data.get("stats", {})
@@ -416,16 +424,16 @@ async def draw_note_img(
     rating = pref.get("comprehensive_rating", "C")
     active_days = stats.get("active_day_number", "?")
 
-    info_y = 860
+    info_bar = _load_res("player_info_bar_long.png")
+    bar_h = info_bar.height if info_bar else 192
+    info_y = H - fh - 15 - bar_h
     _draw_player_info(canvas, info_y, ev, nickname, uid, int(level) if str(level).isdigit() else 0, int(active_days) if str(active_days).isdigit() else 0, rating)
 
     # --- Footer ---
-    footer_path = Path(__file__).parent / "footer.png"
-    if footer_path.exists():
-        footer_img = Image.open(footer_path).convert("RGBA")
+    if footer_img:
         fw, fh = footer_img.size
         fx = (W - fw) // 2
-        fy = H - fh - 6
+        fy = H - fh
         canvas.alpha_composite(footer_img, (fx, fy))
 
     return await convert_img(canvas)
