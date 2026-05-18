@@ -163,38 +163,33 @@ def _draw_stamina_bar(
     # 进度条
     bar_x = x + 140
     bar_y = y + 85
-    bar_w = 580
-    bar_h = 30
+    bar_w = 650
+    bar_h = 67
 
     ratio = cur / max_val if max_val > 0 else 1.0
     ratio = max(0.0, min(1.0, ratio))
 
-    blue_bar = _load_res("line_bar01.png")
-    red_bar = _load_res("line_bar02.png")
+    bg_bar = _load_res("line_bar01.png")
+    cur_bar = _load_res("line_bar02.png")
 
-    if blue_bar and red_bar:
-        bw, bh = blue_bar.size
-        scale = bar_h / bh
+    if bg_bar and cur_bar:
+        # 1. 绘制总体力底条（line_bar01）全长
+        bg_w, bg_h = bg_bar.size
+        bg_scale = bar_h / bg_h
+        bg_resized = bg_bar.resize((bar_w, bar_h), Image.Resampling.LANCZOS)
+        canvas.paste(bg_resized, (bar_x, bar_y), bg_resized)
 
-        # 蓝色部分（已充满）
-        blue_w = int(bar_w * ratio)
-        if blue_w > 0:
-            src_w = int(bw * ratio)
+        # 2. 绘制当前体力覆盖层（line_bar02）按 ratio 裁剪
+        cur_w, cur_h = cur_bar.size
+        cur_scale = bar_h / cur_h
+        cur_display_w = int(bar_w * ratio)
+        if cur_display_w > 0:
+            src_w = int(cur_w * ratio)
             if src_w < 1:
                 src_w = 1
-            blue_crop = blue_bar.crop((0, 0, src_w, bh))
-            blue_resized = blue_crop.resize((blue_w, bar_h), Image.Resampling.LANCZOS)
-            canvas.paste(blue_resized, (bar_x, bar_y), blue_resized)
-
-        # 红色部分（未满）
-        red_w = bar_w - blue_w
-        if red_w > 0:
-            src_w = int(bw * (1 - ratio))
-            if src_w < 1:
-                src_w = 1
-            red_crop = red_bar.crop((0, 0, src_w, bh))
-            red_resized = red_crop.resize((red_w, bar_h), Image.Resampling.LANCZOS)
-            canvas.paste(red_resized, (bar_x + blue_w, bar_y), red_resized)
+            cur_crop = cur_bar.crop((0, 0, src_w, cur_h))
+            cur_resized = cur_crop.resize((cur_display_w, bar_h), Image.Resampling.LANCZOS)
+            canvas.paste(cur_resized, (bar_x, bar_y), cur_resized)
 
     # 回复时间
     if recover_seconds > 0:
