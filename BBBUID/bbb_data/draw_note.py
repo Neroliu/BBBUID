@@ -312,10 +312,12 @@ async def draw_note_img(
         bg = _fit_centered(wallpaper, (W, H))
         canvas.alpha_composite(bg, (0, 0))
 
-        # 左侧角色立绘（原图，不模糊，占左半部分）
-        char_img = _fit_centered(wallpaper, (600, H))
-        char_img = char_img.resize((600, H), Image.Resampling.LANCZOS)
-        canvas.alpha_composite(char_img, (-50, 0))
+        # 左侧角色立绘（从 API head_background 下载，与壁纸独立）
+        portrait_url = index_data.get("head_background")
+        char_img = await _download_image(portrait_url)
+        if char_img:
+            char_img = _fit_centered(char_img, (600, H))
+            canvas.alpha_composite(char_img, (-50, 0))
 
     # --- FG Overlays ---
     fg1 = _load_res("FG01.png")
