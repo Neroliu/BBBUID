@@ -38,12 +38,68 @@ ACCENT_GREEN = (100, 220, 140)
 ACCENT_ORANGE = (255, 180, 80)
 
 _font_cache: dict[int, ImageFont.FreeTypeFont] = {}
+_italic_font_cache: dict[int, ImageFont.FreeTypeFont] = {}
+
+SKEW = 0.25  # italic slant factor
 
 
 def _font(size: int) -> ImageFont.FreeTypeFont:
     if size not in _font_cache:
         _font_cache[size] = core_font(size)
     return _font_cache[size]
+
+
+def _ifont(size: int) -> ImageFont.FreeTypeFont:
+    if size not in _italic_font_cache:
+        _italic_font_cache[size] = core_font(size)
+    return _italic_font_cache[size]
+
+
+def _draw_italic_text(
+    canvas: Image.Image,
+    xy: tuple[float, float],
+    text: str,
+    font: ImageFont.FreeTypeFont,
+    fill: tuple[int, ...],
+    anchor: str | None = None,
+) -> None:
+    """Draw text with an italic slant by applying an affine skew transform."""
+    if not text:
+        return
+
+    PAD = 16  # generous padding for anti-aliasing, skew overflow, and font metrics
+
+    draw = ImageDraw.Draw(canvas)
+    # Get glyph bounding box (relative to the drawing origin)
+    glyph_bbox = draw.textbbox((0, 0), text, font=font)
+    gx0, gy0, gx1, gy1 = glyph_bbox
+    gw = gx1 - gx0
+    gh = gy1 - gy0
+
+    # Draw text into a padded tmp image; offset so ink starts at (PAD, PAD)
+    tmp_w = gw + PAD + int(gh * SKEW) + PAD
+    tmp_h = gh + PAD + PAD
+    ink_x = PAD - gx0  # drawing origin x in tmp
+    ink_y = PAD - gy0  # drawing origin y in tmp
+
+    tmp = Image.new("RGBA", (tmp_w, tmp_h), (0, 0, 0, 0))
+    tmp_draw = ImageDraw.Draw(tmp)
+    tmp_draw.text((ink_x, ink_y), text, font=font, fill=fill)
+
+    # Shear: top shifts right, bottom stays → standard italic lean
+    # Pivot at the bottom of the ink region so the baseline stays put
+    pivot_y = PAD + gh
+    skewed = tmp.transform(
+        (tmp_w, tmp_h),
+        Image.AFFINE,
+        (1, SKEW, -SKEW * pivot_y, 0, 1, 0),
+        Image.Resampling.BICUBIC,
+    )
+
+    # Paste: align the ink in tmp (top-left at PAD, PAD) with the target
+    # position on the canvas given by textbbox with anchor
+    bbox = draw.textbbox(xy, text, font=font, anchor=anchor)
+    canvas.alpha_composite(skewed, (bbox[0] - PAD, bbox[1] - PAD))
 
 
 def _fmt_recover(seconds: int) -> str:
@@ -176,15 +232,25 @@ def _draw_stamina_bar(
 ) -> None:
     draw = ImageDraw.Draw(canvas)
 
-    # 体力数值 (右侧)
-    val_text = f"{cur} / {max_val}"
-    draw.text((x + 740, y + 30), val_text, font=_font(48), fill=TEXT_WHITE, anchor="ra")
+    # 体力数值 (右侧) — 当前体力54, "/"和总体力32，底部(baseline)对齐
+    baseline_y = y + 62
 
-    # 进度条
-    bar_x = x + 140
-    bar_y = y + 85
+    # 区域右边界对齐 bar01.png 背景图右边缘 (背景宽790)
+    region_right = x + 790
+    text_right = region_right - 30
+
+    cur_w = int(draw.textlength(str(cur), font=_ifont(54)))
+    slash_w = int(draw.textlength(" / ", font=_ifont(32)))
+    total_w = int(draw.textlength(str(max_val), font=_ifont(32)))
+    total_left = text_right - total_w
+    slash_left = total_left - slash_w
+    cur_left = slash_left - cur_w
+
+    # 进度条 — 紧贴体力文字 baseline，右对齐于区域右边
     bar_w = 650
     bar_h = 67
+    bar_x = region_right - bar_w - 5
+    bar_y = baseline_y - 15
 
     ratio = cur / max_val if max_val > 0 else 1.0
     ratio = max(0.0, min(1.0, ratio))
@@ -194,27 +260,25 @@ def _draw_stamina_bar(
 
     if bg_bar and cur_bar:
         # 1. 绘制总体力底条（line_bar01）全长
-        bg_w, bg_h = bg_bar.size
-        bg_scale = bar_h / bg_h
         bg_resized = bg_bar.resize((bar_w, bar_h), Image.Resampling.LANCZOS)
         canvas.paste(bg_resized, (bar_x, bar_y), bg_resized)
 
-        # 2. 绘制当前体力覆盖层（line_bar02）按 ratio 裁剪
-        cur_w, cur_h = cur_bar.size
-        cur_scale = bar_h / cur_h
+        # 2. 绘制当前体力覆盖层（line_bar02）— 整图缩放到目标高度，再按比例裁剪宽度
+        cur_resized = cur_bar.resize((bar_w, bar_h), Image.Resampling.LANCZOS)
         cur_display_w = int(bar_w * ratio)
         if cur_display_w > 0:
-            src_w = int(cur_w * ratio)
-            if src_w < 1:
-                src_w = 1
-            cur_crop = cur_bar.crop((0, 0, src_w, cur_h))
-            cur_resized = cur_crop.resize((cur_display_w, bar_h), Image.Resampling.LANCZOS)
-            canvas.paste(cur_resized, (bar_x, bar_y), cur_resized)
+            cur_crop = cur_resized.crop((0, 0, cur_display_w, bar_h))
+            canvas.paste(cur_crop, (bar_x, bar_y), cur_crop)
 
-    # 回复时间
+    # 体力文字 — 在进度条之后渲染
+    _draw_italic_text(canvas, (cur_left, baseline_y), str(cur), _ifont(54), TEXT_WHITE, anchor="ls")
+    _draw_italic_text(canvas, (slash_left, baseline_y), " / ", _ifont(32), TEXT_WHITE, anchor="ls")
+    _draw_italic_text(canvas, (text_right, baseline_y), str(max_val), _ifont(32), TEXT_WHITE, anchor="rs")
+
+    # 回复时间 — 与体力条左对齐+20
     if recover_seconds > 0:
         recover_text = f"剩余回复时间: {_fmt_recover(recover_seconds)}"
-        draw.text((bar_x, bar_y + 38), recover_text, font=_font(18), fill=TEXT_DIM)
+        _draw_italic_text(canvas, (bar_x + 20, bar_y + bar_h - 20), recover_text, _ifont(20), TEXT_WHITE)
 
 
 def _draw_activity_bar(
@@ -233,13 +297,13 @@ def _draw_activity_bar(
     # 状态 + 剩余时间
     status = "开放中" if is_open else "未开放"
     status_color = ACCENT_GREEN if is_open else TEXT_DIM
-    draw.text((x + 200, y + 78), status, font=_font(18), fill=status_color)
+    _draw_italic_text(canvas, (x + 200, y + 78), status, _ifont(18), status_color)
 
     if remain_text and is_open:
-        draw.text((x + 280, y + 78), remain_text, font=_font(18), fill=TEXT_DIM)
+        _draw_italic_text(canvas, (x + 280, y + 78), remain_text, _ifont(18), TEXT_DIM)
 
     # 分数 (右侧)
-    draw.text((x + 740, y + 50), score_text, font=_font(40), fill=TEXT_WHITE, anchor="ra")
+    _draw_italic_text(canvas, (x + 740, y + 50), score_text, _ifont(40), TEXT_WHITE, anchor="ra")
 
 
 def _draw_player_info(
@@ -276,7 +340,7 @@ def _draw_player_info(
     text_x = bar_x + 30 + avatar_size + 24
 
     # 昵称
-    draw.text((text_x, y + 36), nickname, font=_font(34), fill=TEXT_WHITE)
+    _draw_italic_text(canvas, (text_x, y + 36), nickname, _ifont(34), TEXT_WHITE)
 
     # UID
     draw.text((text_x, y + 88), f"UID {uid}", font=_font(20), fill=TEXT_DIM)
@@ -343,28 +407,29 @@ async def draw_note_img(
     # --- Title Section ---
     title_img = _load_res("title.png")
     if title_img:
-        canvas.paste(title_img, (580, 20), title_img)
+        canvas.paste(title_img, (487, 38), title_img)
 
     # 状态标记
     yes_tag = _load_res("yes_tag.png")
     no_tag = _load_res("no_tag.png")
     if yes_tag:
-        canvas.paste(yes_tag, (580, 120), yes_tag)
-    draw.text((620, 128), "社区已签到", font=_font(18), fill=ACCENT_GREEN)
+        canvas.paste(yes_tag, (510, 145), yes_tag)
+    _draw_italic_text(canvas, (550, 153), "社区已签到", _ifont(18), ACCENT_GREEN)
 
     if no_tag:
-        canvas.paste(no_tag, (740, 120), no_tag)
-    draw.text((780, 128), "历练值未达成", font=_font(18), fill=(255, 100, 120))
+        canvas.paste(no_tag, (670, 145), no_tag)
+    _draw_italic_text(canvas, (710, 153), "历练值未达成", _ifont(18), (255, 100, 120))
 
     # 查看详情按钮
     desc_tag = _load_res("desc_tag.png")
     if desc_tag:
-        canvas.paste(desc_tag, (1170, 30), desc_tag)
+        canvas.paste(desc_tag, (1017, 116), desc_tag)
 
     # --- Stamina Bar ---
+    bar_x = 510
+    bar_y = 233
+
     bar01 = _load_res("bar01.png")
-    bar_x = 560
-    bar_y = 200
     if bar01:
         canvas.paste(bar01, (bar_x, bar_y), bar01)
 
@@ -404,7 +469,7 @@ async def draw_note_img(
         remain = _fmt_schedule_end(gw.get("schedule_end", "0")) if is_open else ""
         activities.append(("往事乐土", f"{cur_r} / {max_r}", f"剩余时间 {remain}" if remain else "", is_open, "bar04.png"))
 
-    act_y = 360
+    act_y = 393
     act_gap = 20
     for name, score, remain, is_open, bar_name in activities:
         bar_img = _load_res(bar_name)

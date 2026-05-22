@@ -13,3 +13,10 @@ build/
 *.log
 .DS_Store
 Thumbs.db
+
+# Test scripts and output
+_render_test_note.py
+italic_direction_test.png
+italic_font_test.png
+italic_test.png
+test_note_output.png
