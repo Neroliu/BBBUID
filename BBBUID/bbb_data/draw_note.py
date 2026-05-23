@@ -292,18 +292,11 @@ def _draw_activity_bar(
 ) -> None:
     draw = ImageDraw.Draw(canvas)
 
-    # 活动名称已绘制在背景图上，无需额外渲染
+    if remain_text:
+        _draw_italic_text(canvas, (x + 288, y + 88), remain_text, _ifont(18), TEXT_DIM)
 
-    # 状态 + 剩余时间
-    status = "开放中" if is_open else "未开放"
-    status_color = ACCENT_GREEN if is_open else TEXT_DIM
-    _draw_italic_text(canvas, (x + 200, y + 78), status, _ifont(18), status_color)
-
-    if remain_text and is_open:
-        _draw_italic_text(canvas, (x + 280, y + 78), remain_text, _ifont(18), TEXT_DIM)
-
-    # 分数 (右侧)
-    _draw_italic_text(canvas, (x + 740, y + 50), score_text, _ifont(40), TEXT_WHITE, anchor="ra")
+    # 分数 (右侧) — 在背景图(高140)内竖向居中
+    _draw_italic_text(canvas, (x + 740, y + 70), score_text, _ifont(40), TEXT_WHITE, anchor="rm")
 
 
 def _draw_player_info(
@@ -329,15 +322,19 @@ def _draw_player_info(
         bar_x = 50
         bar_h = 192
 
-    # 头像 (左侧，参考 draw_title 的 179 大小)
-    avatar_size = 120
+    # 头像 — 放大到上下各留20px边距，向右移动60px
+    avatar_size = bar_h - 40
+    avatar_x = bar_x + 90
+    avatar_y = y + 20
     if avatar_img is not None:
         try:
-            canvas.alpha_composite(avatar_img, (bar_x + 30, y + (bar_h - avatar_size) // 2))
+            resized_avatar = avatar_img.resize((avatar_size, avatar_size), Image.Resampling.LANCZOS)
+            canvas.alpha_composite(resized_avatar, (avatar_x, avatar_y))
         except Exception:
             pass
 
-    text_x = bar_x + 30 + avatar_size + 24
+    # 昵称/UID/等级 — 整体以头像为锚点，距头像右边40px
+    text_x = avatar_x + avatar_size + 40
 
     # 昵称
     _draw_italic_text(canvas, (text_x, y + 36), nickname, _ifont(34), TEXT_WHITE)
@@ -366,18 +363,32 @@ def _draw_player_info(
         draw.rounded_rectangle((lv_x, lv_y, lv_x + lw + 16, lv_y + 28), radius=4, fill=ACCENT_BLUE)
         draw.text((lv_x + 8 + lw // 2, lv_y + 14), level_text, font=_font(20), fill=TEXT_WHITE, anchor="mm")
 
-    # 累计登舰 (右侧偏左)
-    days_x = bar_x + bar_w - 280 if info_bar else W - 280
-    draw.text((days_x, y + 42), str(active_days), font=_font(42), fill=TEXT_WHITE, anchor="mm")
-    draw.text((days_x, y + 96), "累计登舰", font=_font(18), fill=TEXT_DIM, anchor="mm")
+    # 累计登舰 — 使用 info_bg.png 背景，竖向居中于信息条
+    info_bg_path = Path(__file__).parent / "res" / "info" / "info_bg.png"
+    info_bg_img = None
+    info_w, info_h = 174, 100
+    if info_bg_path.exists():
+        info_bg_img = Image.open(info_bg_path).convert("RGBA")
+        info_w, info_h = info_bg_img.size
 
-    # 评级图标 (最右侧，参考 draw_title.py)
+    days_x = bar_x + bar_w - 340 if info_bar else W - 340
+    days_card_y = y + (bar_h - info_h) // 2
+    if info_bg_img:
+        canvas.alpha_composite(info_bg_img, (days_x, days_card_y))
+
+    days_value_y = days_card_y + 35
+    days_title_y = days_card_y + info_h - 20
+    draw.text((days_x + info_w // 2, days_value_y), str(active_days), font=_font(36), fill=TEXT_WHITE, anchor="mm")
+    draw.text((days_x + info_w // 2, days_title_y), "累计登舰", font=_font(18), fill=TEXT_DIM, anchor="mm")
+
+    # 评级图标 — 竖向居中，右边距60px
     icon_name = EVAL_RATING_TO_ICON.get(rating.upper(), "SealedDanIcon01.png")
     icon_path = Path(__file__).parent / "res" / "eval_icon" / icon_name
     if icon_path.exists():
         eval_icon = Image.open(icon_path).convert("RGBA").resize((110, 110), Image.Resampling.LANCZOS)
-        icon_x = bar_x + bar_w - 160 if info_bar else W - 210
-        canvas.alpha_composite(eval_icon, (icon_x, y + 40))
+        icon_x = bar_x + bar_w - 60 - 110 if info_bar else W - 170
+        icon_y = y + (bar_h - 110) // 2
+        canvas.alpha_composite(eval_icon, (icon_x, icon_y))
 
 
 async def draw_note_img(
@@ -457,17 +468,16 @@ async def draw_note_img(
         cur_r = bf.get("cur_reward", "?")
         max_r = bf.get("max_reward", "?")
         is_open = bf.get("is_open", False)
-        remain = _fmt_schedule_end(bf.get("schedule_end", "0")) if is_open else ""
+        remain = _fmt_schedule_end(bf.get("schedule_end", "0"))
         activities.append(("记忆战场", f"{cur_r} / {max_r}", f"剩余时间 {remain}" if remain else "", is_open, "bar03.png"))
 
     # 往世乐土
     gw = note_data.get("god_war", {})
     if gw:
         cur_r = gw.get("cur_reward", "?")
-        max_r = gw.get("max_reward", "?")
         is_open = gw.get("is_open", False)
-        remain = _fmt_schedule_end(gw.get("schedule_end", "0")) if is_open else ""
-        activities.append(("往事乐土", f"{cur_r} / {max_r}", f"剩余时间 {remain}" if remain else "", is_open, "bar04.png"))
+        remain = _fmt_schedule_end(gw.get("schedule_end", "0"))
+        activities.append(("往事乐土", str(cur_r), f"剩余时间 {remain}" if remain else "", is_open, "bar04.png"))
 
     act_y = 393
     act_gap = 20
@@ -499,13 +509,13 @@ async def draw_note_img(
     avatar_img = None
     try:
         avatar = await get_cached_avatar(ev, ev.user_id)
-        avatar_img = draw_decorated_avatar(avatar, 120)
+        avatar_img = draw_decorated_avatar(avatar, 152)
     except Exception:
         pass
 
     info_bar = _load_res("player_info_bar_long.png")
     bar_h = info_bar.height if info_bar else 192
-    info_y = H - fh - 15 - bar_h
+    info_y = H - fh - 25 - bar_h
     _draw_player_info(
         canvas, info_y, ev, nickname, uid,
         int(level) if str(level).isdigit() else 0,
