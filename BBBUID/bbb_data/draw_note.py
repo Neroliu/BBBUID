@@ -427,13 +427,30 @@ async def draw_note_img(
     # 状态标记
     yes_tag = _load_res("yes_tag.png")
     no_tag = _load_res("no_tag.png")
-    if yes_tag:
-        canvas.paste(yes_tag, (510, 145), yes_tag)
-    _draw_italic_text(canvas, (550, 153), "社区已签到", _ifont(18), ACCENT_GREEN)
 
-    if no_tag:
-        canvas.paste(no_tag, (670, 145), no_tag)
-    _draw_italic_text(canvas, (710, 153), "历练值未达成", _ifont(18), (255, 100, 120))
+    # 社区签到
+    is_signed = bool(index_data.get("preference", {}).get("community", 0))
+    if is_signed:
+        if yes_tag:
+            canvas.paste(yes_tag, (510, 145), yes_tag)
+        _draw_italic_text(canvas, (550, 153), "社区已签到", _ifont(18), ACCENT_GREEN)
+    else:
+        if no_tag:
+            canvas.paste(no_tag, (510, 145), no_tag)
+        _draw_italic_text(canvas, (550, 153), "社区未签到", _ifont(18), (255, 100, 120))
+
+    # 历练值
+    cur_train = note_data.get("current_train_score", 0)
+    max_train = note_data.get("max_train_score", 1)
+    train_achieved = cur_train >= max_train if max_train > 0 else True
+    if train_achieved:
+        if yes_tag:
+            canvas.paste(yes_tag, (670, 145), yes_tag)
+        _draw_italic_text(canvas, (710, 153), "历练值已达成", _ifont(18), ACCENT_GREEN)
+    else:
+        if no_tag:
+            canvas.paste(no_tag, (670, 145), no_tag)
+        _draw_italic_text(canvas, (710, 153), "历练值未达成", _ifont(18), (255, 100, 120))
 
     # 查看详情按钮
     desc_tag = _load_res("desc_tag.png")
