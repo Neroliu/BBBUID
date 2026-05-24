@@ -322,23 +322,21 @@ def _draw_player_info(
         bar_x = 50
         bar_h = 192
 
-    # 头像 — 放大到上下各留20px边距，向右移动60px
-    avatar_display_w = bar_h - 40
+    # 头像 — 在背景图区域内居中
     avatar_x = bar_x + 90
-    avatar_y = y + 20
     if avatar_img is not None:
         try:
-            # 保持装饰头像原始宽高比，按宽度缩放
             aw, ah = avatar_img.size
-            scale = avatar_display_w / aw
-            avatar_display_h = int(ah * scale)
-            resized_avatar = avatar_img.resize((avatar_display_w, avatar_display_h), Image.Resampling.LANCZOS)
-            canvas.alpha_composite(resized_avatar, (avatar_x, avatar_y))
+            avatar_y = y + (bar_h - ah) // 2
+            canvas.alpha_composite(avatar_img, (avatar_x, avatar_y))
         except Exception:
             pass
 
     # 昵称/UID/等级 — 整体以头像为锚点，距头像右边40px
-    text_x = avatar_x + avatar_display_w + 40
+    if avatar_img is not None:
+        text_x = avatar_x + avatar_img.size[0] + 40
+    else:
+        text_x = avatar_x + 152 + 40
 
     # 昵称
     _draw_italic_text(canvas, (text_x, y + 36), nickname, _ifont(34), TEXT_WHITE)
@@ -530,7 +528,7 @@ async def draw_note_img(
     avatar_img = None
     try:
         avatar = await get_cached_avatar(ev, ev.user_id)
-        avatar_img = draw_decorated_avatar(avatar, 152)
+        avatar_img = draw_decorated_avatar(avatar, 179)
     except Exception:
         pass
 
