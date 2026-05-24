@@ -323,18 +323,22 @@ def _draw_player_info(
         bar_h = 192
 
     # 头像 — 放大到上下各留20px边距，向右移动60px
-    avatar_size = bar_h - 40
+    avatar_display_w = bar_h - 40
     avatar_x = bar_x + 90
     avatar_y = y + 20
     if avatar_img is not None:
         try:
-            resized_avatar = avatar_img.resize((avatar_size, avatar_size), Image.Resampling.LANCZOS)
+            # 保持装饰头像原始宽高比，按宽度缩放
+            aw, ah = avatar_img.size
+            scale = avatar_display_w / aw
+            avatar_display_h = int(ah * scale)
+            resized_avatar = avatar_img.resize((avatar_display_w, avatar_display_h), Image.Resampling.LANCZOS)
             canvas.alpha_composite(resized_avatar, (avatar_x, avatar_y))
         except Exception:
             pass
 
     # 昵称/UID/等级 — 整体以头像为锚点，距头像右边40px
-    text_x = avatar_x + avatar_size + 40
+    text_x = avatar_x + avatar_display_w + 40
 
     # 昵称
     _draw_italic_text(canvas, (text_x, y + 36), nickname, _ifont(34), TEXT_WHITE)
