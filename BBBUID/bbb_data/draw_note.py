@@ -121,6 +121,9 @@ def _fmt_recover(seconds: int) -> str:
 def _fmt_schedule_end(ts: str) -> str:
     try:
         end_ts = int(ts)
+        # API 可能返回毫秒或秒级时间戳
+        if end_ts > 1e12:
+            end_ts = end_ts // 1000
         now = datetime.now(tz=CST).timestamp()
         remain = int(end_ts - now)
         if remain <= 0:
@@ -478,8 +481,12 @@ async def draw_note_img(
     if endless:
         score = endless.get("challenge_score", "?")
         is_open = endless.get("is_open", False)
-        remain = _fmt_schedule_end(endless.get("schedule_end", "0")) if is_open else ""
-        activities.append(("超弦空间", str(score), f"剩余时间 {remain}" if remain else "", is_open, "bar02.png"))
+        if is_open:
+            remain = _fmt_schedule_end(endless.get("schedule_end", "0"))
+            remain_text = f"剩余时间 {remain}" if remain else "未开启"
+        else:
+            remain_text = "未开启"
+        activities.append(("超弦空间", str(score), remain_text, is_open, "bar02.png"))
 
     # 记忆战场
     bf = note_data.get("battle_field", {})
@@ -487,8 +494,12 @@ async def draw_note_img(
         cur_r = bf.get("cur_reward", "?")
         max_r = bf.get("max_reward", "?")
         is_open = bf.get("is_open", False)
-        remain = _fmt_schedule_end(bf.get("schedule_end", "0"))
-        activities.append(("记忆战场", f"{cur_r} / {max_r}", f"剩余时间 {remain}" if remain else "", is_open, "bar03.png"))
+        if is_open:
+            remain = _fmt_schedule_end(bf.get("schedule_end", "0"))
+            remain_text = f"剩余时间 {remain}" if remain else "未开启"
+        else:
+            remain_text = "未开启"
+        activities.append(("记忆战场", f"{cur_r} / {max_r}", remain_text, is_open, "bar03.png"))
 
     # 往世乐土
     gw = note_data.get("god_war", {})
