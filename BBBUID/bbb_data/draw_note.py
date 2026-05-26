@@ -382,9 +382,10 @@ def _draw_player_info(
         canvas.alpha_composite(info_bg_img, (days_x, days_card_y))
 
     days_value_y = days_card_y + 35
-    days_title_y = days_card_y + info_h - 20
+    days_value_bottom = days_value_y + 18
+    days_title_y = days_value_bottom + 8 + 14
     draw.text((days_x + info_w // 2, days_value_y), str(active_days), font=_font(36), fill=TEXT_WHITE, anchor="mm")
-    draw.text((days_x + info_w // 2, days_title_y), "累计登舰", font=_font(18), fill=TEXT_DIM, anchor="mm")
+    draw.text((days_x + info_w // 2, days_title_y), "累计登舰", font=_font(28), fill=TEXT_DIM, anchor="mm")
 
     # 评级图标 — 竖向居中，右边距60px
     icon_name = EVAL_RATING_TO_ICON.get(rating.upper(), "SealedDanIcon01.png")
@@ -545,7 +546,7 @@ async def draw_note_img(
 
     info_bar = _load_res("player_info_bar_long.png")
     bar_h = info_bar.height if info_bar else 192
-    info_y = H - fh - 25 - bar_h
+    info_y = H - fh - 5 - bar_h
     _draw_player_info(
         canvas, info_y, ev, nickname, uid,
         int(level) if str(level).isdigit() else 0,
