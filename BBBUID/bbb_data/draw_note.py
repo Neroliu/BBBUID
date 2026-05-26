@@ -342,10 +342,10 @@ def _draw_player_info(
         text_x = avatar_x + 152 + 40
 
     # 昵称
-    _draw_italic_text(canvas, (text_x, y + 36), nickname, _ifont(34), TEXT_WHITE)
+    _draw_italic_text(canvas, (text_x, y + 36), nickname, _ifont(54), TEXT_WHITE)
 
     # UID
-    draw.text((text_x, y + 88), f"UID {uid}", font=_font(20), fill=TEXT_DIM)
+    draw.text((text_x, y + 36 + 54 + 10), f"UID {uid}", font=_font(28), fill=TEXT_DIM)
 
     # 等级徽章（参考 draw_title.py 使用 level_bg.png）
     level_bg_path = Path(__file__).parent / "res" / "title" / "level_bg.png"
@@ -355,16 +355,16 @@ def _draw_player_info(
         scale = 110 / orig_w
         new_w, new_h = int(orig_w * scale), int(orig_h * scale)
         level_bg = level_bg.resize((new_w, new_h), Image.Resampling.LANCZOS)
-        lv_x = text_x + int(draw.textlength(f"UID {uid}", font=_font(20))) + 16
-        lv_y = y + 80
+        lv_x = text_x + int(draw.textlength(f"UID {uid}", font=_font(28))) + 16
+        lv_y = y + 36 + 54 + 10
         canvas.alpha_composite(level_bg, (lv_x, lv_y))
         draw.text((lv_x + new_w // 2, lv_y + new_h // 2), f"Lv.{level}", font=_font(20), fill=TEXT_WHITE, anchor="mm")
     else:
         # fallback
         level_text = f"Lv.{level}"
         lw = int(draw.textlength(level_text, font=_font(20)))
-        lv_x = text_x + int(draw.textlength(f"UID {uid}", font=_font(20))) + 16
-        lv_y = y + 82
+        lv_x = text_x + int(draw.textlength(f"UID {uid}", font=_font(28))) + 16
+        lv_y = y + 36 + 54 + 10
         draw.rounded_rectangle((lv_x, lv_y, lv_x + lw + 16, lv_y + 28), radius=4, fill=ACCENT_BLUE)
         draw.text((lv_x + 8 + lw // 2, lv_y + 14), level_text, font=_font(20), fill=TEXT_WHITE, anchor="mm")
 
