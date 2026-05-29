@@ -288,6 +288,9 @@ def _remove_material_icons():
 
 async def update_channel(channel_name: str, channel_id: int):
     logger.info(f"[崩坏3] [资源更新] 开始更新 {channel_name}...")
+    # 角色频道更新前清理旧立绘缓存（从立绘频道抓取的，content_id与角色频道不同）
+    if channel_name == "角色":
+        _clear_all_portrait_cache()
     items = await get_channel_content_list(channel_id)
     if not items:
         logger.warning(f"[崩坏3] [资源更新] {channel_name} 获取列表为空")
@@ -328,6 +331,7 @@ async def update_channel(channel_name: str, channel_id: int):
                     await _download_icon(channel_name, item["content_id"], icon_url)
                 if channel_name == "角色":
                     await _download_equipment_icons(channel_name, item["content_id"], detail)
+                    await _download_portrait_icons(item["content_id"], detail)
                 elif channel_name == "武器":
                     await _download_material_icons(detail)
                 elif channel_name == "圣痕":
@@ -336,7 +340,7 @@ async def update_channel(channel_name: str, channel_id: int):
                 elif channel_name == "敌人":
                     await _download_enemy_icons(channel_name, item["content_id"], detail)
                 elif channel_name == "立绘":
-                    await _download_portrait_icons(item["content_id"], detail)
+                    pass  # 立绘从角色频道详情页抓取，此处不再处理
                 elif channel_name == "壁纸":
                     await _download_wallpaper_icons(item["content_id"], detail)
 
@@ -346,12 +350,14 @@ async def update_channel(channel_name: str, channel_id: int):
             json_path.unlink()
         _remove_icon(channel_name, int(cid))
         _remove_equipment_icons(channel_name, int(cid))
-        if channel_name == "圣痕":
+        if channel_name == "角色":
+            _remove_portrait_icons(int(cid))
+        elif channel_name == "圣痕":
             _remove_stigma_equip_icons(int(cid))
         elif channel_name == "敌人":
             _remove_enemy_icons(int(cid))
         elif channel_name == "立绘":
-            _remove_portrait_icons(int(cid))
+            pass  # 立绘从角色频道详情页抓取，此处不再处理
         elif channel_name == "壁纸":
             _remove_wallpaper_icons(int(cid))
 
@@ -462,6 +468,19 @@ def get_local_enemy_image(content_id: int) -> Path | None:
 
 
 # --- Portrait (立绘) ---
+
+
+def _clear_all_portrait_cache():
+    """清理全部旧立绘缓存（从立绘频道抓取的，content_id与角色频道不同）。"""
+    portrait_base = get_wiki_path("立绘") / PORTRAIT_ICONS_DIR
+    if not portrait_base.exists():
+        return
+    for cid_dir in list(portrait_base.iterdir()):
+        if cid_dir.is_dir():
+            for f in cid_dir.iterdir():
+                f.unlink()
+            cid_dir.rmdir()
+    logger.info("[崩坏3] [资源更新] 已清理旧立绘缓存")
 
 
 def _get_portrait_icons_dir(content_id: int) -> Path:
