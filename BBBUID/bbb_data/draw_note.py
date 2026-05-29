@@ -413,6 +413,18 @@ async def draw_note_img(
         bg = _fit_centered(wallpaper, (W, H))
         canvas.alpha_composite(bg, (0, 0))
 
+    # --- Character Portrait (left side, vertically centered) ---
+    portrait = _get_random_portrait()
+    if portrait:
+        pw, ph = portrait.size
+        # 缩放立绘高度填满画布，保持比例
+        scale = H / ph
+        new_pw = int(pw * scale)
+        new_ph = H
+        portrait_resized = portrait.resize((new_pw, new_ph), Image.Resampling.LANCZOS)
+        # 左对齐，竖向居中（缩放后高度=H，y=0）
+        canvas.alpha_composite(portrait_resized, (0, 0))
+
     # --- FG Overlays ---
     fg1 = _load_res("FG01.png")
     if fg1:
