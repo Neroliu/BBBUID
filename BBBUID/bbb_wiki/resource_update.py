@@ -288,15 +288,16 @@ def _remove_material_icons():
 
 async def update_channel(channel_name: str, channel_id: int):
     logger.info(f"[崩坏3] [资源更新] 开始更新 {channel_name}...")
+
+    # 立绘频道：从角色频道列表获取content_id，清理并下载立绘
+    if channel_name == "立绘":
+        await _update_portraits()
+        return
+
     items = await get_channel_content_list(channel_id)
     if not items:
         logger.warning(f"[崩坏3] [资源更新] {channel_name} 获取列表为空")
         return
-
-    # 角色频道：清理旧立绘缓存（淘汰不在当前列表中的content_id目录，清理非portrait.png文件）
-    if channel_name == "角色":
-        valid_cids = {str(item["content_id"]) for item in items}
-        _cleanup_portrait_cache(valid_cids)
 
     old_index = _load_index(channel_name)
     new_index = {str(i["content_id"]): i["title"] for i in items}
@@ -316,9 +317,6 @@ async def update_channel(channel_name: str, channel_id: int):
     total = len(added) + len(updated)
     if not total and not removed:
         # Check for missing icons even if no data update needed
-        # 角色频道无更新时也需要清理立绘缓存
-        if channel_name == "角色":
-            _cleanup_portrait_cache(valid_cids)
         await _check_missing_icons(channel_name, channel_id, items)
         logger.info(f"[崩坏3] [资源更新] {channel_name} 无更新 ({len(items)} 条)")
         return
@@ -336,7 +334,6 @@ async def update_channel(channel_name: str, channel_id: int):
                     await _download_icon(channel_name, item["content_id"], icon_url)
                 if channel_name == "角色":
                     await _download_equipment_icons(channel_name, item["content_id"], detail)
-                    await _download_portrait(item["content_id"], detail)
                 elif channel_name == "武器":
                     await _download_material_icons(detail)
                 elif channel_name == "圣痕":
@@ -344,8 +341,6 @@ async def update_channel(channel_name: str, channel_id: int):
                     await _download_material_icons(detail)
                 elif channel_name == "敌人":
                     await _download_enemy_icons(channel_name, item["content_id"], detail)
-                elif channel_name == "立绘":
-                    pass  # 立绘从角色频道详情页抓取，此处不再处理
                 elif channel_name == "壁纸":
                     await _download_wallpaper_icons(item["content_id"], detail)
 
@@ -355,23 +350,14 @@ async def update_channel(channel_name: str, channel_id: int):
             json_path.unlink()
         _remove_icon(channel_name, int(cid))
         _remove_equipment_icons(channel_name, int(cid))
-        if channel_name == "角色":
-            _remove_portrait_icons(int(cid))
-        elif channel_name == "圣痕":
+        if channel_name == "圣痕":
             _remove_stigma_equip_icons(int(cid))
         elif channel_name == "敌人":
             _remove_enemy_icons(int(cid))
-        elif channel_name == "立绘":
-            pass  # 立绘从角色频道详情页抓取，此处不再处理
         elif channel_name == "壁纸":
             _remove_wallpaper_icons(int(cid))
 
     _save_index(channel_name, new_index)
-
-    # 角色频道更新后：补充缺失的立绘缓存
-    if channel_name == "角色":
-        await _check_missing_portraits(items)
-
     logger.info(f"[崩坏3] [资源更新] {channel_name} 更新完成")
 
 
@@ -402,15 +388,24 @@ async def _check_missing_icons(channel_name: str, channel_id: int, items: list):
     if missing_count > 0:
         logger.info(f"[崩坏3] [资源更新] {channel_name} 补充下载 {missing_count} 个缺失图标")
 
-    # 角色频道：同时补充缺失的立绘缓存
-    if channel_name == "角色":
-        await _check_missing_portraits(items)
+
+async def _update_portraits():
+    """立绘频道更新：从角色频道列表获取content_id，清理并下载660x660立绘。"""
+    logger.info("[崩坏3] [资源更新] 开始更新立绘...")
+    # 获取角色频道列表
+    char_items = await get_channel_content_list(CHANNEL_MAP["角色"])
+    if not char_items:
+        logger.warning("[崩坏3] [资源更新] 立绘更新失败: 角色列表为空")
+        return
+
+    valid_cids = {str(item["content_id"]) for item in char_items}
+    _cleanup_portrait_cache(valid_cids)
+    await _check_missing_portraits(char_items)
+    logger.info(f"[崩坏3] [资源更新] 立绘更新完成 ({len(char_items)} 个角色)")
 
 
 async def update_all():
     for name, cid in CHANNEL_MAP.items():
-        if name == "立绘":
-            continue  # 立绘从角色频道详情页抓取，不再单独更新
         try:
             await update_channel(name, cid)
         except Exception as e:
