@@ -316,6 +316,9 @@ async def update_channel(channel_name: str, channel_id: int):
     total = len(added) + len(updated)
     if not total and not removed:
         # Check for missing icons even if no data update needed
+        # 角色频道无更新时也需要清理立绘缓存
+        if channel_name == "角色":
+            _cleanup_portrait_cache(valid_cids)
         await _check_missing_icons(channel_name, channel_id, items)
         logger.info(f"[崩坏3] [资源更新] {channel_name} 无更新 ({len(items)} 条)")
         return
