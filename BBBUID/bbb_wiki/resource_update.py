@@ -288,13 +288,15 @@ def _remove_material_icons():
 
 async def update_channel(channel_name: str, channel_id: int):
     logger.info(f"[崩坏3] [资源更新] 开始更新 {channel_name}...")
-    # 角色频道更新前清理旧立绘缓存（从立绘频道抓取的，content_id与角色频道不同）
-    if channel_name == "角色":
-        _clear_all_portrait_cache()
     items = await get_channel_content_list(channel_id)
     if not items:
         logger.warning(f"[崩坏3] [资源更新] {channel_name} 获取列表为空")
         return
+
+    # 角色频道：清理旧立绘缓存（淘汰不在当前列表中的content_id目录，清理非portrait.png文件）
+    if channel_name == "角色":
+        valid_cids = {str(item["content_id"]) for item in items}
+        _cleanup_portrait_cache(valid_cids)
 
     old_index = _load_index(channel_name)
     new_index = {str(i["content_id"]): i["title"] for i in items}
@@ -331,7 +333,7 @@ async def update_channel(channel_name: str, channel_id: int):
                     await _download_icon(channel_name, item["content_id"], icon_url)
                 if channel_name == "角色":
                     await _download_equipment_icons(channel_name, item["content_id"], detail)
-                    await _download_portrait_icons(item["content_id"], detail)
+                    await _download_portrait(item["content_id"], detail)
                 elif channel_name == "武器":
                     await _download_material_icons(detail)
                 elif channel_name == "圣痕":
@@ -474,17 +476,30 @@ def get_local_enemy_image(content_id: int) -> Path | None:
 # --- Portrait (立绘) ---
 
 
-def _clear_all_portrait_cache():
-    """清理全部旧立绘缓存（从立绘频道抓取的，content_id与角色频道不同）。"""
+def _cleanup_portrait_cache(valid_cids: set[str]):
+    """清理立绘缓存：淘汰不在valid_cids中的目录，清理非portrait.png文件。"""
     portrait_base = get_wiki_path("立绘") / PORTRAIT_ICONS_DIR
     if not portrait_base.exists():
         return
+    evicted = 0
+    cleaned = 0
     for cid_dir in list(portrait_base.iterdir()):
-        if cid_dir.is_dir():
+        if not cid_dir.is_dir():
+            continue
+        # 淘汰不在当前角色列表中的缓存目录
+        if cid_dir.name not in valid_cids:
             for f in cid_dir.iterdir():
                 f.unlink()
+                evicted += 1
             cid_dir.rmdir()
-    logger.info("[崩坏3] [资源更新] 已清理旧立绘缓存")
+            continue
+        # 清理非portrait.png的文件
+        for f in list(cid_dir.iterdir()):
+            if f.name != "portrait.png":
+                f.unlink()
+                cleaned += 1
+    if evicted > 0 or cleaned > 0:
+        logger.info(f"[崩坏3] [资源更新] 立绘缓存清理: 淘汰 {evicted} 个过期, 清理 {cleaned} 个多余文件")
 
 
 def _get_portrait_icons_dir(content_id: int) -> Path:
@@ -498,49 +513,58 @@ async def _check_missing_portraits(items: list):
     missing_count = 0
     for item in items:
         cid = item["content_id"]
-        portrait_dir = _get_portrait_icons_dir(cid)
-        # 如果目录下已有文件，视为缓存存在
-        if any(f.suffix == ".png" for f in portrait_dir.iterdir() if portrait_dir.exists()):
+        portrait_path = _get_portrait_icons_dir(cid) / "portrait.png"
+        if portrait_path.exists():
             continue
         detail = _load_detail("角色", cid)
         if not detail:
             continue
         missing_count += 1
-        await _download_portrait_icons(cid, detail)
+        await _download_portrait(cid, detail)
     if missing_count > 0:
         logger.info(f"[崩坏3] [资源更新] 补充下载 {missing_count} 个缺失立绘")
 
 
-async def _download_portrait_icons(content_id: int, detail: dict):
-    icons_dir = _get_portrait_icons_dir(content_id)
+async def _download_portrait(content_id: int, detail: dict):
+    """从角色详情页HTML中提取660x660立绘图并下载。"""
+    from PIL import Image as PILImage
+    from io import BytesIO
+
     all_urls = set()
     for section in detail.get("contents", []):
         html = section.get("text", "")
         urls = re.findall(r'https?://[^\s"<>]+[.]png', html)
         all_urls.update(urls)
 
+    icons_dir = _get_portrait_icons_dir(content_id)
+    portrait_path = icons_dir / "portrait.png"
+
     async with httpx.AsyncClient(follow_redirects=True) as client:
-        idx = 0
         for url in sorted(all_urls):
+            # 只检查 uploadstatic.mihoyo.com 的大图
+            if "uploadstatic.mihoyo.com" not in url:
+                continue
             try:
                 resp = await client.head(url, timeout=5)
                 cl = int(resp.headers.get("content-length", 0))
-                if cl < 30000:
+                if cl < 200000:
                     continue
             except Exception:
                 continue
 
-            icon_path = icons_dir / f"{idx}.png"
-            idx += 1
-            if icon_path.exists():
-                continue
             try:
                 resp = await client.get(url, timeout=15)
-                if resp.status_code == 200:
-                    icon_path.write_bytes(resp.content)
-                    logger.debug(f"[崩坏3] [资源更新] 立绘图片已保存: {content_id}/{icon_path.name}")
-            except Exception as e:
-                logger.warning(f"[崩坏3] [资源更新] 立绘图片下载异常: {e}")
+                if resp.status_code != 200:
+                    continue
+                img = PILImage.open(BytesIO(resp.content))
+                if img.size == (660, 660):
+                    portrait_path.write_bytes(resp.content)
+                    logger.debug(f"[崩坏3] [资源更新] 立绘已保存: {content_id}/portrait.png")
+                    return
+            except Exception:
+                continue
+
+    logger.warning(f"[崩坏3] [资源更新] 未找到660x660立绘: {content_id}")
 
 
 def _remove_portrait_icons(content_id: int):
@@ -550,18 +574,11 @@ def _remove_portrait_icons(content_id: int):
             f.unlink()
 
 
-def get_local_portrait_icons(content_id: int) -> dict[int, Path]:
-    result: dict[int, Path] = {}
-    icons_dir = get_wiki_path("立绘") / PORTRAIT_ICONS_DIR / str(content_id)
-    if icons_dir.exists():
-        for f in icons_dir.iterdir():
-            if f.suffix == ".png":
-                try:
-                    idx = int(f.stem)
-                    result[idx] = f
-                except ValueError:
-                    pass
-    return result
+def get_local_portrait(content_id: int) -> Path | None:
+    portrait_path = get_wiki_path("立绘") / PORTRAIT_ICONS_DIR / str(content_id) / "portrait.png"
+    if portrait_path.exists():
+        return portrait_path
+    return None
 
 
 # --- Wallpaper (壁纸) ---

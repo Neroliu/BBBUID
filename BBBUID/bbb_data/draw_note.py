@@ -204,9 +204,9 @@ def _get_random_portrait() -> Image.Image | None:
     for cid_dir in portrait_path.iterdir():
         if not cid_dir.is_dir():
             continue
-        for f in cid_dir.iterdir():
-            if f.is_file() and f.suffix == ".png":
-                all_files.append(f)
+        f = cid_dir / "portrait.png"
+        if f.is_file():
+            all_files.append(f)
     if not all_files:
         return None
     try:
