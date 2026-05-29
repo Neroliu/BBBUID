@@ -1,7 +1,7 @@
 # BBBUID
 
 <p align="center">
-  <a href="https://github.com/Genshin-bots/gsuid_core"><img src="https://uploadstatic.mihoyo.com/bh3-wiki/2022/12/01/264755623/12fb1d508d8e392c9b6ecd794a98274e_1660936160398365933.png" width="256" height="256" alt="BBBUID"></a>
+  <a href="https://github.com/Genshin-bots/gsuid_core"><img src="ICON.png" width="256" height="256" alt="BBBUID"></a>
 </p>
 <h1 align="center">BBBUID 1.0.0</h1>
 <h4 align="center">支持OneBot(QQ)、QQ频道、微信、开黑啦、Telegram的崩坏3插件</h4>
