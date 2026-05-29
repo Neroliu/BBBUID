@@ -392,6 +392,10 @@ async def _check_missing_icons(channel_name: str, channel_id: int, items: list):
     if missing_count > 0:
         logger.info(f"[崩坏3] [资源更新] {channel_name} 补充下载 {missing_count} 个缺失图标")
 
+    # 角色频道：同时补充缺失的立绘缓存
+    if channel_name == "角色":
+        await _check_missing_portraits(items)
+
 
 async def update_all():
     for name, cid in CHANNEL_MAP.items():
@@ -487,6 +491,24 @@ def _get_portrait_icons_dir(content_id: int) -> Path:
     path = get_wiki_path("立绘") / PORTRAIT_ICONS_DIR / str(content_id)
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+async def _check_missing_portraits(items: list):
+    """检查并补充缺失的角色立绘缓存。"""
+    missing_count = 0
+    for item in items:
+        cid = item["content_id"]
+        portrait_dir = _get_portrait_icons_dir(cid)
+        # 如果目录下已有文件，视为缓存存在
+        if any(f.suffix == ".png" for f in portrait_dir.iterdir() if portrait_dir.exists()):
+            continue
+        detail = _load_detail("角色", cid)
+        if not detail:
+            continue
+        missing_count += 1
+        await _download_portrait_icons(cid, detail)
+    if missing_count > 0:
+        logger.info(f"[崩坏3] [资源更新] 补充下载 {missing_count} 个缺失立绘")
 
 
 async def _download_portrait_icons(content_id: int, detail: dict):
