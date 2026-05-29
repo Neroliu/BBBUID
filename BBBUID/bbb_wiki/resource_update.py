@@ -483,24 +483,27 @@ def get_local_enemy_image(content_id: int) -> Path | None:
 
 def _cleanup_portrait_cache(valid_cids: set[str]):
     """清理立绘缓存：淘汰不在valid_cids中的目录，清理非portrait.png文件。"""
+    import shutil
+
     portrait_base = get_wiki_path("立绘") / PORTRAIT_ICONS_DIR
     if not portrait_base.exists():
         return
     evicted = 0
     cleaned = 0
     for cid_dir in list(portrait_base.iterdir()):
-        if not cid_dir.is_dir():
+        if not cid_dir.is_dir() or cid_dir.name.startswith("@"):
             continue
         # 淘汰不在当前角色列表中的缓存目录
         if cid_dir.name not in valid_cids:
-            for f in cid_dir.iterdir():
-                f.unlink()
-                evicted += 1
-            cid_dir.rmdir()
+            shutil.rmtree(cid_dir, ignore_errors=True)
+            evicted += 1
             continue
-        # 清理非portrait.png的文件
+        # 清理非portrait.png的文件和非预期目录
         for f in list(cid_dir.iterdir()):
-            if f.name != "portrait.png":
+            if f.is_dir():
+                shutil.rmtree(f, ignore_errors=True)
+                cleaned += 1
+            elif f.name != "portrait.png":
                 f.unlink()
                 cleaned += 1
     if evicted > 0 or cleaned > 0:
@@ -576,10 +579,10 @@ async def _download_portrait(content_id: int, detail: dict):
 
 
 def _remove_portrait_icons(content_id: int):
+    import shutil
     icons_dir = _get_portrait_icons_dir(content_id)
     if icons_dir.exists():
-        for f in icons_dir.iterdir():
-            f.unlink()
+        shutil.rmtree(icons_dir, ignore_errors=True)
 
 
 def get_local_portrait(content_id: int) -> Path | None:
