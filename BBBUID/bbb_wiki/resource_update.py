@@ -367,6 +367,11 @@ async def update_channel(channel_name: str, channel_id: int):
             _remove_wallpaper_icons(int(cid))
 
     _save_index(channel_name, new_index)
+
+    # 角色频道更新后：补充缺失的立绘缓存
+    if channel_name == "角色":
+        await _check_missing_portraits(items)
+
     logger.info(f"[崩坏3] [资源更新] {channel_name} 更新完成")
 
 
@@ -404,6 +409,8 @@ async def _check_missing_icons(channel_name: str, channel_id: int, items: list):
 
 async def update_all():
     for name, cid in CHANNEL_MAP.items():
+        if name == "立绘":
+            continue  # 立绘从角色频道详情页抓取，不再单独更新
         try:
             await update_channel(name, cid)
         except Exception as e:
@@ -519,7 +526,10 @@ async def _check_missing_portraits(items: list):
         portrait_path = _get_portrait_icons_dir(cid) / "portrait.png"
         if portrait_path.exists():
             continue
+        # 优先从本地缓存读取detail，不存在则从API获取
         detail = _load_detail("角色", cid)
+        if not detail:
+            detail = await get_content_detail(cid)
         if not detail:
             continue
         missing_count += 1
