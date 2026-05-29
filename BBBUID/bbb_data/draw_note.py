@@ -414,11 +414,11 @@ async def draw_note_img(
         canvas.alpha_composite(bg, (0, 0))
 
     # --- Character Portrait (left side, vertically centered) ---
-    portrait = _get_random_portrait()
-    if portrait:
-        pw, ph = portrait.size
-        portrait_y = (H - ph) // 2
-        canvas.alpha_composite(portrait, (0, portrait_y))
+    # portrait = _get_random_portrait()
+    # if portrait:
+    #     pw, ph = portrait.size
+    #     portrait_y = (H - ph) // 2
+    #     canvas.alpha_composite(portrait, (0, portrait_y))
 
     # --- FG Overlays ---
     fg1 = _load_res("FG01.png")
