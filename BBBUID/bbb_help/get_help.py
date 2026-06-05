@@ -53,7 +53,7 @@ async def get_help():
         plugin_help=plugin_help,
         plugin_prefix=get_plugin_available_prefix("BBBUID"),
         help_mode="dark",
-        banner_bg=Image.open(TEXT_PATH / "banner_bg_dark.jpg"),
+        banner_bg=Image.open(Path(__file__).parent.parent / "bbb_data" / "banner_bg.jpg"),
         banner_sub_text="崩坏3插件为你服务！",
         help_bg=Image.open(Path(__file__).parent.parent / "bbb_data" / "bg.jpg"),
         cag_bg=Image.open(Path(__file__).parent.parent / "bbb_data" / "cag_bg.png"),
