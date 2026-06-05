@@ -7,7 +7,8 @@ from PIL import Image
 
 from gsuid_core.sv import get_plugin_available_prefix
 from gsuid_core.help.model import PluginHelp
-from gsuid_core.help.draw_new_plugin_help import get_new_help, TEXT_PATH, ICON_PATH
+
+from .draw_help import get_new_help, TEXT_PATH, ICON_PATH
 
 from ..version import BBBUID_version
 
@@ -25,7 +26,6 @@ async def get_help_data():
 
 def _assign_icons(plugin_help: dict) -> dict:
     """为没有 icon 字段的命令从图标资源包中随机分配不重复的图标。"""
-    # 收集所有可用图标文件
     if ICON_PACK_PATH.exists():
         all_icons = list(ICON_PACK_PATH.glob("*.png"))
     else:
