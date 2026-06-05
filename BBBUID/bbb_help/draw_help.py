@@ -161,7 +161,7 @@ def _get_new_help(
     if item_bg is None:
         item_bg = Image.open(TEXT_PATH / f"item_{help_mode}.png")
     if highlight_bg is None:
-        highlight_bg = Image.open(TEXT_PATH / "highlight.png")
+        highlight_bg = Image.open(Path(__file__).parent.parent / "bbb_data" / "highlight.png")
 
     if help_mode == "dark":
         main_color = (255, 255, 255)
