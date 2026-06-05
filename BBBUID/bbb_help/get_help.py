@@ -33,6 +33,6 @@ async def get_help():
         cag_bg=Image.open(TEXT_PATH / "cag_bg_dark.png"),
         item_bg=Image.open(TEXT_PATH / "item_bg_dark.png"),
         icon_path=ICON_PATH,
-        footer=Image.open(TEXT_PATH / "footer_dark.png"),
+        footer=Image.open(Path(__file__).parent.parent / "bbb_data" / "footer.png"),
         enable_cache=True,
     )
