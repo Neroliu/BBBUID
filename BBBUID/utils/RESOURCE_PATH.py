@@ -14,6 +14,12 @@ CHAR_DATA_CACHE_PATH = MAIN_PATH / "char_data_cache"
 USER_CHAR_ALIAS_PATH = ALIAS_PATH / "char_alias.json"
 CHAR_META_PATH = MAIN_PATH / "char_meta.json"
 
+ELYSIAN_REALM_PATH = MAIN_PATH / "elysian_realm"
+ELYSIAN_INDEX_PATH = ELYSIAN_REALM_PATH / "official-index.json"
+ELYSIAN_LOCAL_INDEX_PATH = ELYSIAN_REALM_PATH / "local-index.json"
+ELYSIAN_META_PATH = ELYSIAN_REALM_PATH / "meta.json"
+ELYSIAN_IMAGE_CACHE_PATH = ELYSIAN_REALM_PATH / "images"
+
 
 CHANNEL_MAP = {
     "角色": 18,
@@ -41,6 +47,7 @@ def init_dir():
     for name in CHANNEL_MAP:
         get_wiki_path(name)
     ALIAS_PATH.mkdir(parents=True, exist_ok=True)
+    ELYSIAN_IMAGE_CACHE_PATH.mkdir(parents=True, exist_ok=True)
 
 
 init_dir()
