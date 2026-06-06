@@ -15,7 +15,6 @@ from ..utils.RESOURCE_PATH import ELYSIAN_IMAGE_CACHE_PATH, ELYSIAN_INDEX_PATH, 
 
 DEFAULT_INDEX_URL = "https://raw.githubusercontent.com/MskTmi/ElysianRealm-Data/master/dist/elysian-realm-index.json"
 DEFAULT_RAW_BASE = "https://raw.githubusercontent.com/MskTmi/ElysianRealm-Data/master"
-SOURCE_REPO_URL = "https://github.com/MskTmi/ElysianRealm-Data"
 
 _update_lock = asyncio.Lock()
 _image_locks: dict[str, asyncio.Lock] = {}
@@ -72,7 +71,8 @@ def _parse_dt(value: str | None) -> datetime | None:
 
 def _index_expired() -> bool:
     try:
-        cache_hours = int(_get_config("ElysianStrategyCacheHours", 6) or 6)
+        raw_cache_hours = _get_config("ElysianStrategyCacheHours", 6)
+        cache_hours = 6 if raw_cache_hours is None else max(0, int(raw_cache_hours))
     except (TypeError, ValueError):
         cache_hours = 6
     fetched_at = _parse_dt(_load_meta().get("fetched_at"))
