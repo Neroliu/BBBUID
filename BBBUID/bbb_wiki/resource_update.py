@@ -326,6 +326,9 @@ def _cleanup_wallpaper_residuals():
     wp_icons_dir = wp_path / WALLPAPER_ICONS_DIR
     if wp_icons_dir.exists():
         _remove_dir(wp_icons_dir)
+    # Remove any leftover .png files in root (legacy files from old logic)
+    for png_file in wp_path.glob("*.png"):
+        png_file.unlink()
 
 
 async def update_channel(channel_name: str, channel_id: int):
@@ -621,7 +624,7 @@ async def _download_portrait(content_id: int, detail: dict):
             try:
                 resp = await client.head(url, timeout=5)
                 cl = int(resp.headers.get("content-length", 0))
-                if cl < 200000:
+                if cl < 50000:
                     continue
             except Exception:
                 continue
@@ -697,19 +700,16 @@ async def _cache_wallpaper_links(content_id: int, detail: dict):
         urls = re.findall(r"https?://[^\s\"<>]+[.]png", section.get("text", ""))
         all_urls.update(urls)
 
-    # Filter: only uploadstatic.mihoyo.com + >= 200KB, then validate
+    # Filter: only large images (>= 500KB), then validate
     valid_urls = set()
     async with httpx.AsyncClient(follow_redirects=True) as client:
         for url in sorted(all_urls):
-            # Only cache uploadstatic wallpaper images (>= 200KB), skip small icons
-            if "uploadstatic.mihoyo.com" not in url:
-                continue
             try:
                 resp = await client.head(url, timeout=5)
                 if resp.status_code != 200:
                     continue
                 cl = int(resp.headers.get("content-length", 0))
-                if cl < 200000:
+                if cl < 50000:
                     continue
                 valid_urls.add(url)
             except Exception:
