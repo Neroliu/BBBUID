@@ -645,16 +645,21 @@ async def _cache_wallpaper_links(content_id: int, detail: dict):
         urls = re.findall(r"https?://[^\s\"<>]+[.]png", section.get("text", ""))
         all_urls.update(urls)
 
-    # Validate URLs: check if they are accessible (HEAD request)
+    # Filter: only uploadstatic.mihoyo.com + >= 200KB, then validate
     valid_urls = set()
     async with httpx.AsyncClient(follow_redirects=True) as client:
         for url in sorted(all_urls):
+            # Only cache uploadstatic wallpaper images (>= 200KB), skip small icons
+            if "uploadstatic.mihoyo.com" not in url:
+                continue
             try:
                 resp = await client.head(url, timeout=5)
-                if resp.status_code == 200:
-                    valid_urls.add(url)
-                else:
-                    logger.debug(f"[崩坏3] [资源更新] 壁纸链接失效: {url} (status={resp.status_code})")
+                if resp.status_code != 200:
+                    continue
+                cl = int(resp.headers.get("content-length", 0))
+                if cl < 200000:
+                    continue
+                valid_urls.add(url)
             except Exception:
                 logger.debug(f"[崩坏3] [资源更新] 壁纸链接不可达: {url}")
 
@@ -737,7 +742,8 @@ async def _enforce_wallpaper_cache_limits():
 def _enforce_dir_limits(base_dir: Path, max_count: int, max_size: int):
     """Enforce count and size limits on files under base_dir (recursive).
     Removes oldest files first when limits are exceeded."""
-    files = sorted(base_dir.rglob("*.png"), key=lambda f: f.stat().st_mtime)
+    files = sorted(base_dir.rglob("*.*"), key=lambda f: f.stat().st_mtime)
+    files = [f for f in files if f.suffix in (".png", ".jpg", ".jpeg")]
     total_size = sum(f.stat().st_size for f in files)
 
     # Remove by count
