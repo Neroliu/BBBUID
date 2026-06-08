@@ -10,8 +10,7 @@
 
 html, body {
     background: transparent;
-    font-family: "MiSans", "PingFang SC", "Microsoft YaHei", sans-serif;
-    font-weight: 700;
+    font-family: "MiSans", "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif;
     color: #f0f0f5;
     overflow: hidden;
 }
