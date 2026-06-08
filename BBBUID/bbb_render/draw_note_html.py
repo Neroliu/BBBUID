@@ -82,6 +82,12 @@ def _fmt_schedule_end(ts: str) -> str:
 
 
 async def _pick_random_wallpaper_uri() -> str | None:
+    """Pick a random wallpaper: check compressed cache, else download from links."""
+    from ..bbb_wiki.resource_update import (
+        _cache_wallpaper_links,
+        _get_compressed_cache_dir,
+    )
+
     wp_path = WIKI_PATH / "壁纸"
     index_file = wp_path / "index.json"
     if not index_file.exists():
@@ -92,20 +98,72 @@ async def _pick_random_wallpaper_uri() -> str | None:
             return None
         content_ids = list(index.keys())
         random.shuffle(content_ids)
-        for cid in content_ids[:5]:
-            icons_dir = wp_path / "wallpaper_icons" / str(cid)
-            if not icons_dir.exists():
+
+        for cid in content_ids[:10]:
+            cid = int(cid)
+
+            # 1) Check compressed cache first
+            comp_dir = _get_compressed_cache_dir(cid)
+            comp_files = sorted(comp_dir.glob("*.jpg"), key=lambda f: f.stat().st_mtime)
+            if comp_files:
+                f = random.choice(comp_files)
+                try:
+                    with Image.open(f) as img:
+                        if img.width >= 800:
+                            return file_uri(f)
+                except Exception:
+                    continue
+
+            # 2) No compressed cache - download from links
+            links_file = wp_path / "wallpaper_links" / f"{cid}.json"
+            if not links_file.exists():
+                from ..bbb_wiki.wiki_api import get_content_detail
+                detail = await get_content_detail(cid)
+                if not detail:
+                    continue
+                await _cache_wallpaper_links(cid, detail)
+
+            if not links_file.exists():
                 continue
-            files = [f for f in icons_dir.iterdir() if f.is_file() and f.suffix == ".png"]
-            if not files:
+
+            urls = json.loads(links_file.read_text(encoding="utf-8"))
+            if not urls:
                 continue
-            f = random.choice(files)
-            try:
-                with Image.open(f) as img:
-                    if img.width >= 800:
-                        return file_uri(f)
-            except Exception:
-                continue
+            random.shuffle(urls)
+
+            for idx, url in enumerate(urls):
+                comp_path = comp_dir / f"{idx}.jpg"
+                if comp_path.exists():
+                    try:
+                        with Image.open(comp_path) as img:
+                            if img.width >= 800:
+                                return file_uri(comp_path)
+                    except Exception:
+                        continue
+
+                # Download and compress
+                try:
+                    import httpx
+                    async with httpx.AsyncClient(follow_redirects=True) as client:
+                        resp = await client.get(url, timeout=15)
+                        if resp.status_code != 200:
+                            continue
+                        from io import BytesIO
+                        from PIL import Image as PILImage
+                        img = PILImage.open(BytesIO(resp.content)).convert("RGBA")
+                        if img.width < 800:
+                            continue
+
+                        # Save compressed
+                        comp_path.parent.mkdir(parents=True, exist_ok=True)
+                        rgb = img.convert("RGB")
+                        buf = BytesIO()
+                        rgb.save(buf, format="JPEG", quality=85)
+                        comp_path.write_bytes(buf.getvalue())
+                        return file_uri(comp_path)
+                except Exception:
+                    continue
+
     except Exception as e:
         logger.warning(f"[崩坏3] [HTML渲染] 选择壁纸失败: {e}")
     return None

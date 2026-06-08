@@ -209,7 +209,7 @@ async def _get_random_wallpaper() -> Image.Image | None:
                 detail = await get_content_detail(cid)
                 if not detail:
                     continue
-                _cache_wallpaper_links(cid, detail)
+                await _cache_wallpaper_links(cid, detail)
 
             if not links_file.exists():
                 continue

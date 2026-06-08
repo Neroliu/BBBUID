@@ -345,7 +345,7 @@ async def update_channel(channel_name: str, channel_id: int):
                 elif channel_name == "敌人":
                     await _download_enemy_icons(channel_name, item["content_id"], detail)
                 elif channel_name == "壁纸":
-                    _cache_wallpaper_links(item["content_id"], detail)
+                    await _cache_wallpaper_links(item["content_id"], detail)
                     _remove_wallpaper_icons(item["content_id"])
 
     for cid in removed:
@@ -420,7 +420,7 @@ async def update_all():
 
     # Enforce wallpaper cache limits
     try:
-        _enforce_wallpaper_cache_limits()
+        await _enforce_wallpaper_cache_limits()
     except Exception as e:
         logger.error(f"[崩坏3] [资源更新] 壁纸缓存清理失败: {e}")
 
@@ -637,21 +637,33 @@ def _get_compressed_cache_dir(content_id: int) -> Path:
     return path
 
 
-def _cache_wallpaper_links(content_id: int, detail: dict):
-    """Extract and cache wallpaper URLs from detail (no download)."""
+async def _cache_wallpaper_links(content_id: int, detail: dict):
+    """Extract wallpaper URLs from detail, validate them, and cache valid ones."""
     links_dir = _get_wallpaper_links_dir()
     all_urls = set()
     for section in detail.get("contents", []):
-        urls = re.findall(r"https?://[^\s"<>]+[.]png", section.get("text", ""))
+        urls = re.findall(r"https?://[^\s\"<>]+[.]png", section.get("text", ""))
         all_urls.update(urls)
+
+    # Validate URLs: check if they are accessible (HEAD request)
+    valid_urls = set()
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        for url in sorted(all_urls):
+            try:
+                resp = await client.head(url, timeout=5)
+                if resp.status_code == 200:
+                    valid_urls.add(url)
+                else:
+                    logger.debug(f"[崩坏3] [资源更新] 壁纸链接失效: {url} (status={resp.status_code})")
+            except Exception:
+                logger.debug(f"[崩坏3] [资源更新] 壁纸链接不可达: {url}")
 
     link_file = links_dir / f"{content_id}.json"
     link_file.write_text(
-        json.dumps(sorted(all_urls), ensure_ascii=False),
+        json.dumps(sorted(valid_urls), ensure_ascii=False),
         encoding="utf-8",
     )
-    logger.debug(f"[崩坏3] [资源更新] 壁纸链接已缓存: {content_id} ({len(all_urls)} urls)")
-
+    logger.debug(f"[崩坏3] [资源更新] 壁纸链接已缓存: {content_id} ({len(valid_urls)} valid urls)")
 
 def _remove_wallpaper_links(content_id: int):
     link_file = get_wiki_path("壁纸") / WALLPAPER_LINKS_DIR / f"{content_id}.json"
@@ -672,10 +684,40 @@ def _remove_wallpaper_icons(content_id: int):
             f.unlink()
 
 
-def _enforce_wallpaper_cache_limits():
-    """Enforce wallpaper cache count and size limits."""
+async def _cleanup_broken_wallpaper_links():
+    """Validate cached wallpaper links and remove broken ones."""
+    links_dir = get_wiki_path("壁纸") / WALLPAPER_LINKS_DIR
+    if not links_dir.exists():
+        return
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        for link_file in links_dir.glob("*.json"):
+            try:
+                urls = json.loads(link_file.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            valid = []
+            for url in urls:
+                try:
+                    resp = await client.head(url, timeout=5)
+                    if resp.status_code == 200:
+                        valid.append(url)
+                except Exception:
+                    pass
+            if not valid:
+                link_file.unlink()
+                logger.debug(f"[崩坏3] [资源更新] 壁纸链接全部失效，已清理: {link_file.name}")
+            elif len(valid) < len(urls):
+                link_file.write_text(json.dumps(valid, ensure_ascii=False), encoding="utf-8")
+                logger.debug(f"[崩坏3] [资源更新] 壁纸链接部分失效: {link_file.name} ({len(valid)}/{len(urls)} valid)")
+
+
+async def _enforce_wallpaper_cache_limits():
+    """Enforce wallpaper cache count and size limits, and clean up broken links."""
     from ..bbb_config.bbb_config import BBB_CONFIG
     wp_base = get_wiki_path("壁纸")
+
+    # --- Clean up broken wallpaper links ---
+    await _cleanup_broken_wallpaper_links()
 
     # --- Compressed wallpaper cache limits ---
     comp_dir = wp_base / COMPRESSED_WALLPAPER_CACHE_DIR
