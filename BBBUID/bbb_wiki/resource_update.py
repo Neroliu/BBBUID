@@ -313,13 +313,19 @@ def _cleanup_all_old_wallpaper_icons(items: list):
 def _cleanup_wallpaper_residuals():
     """Remove all residual files in the wallpaper directory that are no longer used."""
     wp_path = get_wiki_path("壁纸")
+    # Remove icons/ directory (unused by wallpaper channel)
     icons_dir = wp_path / "icons"
     if icons_dir.exists():
         _remove_dir(icons_dir)
+    # Remove all <cid>.json detail files (keep index.json)
     for json_file in wp_path.glob("*.json"):
         if json_file.name == "index.json":
             continue
         json_file.unlink()
+    # Remove all old wallpaper_icons/ directories
+    wp_icons_dir = wp_path / WALLPAPER_ICONS_DIR
+    if wp_icons_dir.exists():
+        _remove_dir(wp_icons_dir)
 
 
 async def update_channel(channel_name: str, channel_id: int):
