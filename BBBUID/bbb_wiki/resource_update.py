@@ -18,6 +18,9 @@ MATERIAL_ICONS_DIR = "material_icons"
 STIGMA_EQUIP_ICONS_DIR = "stigma_equip_icons"
 PORTRAIT_ICONS_DIR = "portrait_icons"
 WALLPAPER_ICONS_DIR = "wallpaper_icons"
+WALLPAPER_LINKS_DIR = "wallpaper_links"
+WALLPAPER_CACHE_DIR = "wallpaper_cache"
+COMPRESSED_WALLPAPER_CACHE_DIR = "compressed_cache"
 
 
 def _load_index(channel_name: str) -> dict:
@@ -342,7 +345,8 @@ async def update_channel(channel_name: str, channel_id: int):
                 elif channel_name == "敌人":
                     await _download_enemy_icons(channel_name, item["content_id"], detail)
                 elif channel_name == "壁纸":
-                    await _download_wallpaper_icons(item["content_id"], detail)
+                    _cache_wallpaper_links(item["content_id"], detail)
+                    _remove_wallpaper_icons(item["content_id"])
 
     for cid in removed:
         json_path = get_wiki_path(channel_name) / f"{cid}.json"
@@ -355,6 +359,9 @@ async def update_channel(channel_name: str, channel_id: int):
         elif channel_name == "敌人":
             _remove_enemy_icons(int(cid))
         elif channel_name == "壁纸":
+            _remove_wallpaper_links(int(cid))
+            _remove_dir(get_wiki_path("壁纸") / WALLPAPER_CACHE_DIR / str(cid))
+            _remove_dir(get_wiki_path("壁纸") / COMPRESSED_WALLPAPER_CACHE_DIR / str(cid))
             _remove_wallpaper_icons(int(cid))
 
     _save_index(channel_name, new_index)
@@ -410,6 +417,12 @@ async def update_all():
             await update_channel(name, cid)
         except Exception as e:
             logger.error(f"[崩坏3] [资源更新] {name} 更新失败: {e}")
+
+    # Enforce wallpaper cache limits
+    try:
+        _enforce_wallpaper_cache_limits()
+    except Exception as e:
+        logger.error(f"[崩坏3] [资源更新] 壁纸缓存清理失败: {e}")
 
     # Rebuild alias index from wiki data
     try:
@@ -595,42 +608,61 @@ def get_local_portrait(content_id: int) -> Path | None:
 # --- Wallpaper (壁纸) ---
 
 
-def _get_wallpaper_icons_dir(content_id: int) -> Path:
-    path = get_wiki_path("壁纸") / WALLPAPER_ICONS_DIR / str(content_id)
+def _remove_dir(path: Path):
+    """Remove a directory and all its contents."""
+    if path.exists():
+        for f in path.iterdir():
+            if f.is_dir():
+                _remove_dir(f)
+            else:
+                f.unlink()
+        path.rmdir()
+
+
+def _get_wallpaper_links_dir() -> Path:
+    path = get_wiki_path("壁纸") / WALLPAPER_LINKS_DIR
     path.mkdir(parents=True, exist_ok=True)
     return path
 
 
-async def _download_wallpaper_icons(content_id: int, detail: dict):
-    icons_dir = _get_wallpaper_icons_dir(content_id)
+def _get_wallpaper_cache_dir(content_id: int) -> Path:
+    path = get_wiki_path("壁纸") / WALLPAPER_CACHE_DIR / str(content_id)
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _get_compressed_cache_dir(content_id: int) -> Path:
+    path = get_wiki_path("壁纸") / COMPRESSED_WALLPAPER_CACHE_DIR / str(content_id)
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _cache_wallpaper_links(content_id: int, detail: dict):
+    """Extract and cache wallpaper URLs from detail (no download)."""
+    links_dir = _get_wallpaper_links_dir()
     all_urls = set()
     for section in detail.get("contents", []):
-        html = section.get("text", "")
-        urls = re.findall(r'https?://[^\s"<>]+[.]png', html)
+        urls = re.findall(r"https?://[^\s"<>]+[.]png", section.get("text", ""))
         all_urls.update(urls)
 
-    async with httpx.AsyncClient(follow_redirects=True) as client:
-        idx = 0
-        for url in sorted(all_urls):
-            try:
-                resp = await client.head(url, timeout=5)
-                cl = int(resp.headers.get("content-length", 0))
-                if cl < 50000:
-                    continue
-            except Exception:
-                continue
+    link_file = links_dir / f"{content_id}.json"
+    link_file.write_text(
+        json.dumps(sorted(all_urls), ensure_ascii=False),
+        encoding="utf-8",
+    )
+    logger.debug(f"[崩坏3] [资源更新] 壁纸链接已缓存: {content_id} ({len(all_urls)} urls)")
 
-            icon_path = icons_dir / f"{idx}.png"
-            idx += 1
-            if icon_path.exists():
-                continue
-            try:
-                resp = await client.get(url, timeout=30)
-                if resp.status_code == 200:
-                    icon_path.write_bytes(resp.content)
-                    logger.debug(f"[崩坏3] [资源更新] 壁纸已保存: {content_id}/{icon_path.name}")
-            except Exception as e:
-                logger.warning(f"[崩坏3] [资源更新] 壁纸下载异常: {e}")
+
+def _remove_wallpaper_links(content_id: int):
+    link_file = get_wiki_path("壁纸") / WALLPAPER_LINKS_DIR / f"{content_id}.json"
+    if link_file.exists():
+        link_file.unlink()
+
+
+def _get_wallpaper_icons_dir(content_id: int) -> Path:
+    path = get_wiki_path("壁纸") / WALLPAPER_ICONS_DIR / str(content_id)
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def _remove_wallpaper_icons(content_id: int):
@@ -638,6 +670,51 @@ def _remove_wallpaper_icons(content_id: int):
     if icons_dir.exists():
         for f in icons_dir.iterdir():
             f.unlink()
+
+
+def _enforce_wallpaper_cache_limits():
+    """Enforce wallpaper cache count and size limits."""
+    from ..bbb_config.bbb_config import BBB_CONFIG
+    wp_base = get_wiki_path("壁纸")
+
+    # --- Compressed wallpaper cache limits ---
+    comp_dir = wp_base / COMPRESSED_WALLPAPER_CACHE_DIR
+    if comp_dir.exists():
+        max_comp_count = int(BBB_CONFIG.get_config("CompressedWallpaperCacheCount").data)
+        max_comp_size = int(BBB_CONFIG.get_config("CompressedWallpaperCacheSizeMB").data) * 1024 * 1024
+        _enforce_dir_limits(comp_dir, max_comp_count, max_comp_size)
+
+    # --- Original wallpaper cache limits ---
+    cache_dir = wp_base / WALLPAPER_CACHE_DIR
+    if cache_dir.exists():
+        max_cache_count = int(BBB_CONFIG.get_config("WallpaperCacheCount").data)
+        max_cache_size = int(BBB_CONFIG.get_config("WallpaperCacheSizeMB").data) * 1024 * 1024
+        _enforce_dir_limits(cache_dir, max_cache_count, max_cache_size)
+
+
+def _enforce_dir_limits(base_dir: Path, max_count: int, max_size: int):
+    """Enforce count and size limits on files under base_dir (recursive).
+    Removes oldest files first when limits are exceeded."""
+    files = sorted(base_dir.rglob("*.png"), key=lambda f: f.stat().st_mtime)
+    total_size = sum(f.stat().st_size for f in files)
+
+    # Remove by count
+    while len(files) > max_count:
+        f = files.pop(0)
+        f.unlink()
+        total_size -= f.stat().st_size if f.exists() else 0
+
+    # Remove by size
+    while total_size > max_size and files:
+        f = files.pop(0)
+        sz = f.stat().st_size if f.exists() else 0
+        f.unlink()
+        total_size -= sz
+
+    # Cleanup empty dirs
+    for d in sorted(base_dir.iterdir(), reverse=True):
+        if d.is_dir() and not any(d.iterdir()):
+            d.rmdir()
 
 
 def get_local_wallpaper_icons(content_id: int) -> dict[int, Path]:

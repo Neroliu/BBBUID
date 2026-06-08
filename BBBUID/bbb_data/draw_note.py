@@ -4,6 +4,7 @@ import json
 import random
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
+from io import BytesIO
 from typing import Dict
 
 from PIL import Image, ImageDraw, ImageFont
@@ -164,6 +165,14 @@ async def _download_image(url: str) -> Image.Image | None:
 
 
 async def _get_random_wallpaper() -> Image.Image | None:
+    """Get a random wallpaper: check compressed cache first, else download on demand."""
+    from ..bbb_wiki.resource_update import (
+        _cache_wallpaper_links,
+        _get_compressed_cache_dir,
+        _get_wallpaper_cache_dir,
+        _enforce_wallpaper_cache_limits,
+    )
+
     wp_path = WIKI_PATH / "壁纸"
     if not wp_path.exists():
         return None
@@ -176,20 +185,83 @@ async def _get_random_wallpaper() -> Image.Image | None:
             return None
         content_ids = list(index.keys())
         random.shuffle(content_ids)
-        for cid in content_ids[:5]:
-            icons_dir = wp_path / WALLPAPER_ICONS_DIR / str(cid)
-            if not icons_dir.exists():
+
+        for cid in content_ids[:10]:
+            cid = int(cid)
+
+            # 1) Check compressed cache first
+            comp_dir = _get_compressed_cache_dir(cid)
+            comp_files = sorted(comp_dir.glob("*.jpg"), key=lambda f: f.stat().st_mtime)
+            if comp_files:
+                f = random.choice(comp_files)
+                try:
+                    img = Image.open(f).convert("RGBA")
+                    if img.width >= 800:
+                        return img
+                except Exception:
+                    continue
+
+            # 2) No compressed cache - need to download
+            # Load or fetch wallpaper links
+            links_file = wp_path / "wallpaper_links" / f"{cid}.json"
+            if not links_file.exists():
+                from ..bbb_wiki.wiki_api import get_content_detail
+                detail = await get_content_detail(cid)
+                if not detail:
+                    continue
+                _cache_wallpaper_links(cid, detail)
+
+            if not links_file.exists():
                 continue
-            files = [f for f in icons_dir.iterdir() if f.is_file() and f.suffix == ".png"]
-            if not files:
+
+            urls = json.loads(links_file.read_text(encoding="utf-8"))
+            if not urls:
                 continue
-            f = random.choice(files)
-            try:
-                img = Image.open(f).convert("RGBA")
-                if img.width >= 800:
-                    return img
-            except Exception:
-                continue
+            random.shuffle(urls)
+
+            for idx, url in enumerate(urls):
+                # Check compressed cache for this specific URL
+                comp_path = comp_dir / f"{idx}.jpg"
+                if comp_path.exists():
+                    try:
+                        img = Image.open(comp_path).convert("RGBA")
+                        if img.width >= 800:
+                            return img
+                    except Exception:
+                        continue
+
+                # Download original
+                img = await _download_image(url)
+                if not img or img.width < 800:
+                    continue
+
+                # Save original to wallpaper cache
+                try:
+                    cache_dir = _get_wallpaper_cache_dir(cid)
+                    cache_path = cache_dir / f"{idx}.png"
+                    img.save(str(cache_path), "PNG")
+                except Exception:
+                    pass
+
+                # Compress to canvas size and save
+                compressed = _fit_centered(img, (W, H))
+                try:
+                    comp_path.parent.mkdir(parents=True, exist_ok=True)
+                    rgb_img = compressed.convert("RGB")
+                    buf = BytesIO()
+                    rgb_img.save(buf, format="JPEG", quality=85)
+                    comp_path.write_bytes(buf.getvalue())
+                except Exception:
+                    pass
+
+                # Enforce cache limits
+                try:
+                    _enforce_wallpaper_cache_limits()
+                except Exception:
+                    pass
+
+                return img
+
     except Exception as e:
         logger.warning(f"[崩坏3] [便笺渲染] 获取壁纸失败: {e}")
     return None

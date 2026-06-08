@@ -33,4 +33,24 @@ CONFIG_DEFAULT: Dict[str, GSC] = {
         "开启后使用 playwright + HTML 渲染图片，关闭则使用 PIL 渲染。需手动 `playwright install chromium`",
         False,
     ),
+    "WallpaperCacheCount": GsStrConfig(
+        "壁纸原图缓存张数上限",
+        "便笺壁纸原图缓存的最大张数",
+        "10",
+    ),
+    "WallpaperCacheSizeMB": GsStrConfig(
+        "壁纸原图缓存大小上限(MB)",
+        "便笺壁纸原图缓存的最大占用空间",
+        "100",
+    ),
+    "CompressedWallpaperCacheCount": GsStrConfig(
+        "压缩壁纸缓存张数上限",
+        "裁剪压缩后的壁纸缓存最大张数",
+        "50",
+    ),
+    "CompressedWallpaperCacheSizeMB": GsStrConfig(
+        "压缩壁纸缓存大小上限(MB)",
+        "裁剪压缩后的壁纸缓存最大占用空间",
+        "200",
+    ),
 }
