@@ -17,11 +17,9 @@ html, body {
 }
 
 .italic {
-    /* 仅保留 skewX，不要再叠加 font-style: italic（MiSans 无 italic 字面，
-       浏览器会自行合成倾斜，叠加后会过斜）。 */
-    transform: skewX(-12deg);
-    transform-origin: 0% 100%;
-    display: inline-block;
+    /* 用浏览器合成的 italic（MiSans 无 italic 字面，由浏览器斜化），
+       不再叠加 transform: skewX，避免双重倾斜。 */
+    font-style: italic;
     font-weight: 700;
 }
 

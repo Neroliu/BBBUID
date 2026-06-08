@@ -186,15 +186,15 @@ async def draw_note_img_html(
     avatar_uri: str | None = None
     try:
         avatar = await get_cached_avatar(ev, ev.user_id)
-        decorated = draw_decorated_avatar(avatar, 152)
+        decorated = draw_decorated_avatar(avatar, 179)
         avatar_uri = _img_to_data_uri(decorated)
     except Exception as e:
         logger.warning(f"[崩坏3] [HTML渲染] 头像加载失败: {e}")
 
-    # 等级徽章 x 位置 = nickname 起点(282) + UID 文本宽度估算 + 间距
-    # UID 文本用 28px 字号；中文/数字按 14px/字符 估算够用
+    # 等级徽章 x 位置 = nickname 起点(309) + UID 文本宽度 + 间距16
+    # 28px 字号下: "UID " ≈ 52px, 每位数字 ≈ 17px
     uid_text = f"UID {uid}"
-    level_x = 282 + len(uid_text) * 14 + 16
+    level_x = 309 + 52 + (len(uid_text) - 4) * 17 + 16
 
     icon_name = EVAL_RATING_TO_ICON.get(str(rating).upper(), "SealedDanIcon01.png")
     eval_icon_path = EVAL_RES_DIR / icon_name
