@@ -358,7 +358,6 @@ async def update_channel(channel_name: str, channel_id: int):
         if channel_name == "壁纸":
             await _check_missing_wallpaper_links(items)
             _cleanup_all_old_wallpaper_icons(items)
-            _cleanup_wallpaper_residuals()
         logger.info(f"[崩坏3] [资源更新] {channel_name} 无更新 ({len(items)} 条)")
         return
 
@@ -456,6 +455,12 @@ async def update_all():
             await update_channel(name, cid)
         except Exception as e:
             logger.error(f"[崩坏3] [资源更新] {name} 更新失败: {e}")
+
+    # Clean up residual wallpaper files (icons dir, old detail JSONs, etc.)
+    try:
+        _cleanup_wallpaper_residuals()
+    except Exception as e:
+        logger.error(f"[崩坏3] [资源更新] 壁纸残留清理失败: {e}")
 
     # Enforce wallpaper cache limits
     try:
