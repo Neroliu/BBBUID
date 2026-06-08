@@ -289,6 +289,27 @@ def _remove_material_icons():
         icons_dir.rmdir()
 
 
+async def _check_missing_wallpaper_links(items: list):
+    """Check and cache wallpaper links for items that don't have them yet."""
+    for item in items:
+        cid = item["content_id"]
+        links_file = get_wiki_path("壁纸") / WALLPAPER_LINKS_DIR / f"{cid}.json"
+        if links_file.exists():
+            continue
+        # Try loading local detail first, fall back to API
+        detail = _load_detail("壁纸", cid)
+        if not detail:
+            detail = await get_content_detail(cid)
+        if detail:
+            await _cache_wallpaper_links(cid, detail)
+
+
+def _cleanup_all_old_wallpaper_icons(items: list):
+    """Remove old wallpaper_icons directories for all current items."""
+    for item in items:
+        _remove_wallpaper_icons(item["content_id"])
+
+
 async def update_channel(channel_name: str, channel_id: int):
     logger.info(f"[崩坏3] [资源更新] 开始更新 {channel_name}...")
 
@@ -321,6 +342,10 @@ async def update_channel(channel_name: str, channel_id: int):
     if not total and not removed:
         # Check for missing icons even if no data update needed
         await _check_missing_icons(channel_name, channel_id, items)
+        # Wallpaper: always check links and clean old icons even if no data change
+        if channel_name == "壁纸":
+            await _check_missing_wallpaper_links(items)
+            _cleanup_all_old_wallpaper_icons(items)
         logger.info(f"[崩坏3] [资源更新] {channel_name} 无更新 ({len(items)} 条)")
         return
 
