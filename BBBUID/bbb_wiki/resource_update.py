@@ -659,14 +659,10 @@ def get_local_portrait(content_id: int) -> Path | None:
 
 
 def _remove_dir(path: Path):
-    """Remove a directory and all its contents."""
+    """Remove a directory and all its contents (handles @eaDir etc)."""
+    import shutil
     if path.exists():
-        for f in path.iterdir():
-            if f.is_dir():
-                _remove_dir(f)
-            else:
-                f.unlink()
-        path.rmdir()
+        shutil.rmtree(path, ignore_errors=True)
 
 
 def _remove_file(path: Path):
