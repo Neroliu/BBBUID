@@ -256,7 +256,7 @@ async def _get_random_wallpaper() -> Image.Image | None:
 
                 # Enforce cache limits
                 try:
-                    _enforce_wallpaper_cache_limits()
+                    await _enforce_wallpaper_cache_limits()
                 except Exception:
                     pass
 
