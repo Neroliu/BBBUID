@@ -11,12 +11,14 @@
 html, body {
     background: transparent;
     font-family: "MiSans", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-weight: 700;
     color: #f0f0f5;
     overflow: hidden;
 }
 
 .italic {
     font-style: italic;
+    font-weight: 700;
     transform: skewX(-14deg);
     display: inline-block;
 }

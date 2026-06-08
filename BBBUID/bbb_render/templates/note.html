@@ -56,15 +56,15 @@
         left: 510px;
         top: 233px;
         width: 790px;
+        height: 100px;
     }
     .stamina-bar01 { display: block; }
     .stamina-bar {
         position: absolute;
-        right: 35px;          /* 体力数字右边距 30 + 进度条右内边距 5 */
-        bottom: 12px;
+        right: 5px;
+        top: 47px;
         width: 650px;
         height: 67px;
-        border-radius: 4px;
         overflow: hidden;
     }
     .stamina-bar .bg, .stamina-bar .fg {
@@ -84,18 +84,21 @@
     .stamina-text {
         position: absolute;
         right: 30px;
-        bottom: 0;
-        line-height: 1;
+        top: 8px;             /* baseline ~62px from block top - font-size 54 */
+        line-height: 54px;
         color: #ffffff;
+        white-space: nowrap;
     }
-    .stamina-text .cur   { font-size: 54px; }
-    .stamina-text .sep   { font-size: 32px; }
-    .stamina-text .max   { font-size: 32px; }
+    .stamina-text .cur   { font-size: 54px; vertical-align: baseline; }
+    .stamina-text .sep   { font-size: 32px; vertical-align: baseline; }
+    .stamina-text .max   { font-size: 32px; vertical-align: baseline; }
     .recover-text {
         position: absolute;
-        bottom: 22px;
+        left: 20px;
+        top: 40px;            /* inside .stamina-bar (height 67), near bottom */
         font-size: 20px;
         color: #ffffff;
+        line-height: 1;
     }
 
     /* ── 活动条 ── */
@@ -253,15 +256,15 @@
             <div class="fg" style="background-image: url('{{ line_bar02_uri }}');"></div>
         </div>
         {% endif %}
+        {% if recover_text %}
+        <div class="recover-text italic">{{ recover_text }}</div>
+        {% endif %}
     </div>
     <div class="stamina-text">
         <span class="italic cur">{{ cur_stamina }}</span>
         <span class="italic sep"> / </span>
         <span class="italic max">{{ max_stamina }}</span>
     </div>
-    {% if recover_text %}
-    <div class="recover-text italic" style="left: 145px;">{{ recover_text }}</div>
-    {% endif %}
 </div>
 
 {# 活动条 #}
