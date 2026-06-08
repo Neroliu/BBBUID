@@ -17,10 +17,12 @@ html, body {
 }
 
 .italic {
-    font-style: italic;
-    font-weight: 700;
-    transform: skewX(-14deg);
+    /* 仅保留 skewX，不要再叠加 font-style: italic（MiSans 无 italic 字面，
+       浏览器会自行合成倾斜，叠加后会过斜）。 */
+    transform: skewX(-12deg);
+    transform-origin: 0% 100%;
     display: inline-block;
+    font-weight: 700;
 }
 
 .text-white { color: #ffffff; }

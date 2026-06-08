@@ -15,6 +15,18 @@ TEMPLATES_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
 
 
+def _resolve_font_dir() -> Path:
+    """优先用 gsuid_core 自带的 MiSans-Bold.ttf 路径。"""
+    try:
+        from gsuid_core.utils.fonts import fonts as _gs_fonts  # type: ignore
+        return Path(_gs_fonts.__file__).parent
+    except Exception:
+        return Path("/root/gsuid_core/gsuid_core/utils/fonts")
+
+
+FONT_DIR = _resolve_font_dir()
+
+
 def file_uri(path: str | Path) -> str:
     """绝对路径 → file:// URL，处理空格与中文。"""
     p = Path(path).resolve()
@@ -29,6 +41,7 @@ _env = Environment(
 _env.globals["file_uri"] = file_uri
 _env.globals["static_dir"] = STATIC_DIR
 _env.globals["templates_dir"] = TEMPLATES_DIR
+_env.globals["font_dir"] = FONT_DIR
 
 
 def render_template(name: str, **ctx) -> str:

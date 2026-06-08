@@ -48,6 +48,10 @@ async def render_html_to_bytes(
                     lambda r: failures.append(f"{r.url} ({r.failure})"),
                 )
                 await page.goto(tmp_path.as_uri(), wait_until="networkidle")
+                try:
+                    await page.evaluate("document.fonts.ready")
+                except Exception:
+                    pass
                 if wait_selector:
                     try:
                         await page.wait_for_selector(wait_selector, timeout=5000)
