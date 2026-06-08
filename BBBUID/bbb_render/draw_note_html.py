@@ -86,6 +86,8 @@ async def _pick_random_wallpaper_uri() -> str | None:
     from ..bbb_wiki.resource_update import (
         _cache_wallpaper_links,
         _get_compressed_cache_dir,
+        _get_wallpaper_cache_dir,
+        _enforce_wallpaper_cache_limits,
     )
 
     wp_path = WIKI_PATH / "壁纸"
@@ -154,12 +156,27 @@ async def _pick_random_wallpaper_uri() -> str | None:
                         if img.width < 800:
                             continue
 
+                        # Save original to wallpaper cache
+                        try:
+                            cache_dir = _get_wallpaper_cache_dir(cid)
+                            cache_path = cache_dir / f"{idx}.png"
+                            img.save(str(cache_path), "PNG")
+                        except Exception:
+                            pass
+
                         # Save compressed
                         comp_path.parent.mkdir(parents=True, exist_ok=True)
                         rgb = img.convert("RGB")
                         buf = BytesIO()
                         rgb.save(buf, format="JPEG", quality=85)
                         comp_path.write_bytes(buf.getvalue())
+
+                        # Enforce cache limits
+                        try:
+                            await _enforce_wallpaper_cache_limits()
+                        except Exception:
+                            pass
+
                         return file_uri(comp_path)
                 except Exception:
                     continue
