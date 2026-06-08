@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="{{ file_uri(static_dir / 'common.css') }}">
+<style>
+    body {
+        width: 1400px;
+        height: 1150px;
+        position: relative;
+        background: #14141e;
+    }
+
+    .layer {
+        position: absolute;
+        top: 0; left: 0;
+        width: 1400px;
+        height: 1150px;
+    }
+
+    .wallpaper {
+        background-size: cover;
+        background-position: center;
+    }
+
+    .fg-overlay {
+        background-size: 1400px 1150px;
+        background-repeat: no-repeat;
+    }
+
+    /* ── 标题区 ── */
+    .title-img {
+        position: absolute;
+        left: 487px;
+        top: 38px;
+    }
+    .status-row {
+        position: absolute;
+        top: 145px;
+        display: flex;
+        align-items: center;
+        font-size: 18px;
+    }
+    .status-row img { vertical-align: middle; }
+    .status-row .label { margin-left: 8px; }
+
+    .desc-tag {
+        position: absolute;
+        left: 1017px;
+        top: 116px;
+    }
+
+    /* ── 体力条 ── */
+    .stamina-block {
+        position: absolute;
+        left: 510px;
+        top: 233px;
+        width: 790px;
+    }
+    .stamina-bar01 { display: block; }
+    .stamina-bar {
+        position: absolute;
+        right: 35px;          /* 体力数字右边距 30 + 进度条右内边距 5 */
+        bottom: 12px;
+        width: 650px;
+        height: 67px;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .stamina-bar .bg, .stamina-bar .fg {
+        position: absolute;
+        top: 0; left: 0;
+        width: 650px;
+        height: 67px;
+        background-size: 650px 67px;
+        background-repeat: no-repeat;
+    }
+    .stamina-bar .fg-wrap {
+        position: absolute;
+        top: 0; left: 0;
+        height: 67px;
+        overflow: hidden;
+    }
+    .stamina-text {
+        position: absolute;
+        right: 30px;
+        bottom: 0;
+        line-height: 1;
+        color: #ffffff;
+    }
+    .stamina-text .cur   { font-size: 54px; }
+    .stamina-text .sep   { font-size: 32px; }
+    .stamina-text .max   { font-size: 32px; }
+    .recover-text {
+        position: absolute;
+        bottom: 22px;
+        font-size: 20px;
+        color: #ffffff;
+    }
+
+    /* ── 活动条 ── */
+    .activity {
+        position: absolute;
+        width: 790px;
+        height: 140px;
+    }
+    .activity img.bg { display: block; }
+    .activity .remain {
+        position: absolute;
+        left: 288px;
+        top: 88px;
+        font-size: 18px;
+        color: #a0a0af;
+    }
+    .activity .score {
+        position: absolute;
+        right: 50px;
+        top: 50px;
+        font-size: 40px;
+        color: #ffffff;
+        text-align: right;
+    }
+
+    /* ── 玩家信息条 ── */
+    .player-bar {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 80px;
+    }
+    .player-bar img.bar-bg { display: block; }
+    .avatar {
+        position: absolute;
+        top: 50%;
+        left: 90px;
+        transform: translateY(-50%);
+        width: 152px;
+        height: 152px;
+        border-radius: 50%;
+        overflow: hidden;
+        background-position: center;
+        background-size: cover;
+    }
+    .nickname {
+        position: absolute;
+        left: 282px;
+        top: 36px;
+        font-size: 54px;
+        color: #ffffff;
+        line-height: 1;
+    }
+    .uid {
+        position: absolute;
+        left: 282px;
+        top: 100px;
+        font-size: 28px;
+        color: #a0a0af;
+    }
+    .level-badge {
+        position: absolute;
+        top: 100px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+        font-size: 20px;
+    }
+    .level-badge img {
+        position: absolute;
+        top: 0; left: 0;
+        width: 110px;
+        height: 32px;
+    }
+    .level-badge span {
+        position: relative;
+        z-index: 1;
+        width: 110px;
+        text-align: center;
+    }
+    .days-card {
+        position: absolute;
+        top: 50%;
+        right: 220px;
+        transform: translateY(-50%);
+        width: 174px;
+        height: 100px;
+        background-size: 174px 100px;
+        text-align: center;
+        color: #ffffff;
+    }
+    .days-card .value { padding-top: 26px; font-size: 36px; line-height: 1; }
+    .days-card .label { padding-top: 12px; font-size: 28px; color: #a0a0af; }
+    .eval-icon {
+        position: absolute;
+        top: 50%;
+        right: 60px;
+        transform: translateY(-50%);
+        width: 110px;
+        height: 110px;
+    }
+
+    /* ── 页脚 ── */
+    .footer {
+        position: absolute;
+        left: 50%;
+        bottom: 8px;
+        transform: translateX(-50%);
+    }
+</style>
+</head>
+<body>
+
+{# 壁纸层 #}
+{% if wallpaper_uri %}
+<div class="layer wallpaper" style="background-image: url('{{ wallpaper_uri }}');"></div>
+{% endif %}
+
+{# 前景遮罩层 #}
+{% if fg1_uri %}
+<div class="layer fg-overlay" style="background-image: url('{{ fg1_uri }}');"></div>
+{% endif %}
+{% if fg2_uri %}
+<div class="layer fg-overlay" style="background-image: url('{{ fg2_uri }}');"></div>
+{% endif %}
+
+{# 标题区 #}
+{% if title_uri %}<img class="title-img" src="{{ title_uri }}">{% endif %}
+
+<div class="status-row" style="left: 510px;">
+    <img src="{{ (yes_tag_uri if is_signed else no_tag_uri) }}">
+    <span class="label italic {{ 'accent-green' if is_signed else 'accent-red' }}">
+        {{ '社区已签到' if is_signed else '社区未签到' }}
+    </span>
+</div>
+
+<div class="status-row" style="left: 670px;">
+    <img src="{{ (yes_tag_uri if train_achieved else no_tag_uri) }}">
+    <span class="label italic {{ 'accent-green' if train_achieved else 'accent-red' }}">
+        {{ '历练值已达成' if train_achieved else '历练值未达成' }}
+    </span>
+</div>
+
+{% if desc_tag_uri %}<img class="desc-tag" src="{{ desc_tag_uri }}">{% endif %}
+
+{# 体力条 #}
+<div class="stamina-block">
+    {% if bar01_uri %}<img class="stamina-bar01" src="{{ bar01_uri }}">{% endif %}
+    <div class="stamina-bar">
+        {% if line_bar01_uri %}<div class="bg" style="background-image: url('{{ line_bar01_uri }}');"></div>{% endif %}
+        {% if line_bar02_uri %}
+        <div class="fg-wrap" style="width: {{ (stamina_ratio * 650) | round | int }}px;">
+            <div class="fg" style="background-image: url('{{ line_bar02_uri }}');"></div>
+        </div>
+        {% endif %}
+    </div>
+    <div class="stamina-text">
+        <span class="italic cur">{{ cur_stamina }}</span>
+        <span class="italic sep"> / </span>
+        <span class="italic max">{{ max_stamina }}</span>
+    </div>
+    {% if recover_text %}
+    <div class="recover-text italic" style="left: 145px;">{{ recover_text }}</div>
+    {% endif %}
+</div>
+
+{# 活动条 #}
+{% for act in activities %}
+<div class="activity" style="left: 510px; top: {{ act.y }}px;">
+    {% if act.bar_uri %}<img class="bg" src="{{ act.bar_uri }}">{% endif %}
+    {% if act.remain_text %}<div class="remain italic">{{ act.remain_text }}</div>{% endif %}
+    <div class="score italic">{{ act.score_text }}</div>
+</div>
+{% endfor %}
+
+{# 玩家信息条 #}
+<div class="player-bar">
+    {% if player_bar_uri %}<img class="bar-bg" src="{{ player_bar_uri }}">{% endif %}
+    {% if avatar_uri %}<div class="avatar" style="background-image: url('{{ avatar_uri }}');"></div>{% endif %}
+    <div class="nickname italic">{{ nickname }}</div>
+    <div class="uid">UID {{ uid }}</div>
+    <div class="level-badge" style="left: {{ level_x }}px;">
+        {% if level_bg_uri %}<img src="{{ level_bg_uri }}">{% endif %}
+        <span>Lv.{{ level }}</span>
+    </div>
+    {% if info_bg_uri %}
+    <div class="days-card" style="background-image: url('{{ info_bg_uri }}');">
+        <div class="value">{{ active_days }}</div>
+        <div class="label">累计登舰</div>
+    </div>
+    {% endif %}
+    {% if eval_icon_uri %}<img class="eval-icon" src="{{ eval_icon_uri }}">{% endif %}
+</div>
+
+{% if footer_uri %}<img class="footer" src="{{ footer_uri }}">{% endif %}
+
+</body>
+</html>

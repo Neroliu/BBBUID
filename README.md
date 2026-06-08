@@ -80,6 +80,14 @@
 >
 > 🚧 插件仍在持续完善中 🚧
 
+### 可选：启用 HTML 渲染（实验性）
+
+插件默认使用 PIL 渲染图片。若想体验更精致的 HTML + CSS 渲染（基于 Playwright），按以下步骤启用：
+
+1. 安装依赖：`pip install playwright jinja2 && playwright install chromium`
+2. 在 webconsole 中将 `HTML 渲染（实验性）` 开关打开
+3. 已迁移到 HTML 的指令：`bbbmr`（便笺）。其余指令仍走 PIL 渲染
+
 ## 丨WIKI数据来源
 
 WIKI查询功能使用米游社崩坏3百科API：

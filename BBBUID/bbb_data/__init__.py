@@ -6,6 +6,7 @@ from gsuid_core.logger import logger
 from gsuid_core.models import Event
 
 from ..bbb_api import bh3_api
+from ..bbb_config.bbb_config import BBB_CONFIG
 from ..utils.uid import get_uid
 from ..utils.hint import BIND_UID_HINT, bbb_error_reply
 from ..utils.char_data_cache import load_char_data, save_char_data, clear_char_data
@@ -94,8 +95,17 @@ async def send_note_info(bot: Bot, ev: Event):
     if isinstance(note_data, int):
         return await bot.send(bbb_error_reply(note_data))
 
-    from .draw_note import draw_note_img
-    img = await draw_note_img(ev, uid, index_data, note_data)
+    if BBB_CONFIG.get_config("UseHtmlRender").data:
+        try:
+            from ..bbb_render.draw_note_html import draw_note_img_html
+            img = await draw_note_img_html(ev, uid, index_data, note_data)
+        except Exception as e:
+            logger.warning(f"[崩坏3] HTML 渲染失败，回退到 PIL: {e}")
+            from .draw_note import draw_note_img
+            img = await draw_note_img(ev, uid, index_data, note_data)
+    else:
+        from .draw_note import draw_note_img
+        img = await draw_note_img(ev, uid, index_data, note_data)
     await bot.send(img)
 
 

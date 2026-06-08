@@ -1,0 +1,30 @@
+/* BBBUID 公共渲染样式 —— 仅供 HTML 渲染管线使用。 */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-font-smoothing: antialiased;
+    -webkit-text-size-adjust: 100%;
+}
+
+html, body {
+    background: transparent;
+    font-family: "MiSans", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: #f0f0f5;
+    overflow: hidden;
+}
+
+.italic {
+    font-style: italic;
+    transform: skewX(-14deg);
+    display: inline-block;
+}
+
+.text-white { color: #ffffff; }
+.text-gray  { color: #c8c8d2; }
+.text-dim   { color: #a0a0af; }
+.accent-green  { color: #64dc8c; }
+.accent-red    { color: #ff6478; }
+.accent-orange { color: #ffb450; }
+.accent-blue   { color: #64b4ff; }

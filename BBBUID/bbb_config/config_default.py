@@ -28,4 +28,9 @@ CONFIG_DEFAULT: Dict[str, GSC] = {
         "开启后签到结果将私聊推送给对应用户",
         True,
     ),
+    "UseHtmlRender": GsBoolConfig(
+        "HTML 渲染（实验性）",
+        "开启后使用 playwright + HTML 渲染图片，关闭则使用 PIL 渲染。需手动 `playwright install chromium`",
+        False,
+    ),
 }
