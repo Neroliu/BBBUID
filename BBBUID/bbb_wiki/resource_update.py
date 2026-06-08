@@ -310,6 +310,18 @@ def _cleanup_all_old_wallpaper_icons(items: list):
         _remove_wallpaper_icons(item["content_id"])
 
 
+def _cleanup_wallpaper_residuals():
+    """Remove all residual files in the wallpaper directory that are no longer used."""
+    wp_path = get_wiki_path("壁纸")
+    icons_dir = wp_path / "icons"
+    if icons_dir.exists():
+        _remove_dir(icons_dir)
+    for json_file in wp_path.glob("*.json"):
+        if json_file.name == "index.json":
+            continue
+        json_file.unlink()
+
+
 async def update_channel(channel_name: str, channel_id: int):
     logger.info(f"[崩坏3] [资源更新] 开始更新 {channel_name}...")
 
@@ -346,6 +358,7 @@ async def update_channel(channel_name: str, channel_id: int):
         if channel_name == "壁纸":
             await _check_missing_wallpaper_links(items)
             _cleanup_all_old_wallpaper_icons(items)
+            _cleanup_wallpaper_residuals()
         logger.info(f"[崩坏3] [资源更新] {channel_name} 无更新 ({len(items)} 条)")
         return
 
@@ -372,6 +385,7 @@ async def update_channel(channel_name: str, channel_id: int):
                 elif channel_name == "壁纸":
                     await _cache_wallpaper_links(item["content_id"], detail)
                     _remove_wallpaper_icons(item["content_id"])
+                    _remove_file(get_wiki_path("壁纸") / f'{item["content_id"]}.json')
 
     for cid in removed:
         json_path = get_wiki_path(channel_name) / f"{cid}.json"
@@ -642,6 +656,12 @@ def _remove_dir(path: Path):
             else:
                 f.unlink()
         path.rmdir()
+
+
+def _remove_file(path: Path):
+    """Remove a single file."""
+    if path.exists():
+        path.unlink()
 
 
 def _get_wallpaper_links_dir() -> Path:
