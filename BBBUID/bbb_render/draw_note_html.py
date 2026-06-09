@@ -88,7 +88,6 @@ async def _pick_random_wallpaper_uri() -> str | None:
         _cache_wallpaper_links,
         _get_compressed_cache_dir,
         _get_wallpaper_cache_dir,
-        _enforce_wallpaper_cache_limits,
     )
 
     wp_path = WIKI_PATH / "壁纸"
@@ -114,7 +113,7 @@ async def _pick_random_wallpaper_uri() -> str | None:
                 try:
                     with Image.open(f) as img:
                         if img.width >= 800:
-                            logger.info(f"[崩坏3] [便笺渲染] 壁纸命中压缩缓存: {cid}/{f.name} ({time.time()-t0:.2f}s)")
+                            logger.info(f"[崩坏3] [HTML渲染] 壁纸命中压缩缓存: {cid}/{f.name} ({time.time()-t0:.2f}s)")
                             return file_uri(f)
                 except Exception:
                     continue
@@ -135,7 +134,7 @@ async def _pick_random_wallpaper_uri() -> str | None:
                                 comp_path = comp_dir / f"{f.stem}.jpg"
                                 comp_dir.mkdir(parents=True, exist_ok=True)
                                 comp_path.write_bytes(buf.getvalue())
-                                logger.info(f"[崩坏3] [便笺渲染] 壁纸原图生成压缩缓存: {cid}/{f.name} (gen {time.time()-t1:.2f}s, total {time.time()-t0:.2f}s)")
+                                logger.info(f"[崩坏3] [HTML渲染] 壁纸原图生成压缩缓存: {cid}/{f.name} (gen {time.time()-t1:.2f}s, total {time.time()-t0:.2f}s)")
                                 return file_uri(comp_path)
                     except Exception:
                         continue
@@ -144,10 +143,14 @@ async def _pick_random_wallpaper_uri() -> str | None:
             links_file = wp_path / "wallpaper_links" / f"{cid}.json"
             if not links_file.exists():
                 from ..bbb_wiki.wiki_api import get_content_detail
+                t_detail = time.time()
                 detail = await get_content_detail(cid)
+                logger.info(f"[崩坏3] [HTML渲染] 获取壁纸详情: {cid} ({time.time()-t_detail:.2f}s)")
                 if not detail:
                     continue
+                t_cache_links = time.time()
                 await _cache_wallpaper_links(cid, detail)
+                logger.info(f"[崩坏3] [HTML渲染] 缓存壁纸链接: {cid} ({time.time()-t_cache_links:.2f}s)")
 
             if not links_file.exists():
                 continue
@@ -179,7 +182,7 @@ async def _pick_random_wallpaper_uri() -> str | None:
                         img = PILImage.open(BytesIO(resp.content)).convert("RGBA")
                         if img.width < 800:
                             continue
-                        logger.info(f"[崩坏3] [便笺渲染] 壁纸下载: {cid}/{idx} ({time.time()-t2:.2f}s, total {time.time()-t0:.2f}s)")
+                        logger.info(f"[崩坏3] [HTML渲染] 壁纸下载: {cid}/{idx} ({time.time()-t2:.2f}s, total {time.time()-t0:.2f}s)")
 
                         # Save original to wallpaper cache
                         try:
@@ -196,7 +199,6 @@ async def _pick_random_wallpaper_uri() -> str | None:
                         rgb.save(buf, format="JPEG", quality=85)
                         comp_path.write_bytes(buf.getvalue())
 
-                        await _enforce_wallpaper_cache_limits()
                         return file_uri(comp_path)
                 except Exception:
                     continue
