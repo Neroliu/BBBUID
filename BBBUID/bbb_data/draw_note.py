@@ -497,15 +497,18 @@ async def draw_note_img(
     index_data: Dict,
     note_data: Dict,
 ) -> bytes:
+    t_start = time.time()
     canvas = Image.new("RGBA", (W, H), (20, 20, 30, 255))
     draw = ImageDraw.Draw(canvas)
 
     # --- Background ---
     wallpaper = await _get_random_wallpaper()
+    logger.info(f"[崩坏3] [便笺渲染] 壁纸获取完成 ({time.time()-t_start:.2f}s)")
     if wallpaper:
         # 壁纸铺满全画布（原图，不模糊）
         bg = _fit_centered(wallpaper, (W, H))
         canvas.alpha_composite(bg, (0, 0))
+    logger.info(f"[崩坏3] [便笺渲染] 壁纸粘贴完成 ({time.time()-t_start:.2f}s)")
 
     # --- Character Portrait (left side, vertically centered) ---
     # portrait = _get_random_portrait()
@@ -521,6 +524,7 @@ async def draw_note_img(
     fg2 = _load_res("FG02.png")
     if fg2:
         canvas.alpha_composite(fg2, (0, 0))
+    logger.info(f"[崩坏3] [便笺渲染] FG叠加完成 ({time.time()-t_start:.2f}s)")
 
     # --- Title Section ---
     title_img = _load_res("title.png")
@@ -572,6 +576,7 @@ async def draw_note_img(
     max_stamina = note_data.get("max_stamina", 1)
     recover = note_data.get("stamina_recover_time", 0)
     _draw_stamina_bar(canvas, bar_x, bar_y, cur_stamina, max_stamina, recover)
+    logger.info(f"[崩坏3] [便笺渲染] 体力条完成 ({time.time()-t_start:.2f}s)")
 
     # --- Activity Bars ---
     activities = []
@@ -619,6 +624,7 @@ async def draw_note_img(
             canvas.paste(bar_img, (bar_x, act_y), bar_img)
         _draw_activity_bar(canvas, bar_x, act_y, name, score, remain, is_open)
         act_y += 140 + act_gap
+    logger.info(f"[崩坏3] [便笺渲染] 活动栏完成 ({time.time()-t_start:.2f}s)")
 
     # --- Footer sizing (loaded first to position player info bar above it) ---
     footer_path = Path(__file__).parent / "footer.png"
@@ -641,6 +647,7 @@ async def draw_note_img(
     avatar_img = None
     try:
         avatar = await get_cached_avatar(ev, ev.user_id)
+        logger.info(f"[崩坏3] [便笺渲染] 头像获取完成 ({time.time()-t_start:.2f}s)")
         avatar_img = draw_decorated_avatar(avatar, 179)
     except Exception:
         pass
@@ -654,6 +661,7 @@ async def draw_note_img(
         int(active_days) if str(active_days).isdigit() else 0,
         rating, avatar_img,
     )
+    logger.info(f"[崩坏3] [便笺渲染] 玩家信息完成 ({time.time()-t_start:.2f}s)")
 
     # --- Footer ---
     if footer_img:
@@ -662,4 +670,7 @@ async def draw_note_img(
         fy = H - fh
         canvas.alpha_composite(footer_img, (fx, fy))
 
-    return await convert_img(canvas)
+    logger.info(f"[崩坏3] [便笺渲染] 开始图片转换 ({time.time()-t_start:.2f}s)")
+    result = await convert_img(canvas)
+    logger.info(f"[崩坏3] [便笺渲染] 图片转换完成 ({time.time()-t_start:.2f}s)")
+    return result
