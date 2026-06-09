@@ -165,7 +165,7 @@ async def _download_image(url: str) -> Image.Image | None:
 
 
 async def _get_random_wallpaper() -> Image.Image | None:
-    """Get a random wallpaper: check compressed cache first, else download on demand."""
+    """Get a random wallpaper: check compressed cache, else original cache, else download."""
     from ..bbb_wiki.resource_update import (
         _cache_wallpaper_links,
         _get_compressed_cache_dir,
@@ -201,7 +201,33 @@ async def _get_random_wallpaper() -> Image.Image | None:
                 except Exception:
                     continue
 
-            # 2) No compressed cache - need to download
+            # 2) Check original cache — generate compressed cache from it
+            orig_dir = _get_wallpaper_cache_dir(cid)
+            orig_files = sorted(orig_dir.glob("*.png"), key=lambda f: f.stat().st_mtime)
+            if orig_files:
+                f = random.choice(orig_files)
+                try:
+                    img = Image.open(f).convert("RGBA")
+                    if img.width >= 800:
+                        compressed = _fit_centered(img, (W, H))
+                        try:
+                            comp_dir.mkdir(parents=True, exist_ok=True)
+                            rgb_img = compressed.convert("RGB")
+                            buf = BytesIO()
+                            rgb_img.save(buf, format="JPEG", quality=85)
+                            comp_path = comp_dir / f"{f.stem}.jpg"
+                            comp_path.write_bytes(buf.getvalue())
+                        except Exception:
+                            pass
+                        try:
+                            await _enforce_wallpaper_cache_limits()
+                        except Exception:
+                            pass
+                        return img
+                except Exception:
+                    continue
+
+            # 3) Fallback: download on demand
             # Load or fetch wallpaper links
             links_file = wp_path / "wallpaper_links" / f"{cid}.json"
             if not links_file.exists():
@@ -265,6 +291,7 @@ async def _get_random_wallpaper() -> Image.Image | None:
     except Exception as e:
         logger.warning(f"[崩坏3] [便笺渲染] 获取壁纸失败: {e}")
     return None
+
 
 
 def _get_random_portrait() -> Image.Image | None:

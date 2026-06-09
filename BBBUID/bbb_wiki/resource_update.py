@@ -465,6 +465,12 @@ async def update_all():
         except Exception as e:
             logger.error(f"[崩坏3] [资源更新] {name} 更新失败: {e}")
 
+    # Pre-download 3 random wallpaper originals
+    try:
+        await _prefetch_wallpaper_originals()
+    except Exception as e:
+        logger.error(f"[崩坏3] [资源更新] 壁纸预下载失败: {e}")
+
     # Clean up residual wallpaper files (icons dir, old detail JSONs, etc.)
     try:
         _cleanup_wallpaper_residuals()
@@ -767,6 +773,42 @@ async def _cleanup_broken_wallpaper_links():
                 link_file.write_text(json.dumps(valid, ensure_ascii=False), encoding="utf-8")
                 logger.debug(f"[崩坏3] [资源更新] 壁纸链接部分失效: {link_file.name} ({len(valid)}/{len(urls)} valid)")
 
+
+async def _prefetch_wallpaper_originals():
+    import random as _random
+    wp_base = get_wiki_path("壁纸")
+    links_dir = wp_base / WALLPAPER_LINKS_DIR
+    if not links_dir.exists(): return
+    candidates = []
+    for lf in links_dir.glob("*.json"):
+        try: cid = int(lf.stem)
+        except: continue
+        cd = _get_wallpaper_cache_dir(cid)
+        if cd.exists() and any(cd.glob("*.png")): continue
+        try: urls = json.loads(lf.read_text(encoding="utf-8"))
+        except: continue
+        for ui, u in enumerate(urls): candidates.append((cid, ui, u))
+    if not candidates: return
+    _random.shuffle(candidates)
+    dl = 0
+    for cid, ui, u in candidates[:3]:
+        try:
+            async with httpx.AsyncClient(follow_redirects=True) as cl:
+                r = await cl.get(u, timeout=15)
+                if r.status_code != 200: continue
+                from io import BytesIO; from PIL import Image as PI
+                img = PI.open(BytesIO(r.content)).convert("RGBA")
+                if img.width < 800: continue
+                cd = _get_wallpaper_cache_dir(cid); cd.mkdir(parents=True, exist_ok=True)
+                cp = cd / f"{ui}.png"; img.save(str(cp), "PNG")
+                dl += 1
+        except: pass
+    if dl > 0:
+        logger.info(f"[崩坏3] [资源更新] 预下载了 {dl} 张壁纸原图")
+        from ..bbb_config.bbb_config import BBB_CONFIG
+        mc = int(BBB_CONFIG.get_config("WallpaperCacheCount").data)
+        ms = int(BBB_CONFIG.get_config("WallpaperCacheSizeMB").data) * 1024 * 1024
+        _enforce_dir_limits(wp_base / WALLPAPER_CACHE_DIR, mc, ms)
 
 async def _enforce_wallpaper_cache_limits():
     """Enforce wallpaper cache count and size limits, and clean up broken links."""
