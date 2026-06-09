@@ -116,6 +116,23 @@ async def _pick_random_wallpaper_uri() -> str | None:
                 except Exception:
                     continue
 
+            # 2b) Check original cache - generate compressed from it
+            orig_dir = _get_wallpaper_cache_dir(cid)
+            orig_files = sorted(orig_dir.glob("*.png"), key=lambda f: f.stat().st_mtime)
+            if orig_files:
+                f = random.choice(orig_files)
+                try:
+                    with Image.open(f) as img:
+                        if img.width >= 800:
+                            rgb = img.convert("RGB")
+                            buf = BytesIO()
+                            rgb.save(buf, format="JPEG", quality=85)
+                            comp_path = comp_dir / f"{f.stem}.jpg"
+                            comp_dir.mkdir(parents=True, exist_ok=True)
+                            comp_path.write_bytes(buf.getvalue())
+                            return file_uri(comp_path)
+                except Exception:
+                    continue
             # 2) No compressed cache - download from links
             links_file = wp_path / "wallpaper_links" / f"{cid}.json"
             if not links_file.exists():
