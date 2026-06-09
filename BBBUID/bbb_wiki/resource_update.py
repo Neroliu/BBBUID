@@ -782,6 +782,7 @@ async def _prefetch_wallpaper_originals():
     wp_base = get_wiki_path("壁纸")
     links_dir = wp_base / WALLPAPER_LINKS_DIR
     if not links_dir.exists():
+        logger.warning(f"[崩坏3] [资源更新] wallpaper_links目录不存在: {links_dir}")
         return
     candidates = []
     for lf in links_dir.glob("*.json"):
@@ -798,6 +799,7 @@ async def _prefetch_wallpaper_originals():
             continue
         for ui, u in enumerate(urls):
             candidates.append((cid, ui, u))
+    logger.info(f"[崩坏3] [资源更新] 壁纸预下载候选: {len(candidates)} 个")
     if not candidates:
         return
     _random.shuffle(candidates)
