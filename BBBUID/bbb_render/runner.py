@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import tempfile
+import time
 from pathlib import Path
 
 from gsuid_core.logger import logger
@@ -34,20 +35,26 @@ async def render_html_to_bytes(
         tmp.close()
         tmp_path = Path(tmp.name)
 
+        t0 = time.time()
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
+            logger.info(f"[崩坏3] [HTML渲染] 浏览器启动完成 ({time.time()-t0:.2f}s)")
             try:
+                t1 = time.time()
                 context = await browser.new_context(
                     viewport={"width": width, "height": height},
                     device_scale_factor=device_scale_factor,
                 )
                 page = await context.new_page()
+                logger.info(f"[崩坏3] [HTML渲染] 页面创建完成 ({time.time()-t1:.2f}s)")
                 failures: list[str] = []
                 page.on(
                     "requestfailed",
                     lambda r: failures.append(f"{r.url} ({r.failure})"),
                 )
+                t2 = time.time()
                 await page.goto(tmp_path.as_uri(), wait_until="networkidle")
+                logger.info(f"[崩坏3] [HTML渲染] 页面加载完成 ({time.time()-t2:.2f}s)")
                 try:
                     await page.evaluate("document.fonts.ready")
                 except Exception:
@@ -62,11 +69,13 @@ async def render_html_to_bytes(
                         f"[崩坏3] [HTML渲染] {len(failures)} 个资源加载失败，"
                         f"前 3 个: {failures[:3]}"
                     )
+                t3 = time.time()
                 png_bytes = await page.screenshot(
                     type="png",
                     clip={"x": 0, "y": 0, "width": width, "height": height},
                     omit_background=False,
                 )
+                logger.info(f"[崩坏3] [HTML渲染] 截图完成 ({time.time()-t3:.2f}s, total {time.time()-t0:.2f}s)")
                 return png_bytes
             finally:
                 await browser.close()

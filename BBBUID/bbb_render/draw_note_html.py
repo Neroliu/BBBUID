@@ -256,9 +256,11 @@ async def draw_note_img_html(
     index_data: Dict,
     note_data: Dict,
 ) -> bytes:
+    t_start = time.time()
     role = index_data.get("role", {}) or {}
     stats = index_data.get("stats", {}) or {}
     pref = index_data.get("preference", {}) or {}
+    logger.info(f"[崩坏3] [HTML渲染] 数据准备完成 ({time.time()-t_start:.2f}s)")
 
     nickname = role.get("nickname", "未知舰长")
     level_raw = role.get("level", "?")
@@ -283,6 +285,7 @@ async def draw_note_img_html(
         avatar = await get_cached_avatar(ev, ev.user_id)
         decorated = draw_decorated_avatar(avatar, 179)
         avatar_uri = _img_to_data_uri(decorated)
+        logger.info(f"[崩坏3] [HTML渲染] 头像加载完成 ({time.time()-t_start:.2f}s)")
     except Exception as e:
         logger.warning(f"[崩坏3] [HTML渲染] 头像加载失败: {e}")
 
@@ -294,8 +297,11 @@ async def draw_note_img_html(
     icon_name = EVAL_RATING_TO_ICON.get(str(rating).upper(), "SealedDanIcon01.png")
     eval_icon_path = EVAL_RES_DIR / icon_name
 
+    t_wallpaper = time.time()
+    wallpaper_uri = await _pick_random_wallpaper_uri()
+    logger.info(f"[崩坏3] [HTML渲染] 壁纸选择完成 ({time.time()-t_wallpaper:.2f}s)")
     ctx = {
-        "wallpaper_uri": await _pick_random_wallpaper_uri(),
+        "wallpaper_uri": wallpaper_uri,
         "fg1_uri": _res_uri("FG01.png"),
         "fg2_uri": _res_uri("FG02.png"),
         "title_uri": _res_uri("title.png"),
@@ -325,6 +331,15 @@ async def draw_note_img_html(
         "active_days": active_days,
     }
 
+    t_render = time.time()
     html = render_template("note.html", **ctx)
+    logger.info(f"[崩坏3] [HTML渲染] 模板渲染完成 ({time.time()-t_render:.2f}s)")
+
+    t_playwright = time.time()
     png_bytes = await render_html_to_bytes(html, width=W, height=H, device_scale_factor=2)
-    return await convert_img(png_bytes)
+    logger.info(f"[崩坏3] [HTML渲染] Playwright渲染完成 ({time.time()-t_playwright:.2f}s, total {time.time()-t_start:.2f}s)")
+
+    t_convert = time.time()
+    result = await convert_img(png_bytes)
+    logger.info(f"[崩坏3] [HTML渲染] 图片转换完成 ({time.time()-t_convert:.2f}s, total {time.time()-t_start:.2f}s)")
+    return result
