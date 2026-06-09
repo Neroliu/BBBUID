@@ -188,9 +188,9 @@ async def _get_random_wallpaper() -> Image.Image | None:
 
         for cid in content_ids[:10]:
             cid = int(cid)
+            comp_dir = _get_compressed_cache_dir(cid)
 
             # 1) Check compressed cache first
-            comp_dir = _get_compressed_cache_dir(cid)
             comp_files = sorted(comp_dir.glob("*.jpg"), key=lambda f: f.stat().st_mtime)
             if comp_files:
                 f = random.choice(comp_files)
@@ -201,34 +201,31 @@ async def _get_random_wallpaper() -> Image.Image | None:
                 except Exception:
                     continue
 
-            # 2) Check original cache — generate compressed cache from it
+            # 2) No compressed cache - check original and generate compressed
             orig_dir = _get_wallpaper_cache_dir(cid)
-            orig_files = sorted(orig_dir.glob("*.png"), key=lambda f: f.stat().st_mtime)
-            if orig_files:
-                f = random.choice(orig_files)
-                try:
-                    img = Image.open(f).convert("RGBA")
-                    if img.width >= 800:
-                        compressed = _fit_centered(img, (W, H))
-                        try:
-                            comp_dir.mkdir(parents=True, exist_ok=True)
-                            rgb_img = compressed.convert("RGB")
-                            buf = BytesIO()
-                            rgb_img.save(buf, format="JPEG", quality=85)
-                            comp_path = comp_dir / f"{f.stem}.jpg"
-                            comp_path.write_bytes(buf.getvalue())
-                        except Exception:
-                            pass
-                        try:
+            if orig_dir.exists():
+                orig_files = [f for f in orig_dir.glob("*.png") if f.is_file()]
+                if orig_files:
+                    f = random.choice(orig_files)
+                    try:
+                        img = Image.open(f).convert("RGBA")
+                        if img.width >= 800:
+                            compressed = _fit_centered(img, (W, H))
+                            try:
+                                comp_dir.mkdir(parents=True, exist_ok=True)
+                                rgb_img = compressed.convert("RGB")
+                                buf = BytesIO()
+                                rgb_img.save(buf, format="JPEG", quality=85)
+                                comp_path = comp_dir / f"{f.stem}.jpg"
+                                comp_path.write_bytes(buf.getvalue())
+                            except Exception:
+                                pass
                             await _enforce_wallpaper_cache_limits()
-                        except Exception:
-                            pass
-                        return img
-                except Exception:
-                    continue
+                            return img
+                    except Exception:
+                        continue
 
-            # 3) Fallback: download on demand
-            # Load or fetch wallpaper links
+            # 3) No original cache - download on demand (fallback)
             links_file = wp_path / "wallpaper_links" / f"{cid}.json"
             if not links_file.exists():
                 from ..bbb_wiki.wiki_api import get_content_detail
@@ -246,7 +243,6 @@ async def _get_random_wallpaper() -> Image.Image | None:
             random.shuffle(urls)
 
             for idx, url in enumerate(urls):
-                # Check compressed cache for this specific URL
                 comp_path = comp_dir / f"{idx}.jpg"
                 if comp_path.exists():
                     try:
@@ -256,23 +252,21 @@ async def _get_random_wallpaper() -> Image.Image | None:
                     except Exception:
                         continue
 
-                # Download original
                 img = await _download_image(url)
                 if not img or img.width < 800:
                     continue
 
-                # Save original to wallpaper cache
                 try:
-                    cache_dir = _get_wallpaper_cache_dir(cid)
-                    cache_path = cache_dir / f"{idx}.png"
-                    img.save(str(cache_path), "PNG")
+                    cd = _get_wallpaper_cache_dir(cid)
+                    cd.mkdir(parents=True, exist_ok=True)
+                    cp = cd / f"{idx}.png"
+                    img.save(str(cp), "PNG")
                 except Exception:
                     pass
 
-                # Compress to canvas size and save
                 compressed = _fit_centered(img, (W, H))
                 try:
-                    comp_path.parent.mkdir(parents=True, exist_ok=True)
+                    comp_dir.mkdir(parents=True, exist_ok=True)
                     rgb_img = compressed.convert("RGB")
                     buf = BytesIO()
                     rgb_img.save(buf, format="JPEG", quality=85)
@@ -280,18 +274,12 @@ async def _get_random_wallpaper() -> Image.Image | None:
                 except Exception:
                     pass
 
-                # Enforce cache limits
-                try:
-                    await _enforce_wallpaper_cache_limits()
-                except Exception:
-                    pass
-
+                await _enforce_wallpaper_cache_limits()
                 return img
 
     except Exception as e:
         logger.warning(f"[崩坏3] [便笺渲染] 获取壁纸失败: {e}")
     return None
-
 
 
 def _get_random_portrait() -> Image.Image | None:

@@ -775,40 +775,82 @@ async def _cleanup_broken_wallpaper_links():
 
 
 async def _prefetch_wallpaper_originals():
+    """Pre-download 3 random wallpaper originals and generate compressed cache."""
     import random as _random
+    from PIL import Image as PI
+    from io import BytesIO
     wp_base = get_wiki_path("壁纸")
     links_dir = wp_base / WALLPAPER_LINKS_DIR
-    if not links_dir.exists(): return
+    if not links_dir.exists():
+        return
     candidates = []
     for lf in links_dir.glob("*.json"):
-        try: cid = int(lf.stem)
-        except: continue
+        try:
+            cid = int(lf.stem)
+        except ValueError:
+            continue
         cd = _get_wallpaper_cache_dir(cid)
-        if cd.exists() and any(cd.glob("*.png")): continue
-        try: urls = json.loads(lf.read_text(encoding="utf-8"))
-        except: continue
-        for ui, u in enumerate(urls): candidates.append((cid, ui, u))
-    if not candidates: return
+        if cd.exists() and any(cd.glob("*.png")):
+            continue
+        try:
+            urls = json.loads(lf.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        for ui, u in enumerate(urls):
+            candidates.append((cid, ui, u))
+    if not candidates:
+        return
     _random.shuffle(candidates)
     dl = 0
     for cid, ui, u in candidates[:3]:
         try:
             async with httpx.AsyncClient(follow_redirects=True) as cl:
                 r = await cl.get(u, timeout=15)
-                if r.status_code != 200: continue
-                from io import BytesIO; from PIL import Image as PI
+                if r.status_code != 200:
+                    continue
                 img = PI.open(BytesIO(r.content)).convert("RGBA")
-                if img.width < 800: continue
-                cd = _get_wallpaper_cache_dir(cid); cd.mkdir(parents=True, exist_ok=True)
-                cp = cd / f"{ui}.png"; img.save(str(cp), "PNG")
+                if img.width < 800:
+                    continue
+                # Save original
+                cd = _get_wallpaper_cache_dir(cid)
+                cd.mkdir(parents=True, exist_ok=True)
+                cp = cd / f"{ui}.png"
+                img.save(str(cp), "PNG")
+                # Generate compressed cache
+                try:
+                    comp_dir = _get_compressed_cache_dir(cid)
+                    comp_dir.mkdir(parents=True, exist_ok=True)
+                    # Fit to 1400x1150 canvas
+                    iw, ih = img.size
+                    W, H = 1400, 1150
+                    scale = max(W / iw, H / ih)
+                    new_w = round(iw * scale)
+                    new_h = round(ih * scale)
+                    resized = img.resize((new_w, new_h), PI.Resampling.LANCZOS)
+                    left = (new_w - W) // 2
+                    top = (new_h - H) // 2
+                    cropped = resized.crop((left, top, left + W, top + H))
+                    rgb = cropped.convert("RGB")
+                    buf = BytesIO()
+                    rgb.save(buf, format="JPEG", quality=85)
+                    comp_path = comp_dir / f"{ui}.jpg"
+                    comp_path.write_bytes(buf.getvalue())
+                except Exception:
+                    pass
                 dl += 1
-        except: pass
+                logger.debug(f"[崩坏3] [资源更新] 预下载壁纸原图+压缩: {cid}/{ui}")
+        except Exception as e:
+            logger.debug(f"[崩坏3] [资源更新] 预下载壁纸失败: {u} - {e}")
     if dl > 0:
-        logger.info(f"[崩坏3] [资源更新] 预下载了 {dl} 张壁纸原图")
+        logger.info(f"[崩坏3] [资源更新] 预下载了 {dl} 张壁纸原图+压缩缓存")
         from ..bbb_config.bbb_config import BBB_CONFIG
         mc = int(BBB_CONFIG.get_config("WallpaperCacheCount").data)
         ms = int(BBB_CONFIG.get_config("WallpaperCacheSizeMB").data) * 1024 * 1024
         _enforce_dir_limits(wp_base / WALLPAPER_CACHE_DIR, mc, ms)
+        mc2 = int(BBB_CONFIG.get_config("CompressedWallpaperCacheCount").data)
+        ms2 = int(BBB_CONFIG.get_config("CompressedWallpaperCacheSizeMB").data) * 1024 * 1024
+        _enforce_dir_limits(wp_base / COMPRESSED_WALLPAPER_CACHE_DIR, mc2, ms2)
+
 
 async def _enforce_wallpaper_cache_limits():
     """Enforce wallpaper cache count and size limits, and clean up broken links."""

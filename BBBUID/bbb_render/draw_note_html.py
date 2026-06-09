@@ -82,7 +82,7 @@ def _fmt_schedule_end(ts: str) -> str:
 
 
 async def _pick_random_wallpaper_uri() -> str | None:
-    """Pick a random wallpaper: check compressed cache, else download from links."""
+    """Pick a random wallpaper: check compressed cache, else original cache, else download."""
     from ..bbb_wiki.resource_update import (
         _cache_wallpaper_links,
         _get_compressed_cache_dir,
@@ -103,9 +103,9 @@ async def _pick_random_wallpaper_uri() -> str | None:
 
         for cid in content_ids[:10]:
             cid = int(cid)
+            comp_dir = _get_compressed_cache_dir(cid)
 
             # 1) Check compressed cache first
-            comp_dir = _get_compressed_cache_dir(cid)
             comp_files = sorted(comp_dir.glob("*.jpg"), key=lambda f: f.stat().st_mtime)
             if comp_files:
                 f = random.choice(comp_files)
@@ -116,24 +116,26 @@ async def _pick_random_wallpaper_uri() -> str | None:
                 except Exception:
                     continue
 
-            # 2b) Check original cache - generate compressed from it
+            # 2) No compressed cache - check original and generate compressed
             orig_dir = _get_wallpaper_cache_dir(cid)
-            orig_files = sorted(orig_dir.glob("*.png"), key=lambda f: f.stat().st_mtime)
-            if orig_files:
-                f = random.choice(orig_files)
-                try:
-                    with Image.open(f) as img:
-                        if img.width >= 800:
-                            rgb = img.convert("RGB")
-                            buf = BytesIO()
-                            rgb.save(buf, format="JPEG", quality=85)
-                            comp_path = comp_dir / f"{f.stem}.jpg"
-                            comp_dir.mkdir(parents=True, exist_ok=True)
-                            comp_path.write_bytes(buf.getvalue())
-                            return file_uri(comp_path)
-                except Exception:
-                    continue
-            # 2) No compressed cache - download from links
+            if orig_dir.exists():
+                orig_files = sorted(orig_dir.glob("*.png"), key=lambda f: f.stat().st_mtime)
+                if orig_files:
+                    f = random.choice(orig_files)
+                    try:
+                        with Image.open(f) as img:
+                            if img.width >= 800:
+                                rgb = img.convert("RGB")
+                                buf = BytesIO()
+                                rgb.save(buf, format="JPEG", quality=85)
+                                comp_path = comp_dir / f"{f.stem}.jpg"
+                                comp_dir.mkdir(parents=True, exist_ok=True)
+                                comp_path.write_bytes(buf.getvalue())
+                                return file_uri(comp_path)
+                    except Exception:
+                        continue
+
+            # 3) No original cache - download from links
             links_file = wp_path / "wallpaper_links" / f"{cid}.json"
             if not links_file.exists():
                 from ..bbb_wiki.wiki_api import get_content_detail
@@ -160,7 +162,6 @@ async def _pick_random_wallpaper_uri() -> str | None:
                     except Exception:
                         continue
 
-                # Download and compress
                 try:
                     import httpx
                     async with httpx.AsyncClient(follow_redirects=True) as client:
@@ -182,18 +183,13 @@ async def _pick_random_wallpaper_uri() -> str | None:
                             pass
 
                         # Save compressed
-                        comp_path.parent.mkdir(parents=True, exist_ok=True)
+                        comp_dir.mkdir(parents=True, exist_ok=True)
                         rgb = img.convert("RGB")
                         buf = BytesIO()
                         rgb.save(buf, format="JPEG", quality=85)
                         comp_path.write_bytes(buf.getvalue())
 
-                        # Enforce cache limits
-                        try:
-                            await _enforce_wallpaper_cache_limits()
-                        except Exception:
-                            pass
-
+                        await _enforce_wallpaper_cache_limits()
                         return file_uri(comp_path)
                 except Exception:
                     continue
