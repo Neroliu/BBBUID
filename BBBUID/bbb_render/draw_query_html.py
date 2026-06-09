@@ -42,7 +42,7 @@ async def draw_query_card_html(
     pref = index_data.get("preference", {}) or {}
 
     nickname = role.get("nickname", "未知舰长")
-    level = role.get("level", "?")
+    player_level = role.get("level", "?")
     rating = pref.get("comprehensive_rating", "C")
 
     char_count = len(characters)
@@ -182,7 +182,7 @@ async def draw_query_card_html(
         "avatar_uri": avatar_uri,
         "nickname": nickname,
         "uid": uid,
-        "level": level,
+        "level": player_level,
         "info_items": info_items,
         "characters": char_data_list,
         "grid_w": max(grid_w, canvas_w - 40),
