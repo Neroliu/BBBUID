@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import base64
 import json
+import time
 import random
 from datetime import datetime, timezone, timedelta
 from io import BytesIO
@@ -95,6 +96,7 @@ async def _pick_random_wallpaper_uri() -> str | None:
     if not index_file.exists():
         return None
     try:
+        t0 = time.time()
         index = json.loads(index_file.read_text(encoding="utf-8"))
         if not index:
             return None
@@ -112,6 +114,7 @@ async def _pick_random_wallpaper_uri() -> str | None:
                 try:
                     with Image.open(f) as img:
                         if img.width >= 800:
+                            logger.info(f"[崩坏3] [便笺渲染] 壁纸命中压缩缓存: {cid}/{f.name} ({time.time()-t0:.2f}s)")
                             return file_uri(f)
                 except Exception:
                     continue
@@ -123,6 +126,7 @@ async def _pick_random_wallpaper_uri() -> str | None:
                 if orig_files:
                     f = random.choice(orig_files)
                     try:
+                        t1 = time.time()
                         with Image.open(f) as img:
                             if img.width >= 800:
                                 rgb = img.convert("RGB")
@@ -131,6 +135,7 @@ async def _pick_random_wallpaper_uri() -> str | None:
                                 comp_path = comp_dir / f"{f.stem}.jpg"
                                 comp_dir.mkdir(parents=True, exist_ok=True)
                                 comp_path.write_bytes(buf.getvalue())
+                                logger.info(f"[崩坏3] [便笺渲染] 壁纸原图生成压缩缓存: {cid}/{f.name} (gen {time.time()-t1:.2f}s, total {time.time()-t0:.2f}s)")
                                 return file_uri(comp_path)
                     except Exception:
                         continue
@@ -162,6 +167,7 @@ async def _pick_random_wallpaper_uri() -> str | None:
                     except Exception:
                         continue
 
+                t2 = time.time()
                 try:
                     import httpx
                     async with httpx.AsyncClient(follow_redirects=True) as client:
@@ -173,6 +179,7 @@ async def _pick_random_wallpaper_uri() -> str | None:
                         img = PILImage.open(BytesIO(resp.content)).convert("RGBA")
                         if img.width < 800:
                             continue
+                        logger.info(f"[崩坏3] [便笺渲染] 壁纸下载: {cid}/{idx} ({time.time()-t2:.2f}s, total {time.time()-t0:.2f}s)")
 
                         # Save original to wallpaper cache
                         try:
