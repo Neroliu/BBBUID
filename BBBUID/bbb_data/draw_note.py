@@ -171,7 +171,6 @@ async def _get_random_wallpaper() -> Image.Image | None:
         _cache_wallpaper_links,
         _get_compressed_cache_dir,
         _get_wallpaper_cache_dir,
-        _enforce_wallpaper_cache_limits,
     )
 
     wp_path = WIKI_PATH / "壁纸"
@@ -181,7 +180,6 @@ async def _get_random_wallpaper() -> Image.Image | None:
     if not index_file.exists():
         return None
     try:
-        t0 = time.time()
         index = json.loads(index_file.read_text(encoding="utf-8"))
         if not index:
             return None
@@ -199,7 +197,6 @@ async def _get_random_wallpaper() -> Image.Image | None:
                 try:
                     img = Image.open(f).convert("RGBA")
                     if img.width >= 800:
-                        logger.info(f"[崩坏3] [便笺渲染] 壁纸命中压缩缓存: {cid}/{f.name} ({time.time()-t0:.2f}s)")
                         return img
                 except Exception:
                     continue
@@ -211,7 +208,6 @@ async def _get_random_wallpaper() -> Image.Image | None:
                 if orig_files:
                     f = random.choice(orig_files)
                     try:
-                        t1 = time.time()
                         img = Image.open(f).convert("RGBA")
                         if img.width >= 800:
                             compressed = _fit_centered(img, (W, H))
@@ -224,8 +220,6 @@ async def _get_random_wallpaper() -> Image.Image | None:
                                 comp_path.write_bytes(buf.getvalue())
                             except Exception:
                                 pass
-                            logger.info(f"[崩坏3] [便笺渲染] 壁纸原图生成压缩缓存: {cid}/{f.name} (gen {time.time()-t1:.2f}s, total {time.time()-t0:.2f}s)")
-                            await _enforce_wallpaper_cache_limits()
                             return img
                     except Exception:
                         continue
@@ -256,12 +250,9 @@ async def _get_random_wallpaper() -> Image.Image | None:
                             return img
                     except Exception:
                         continue
-
-                t2 = time.time()
                 img = await _download_image(url)
                 if not img or img.width < 800:
                     continue
-                logger.info(f"[崩坏3] [便笺渲染] 壁纸下载: {cid}/{idx} ({time.time()-t2:.2f}s, total {time.time()-t0:.2f}s)")
 
                 try:
                     cd = _get_wallpaper_cache_dir(cid)
@@ -281,7 +272,6 @@ async def _get_random_wallpaper() -> Image.Image | None:
                 except Exception:
                     pass
 
-                await _enforce_wallpaper_cache_limits()
                 return img
 
     except Exception as e:
@@ -503,12 +493,10 @@ async def draw_note_img(
 
     # --- Background ---
     wallpaper = await _get_random_wallpaper()
-    logger.info(f"[崩坏3] [便笺渲染] 壁纸获取完成 ({time.time()-t_start:.2f}s)")
     if wallpaper:
         # 壁纸铺满全画布（原图，不模糊）
         bg = _fit_centered(wallpaper, (W, H))
         canvas.alpha_composite(bg, (0, 0))
-    logger.info(f"[崩坏3] [便笺渲染] 壁纸粘贴完成 ({time.time()-t_start:.2f}s)")
 
     # --- Character Portrait (left side, vertically centered) ---
     # portrait = _get_random_portrait()
