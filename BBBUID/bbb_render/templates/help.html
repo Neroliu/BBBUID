@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<style>
+@font-face {
+    font-family: "MiSans";
+    src: url("{{ file_uri(font_dir / 'MiSans-Bold.ttf') }}") format("truetype");
+    font-weight: 700;
+    font-style: normal;
+}
+</style>
+<link rel="stylesheet" href="{{ file_uri(static_dir / 'common.css') }}">
+<link rel="stylesheet" href="{{ file_uri(static_dir / 'help.css') }}">
+<style>
+    body { width: 1545px; background: #1c1c26; }
+</style>
+</head>
+<body>
+<div class="help-root">
+
+    {% if bg_uri %}
+    <div class="help-bg" style="background-image: url('{{ bg_uri }}');"></div>
+    {% endif %}
+
+    <div class="help-content">
+
+        {# ── Banner ── #}
+        <div class="help-banner" {% if banner_bg_uri %}style="background-image: url('{{ banner_bg_uri }}');"{% endif %}>
+            <div class="banner-inner">
+                {% if icon_uri %}
+                <div class="banner-icon"><img src="{{ icon_uri }}"></div>
+                {% endif %}
+                <div class="banner-text">
+                    <div class="banner-title-row">
+                        <div class="banner-title">{{ plugin_name }}帮助</div>
+                        {% for badge in badges %}
+                        <div class="banner-badge">{{ badge }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="banner-sub">{{ banner_sub_text }}</div>
+                </div>
+            </div>
+        </div>
+
+        {# ── 分组列表 ── #}
+        {% for group in groups %}
+        <div class="cag-bar">
+            <div class="cag-name">{{ group.name }}</div>
+            <div class="cag-desc">{{ group.desc }}</div>
+        </div>
+        <div class="cmd-grid">
+            {% for cmd in group.commands %}
+            <div class="cmd-card h-{{ cmd.highlight }}">
+                {% if cmd.icon_uri %}
+                <div class="cmd-icon"><img src="{{ cmd.icon_uri }}"></div>
+                {% endif %}
+                <div class="cmd-text">
+                    <div class="cmd-name">{{ cmd.name }}</div>
+                    <div class="cmd-eg">{{ cmd.eg }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+
+        {% if footer_uri %}
+        <div class="help-footer">
+            <img src="{{ footer_uri }}">
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+</body>
+</html>

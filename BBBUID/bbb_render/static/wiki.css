@@ -1,0 +1,597 @@
+/* BBBUID WIKI / 查询 公共渲染样式 —— 与 wiki.html / query.html 配套。 */
+
+/* ───────────────── 查询页 ───────────────── */
+
+.query-root {
+    position: relative;
+    background: #1c1c26;
+    padding: 0 0 20px 0;
+}
+
+/* ── 标题块 ── */
+.title-card {
+    position: relative;
+    width: 1000px;
+    height: 450px;
+    margin: 0 auto;
+    background-size: 1000px 450px;
+    background-repeat: no-repeat;
+}
+
+.title-avatar {
+    position: absolute;
+    left: 80px;
+    top: 80px;
+    width: 179px;
+    height: 179px;
+    border-radius: 50%;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center;
+}
+
+.title-nickname {
+    position: absolute;
+    left: 280px;
+    top: 130px;
+    font-size: 40px;
+    font-weight: 700;
+    color: #f0f0f5;
+    line-height: 1;
+}
+
+.title-uid {
+    position: absolute;
+    left: 280px;
+    top: 188px;
+    font-size: 24px;
+    font-weight: 400;
+    color: #b4b4c3;
+    line-height: 1;
+}
+
+.title-region {
+    position: absolute;
+    left: 280px;
+    top: 224px;
+    font-size: 20px;
+    font-weight: 400;
+    color: #8c8c9e;
+    line-height: 1;
+}
+
+.title-level {
+    position: absolute;
+    right: 80px;
+    top: 230px;
+    width: 130px;
+    height: 42px;
+    text-align: center;
+    line-height: 42px;
+    font-size: 24px;
+    font-weight: 700;
+    color: #ffffff;
+    background-size: 130px 42px;
+    background-repeat: no-repeat;
+}
+
+.title-eval-icon {
+    position: absolute;
+    right: 80px;
+    top: 90px;
+    width: 130px;
+    height: 130px;
+    object-fit: contain;
+}
+
+.title-info-row {
+    position: absolute;
+    left: 65px;
+    bottom: 60px;
+    display: flex;
+    gap: 5px;
+}
+
+.title-info-card {
+    width: 174px;
+    height: 100px;
+    background-size: 174px 100px;
+    background-repeat: no-repeat;
+    text-align: center;
+    color: #ffffff;
+    box-sizing: border-box;
+}
+
+.title-info-card .value {
+    padding-top: 17px;
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.title-info-card .label {
+    padding-top: 8px;
+    font-size: 22px;
+    color: #8284a0;
+    line-height: 1;
+}
+
+/* ── 角色网格 ── */
+.char-grid {
+    width: 1000px;
+    margin: 20px auto 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.char-card {
+    position: relative;
+    width: 182px;
+    height: 276px;
+    background-size: 182px 276px;
+    background-repeat: no-repeat;
+    overflow: hidden;
+}
+
+.char-card .char-icon-wrap {
+    position: absolute;
+    top: 17px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 159px;
+    border-radius: 2px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0);
+}
+
+.char-card .char-icon-wrap img {
+    display: block;
+    width: 159px;
+    height: auto;
+}
+
+.char-card .star-icon {
+    position: absolute;
+    left: 19px;
+    height: 32px;
+    width: auto;
+}
+
+.char-card .level-text {
+    position: absolute;
+    right: 14px;
+    font-size: 22px;
+    font-weight: 700;
+    color: #2c2c2c;
+    line-height: 1;
+}
+
+.char-card .char-name {
+    position: absolute;
+    bottom: 16px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 700;
+    color: #f0f0f5;
+    line-height: 1;
+}
+
+/* ── 通用页脚 ── */
+.footer-img {
+    display: block;
+    margin: 10px auto 0;
+}
+
+/* ───────────────── WIKI 页 ───────────────── */
+
+/* 缩放统一为 2x（与 PIL 的 S=2 对应），CARD_W = 1800px */
+.wiki-root {
+    position: relative;
+    width: 1800px;
+    background: #1c1c26;
+    padding: 0;
+    overflow: hidden;
+}
+
+.wiki-bg-wrap {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    overflow: hidden;
+    z-index: 0;
+}
+
+.wiki-bg-wrap .blur-bg {
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center top;
+    filter: blur(40px) brightness(0.5);
+    transform: scale(1.1);
+}
+
+.wiki-bg-wrap::after {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(28, 28, 38, 0.7);
+}
+
+.wiki-content {
+    position: relative;
+    z-index: 1;
+    padding: 80px 80px 60px 80px;
+}
+
+/* ── header ── */
+.wiki-header {
+    position: relative;
+    display: flex;
+    gap: 40px;
+    align-items: flex-start;
+}
+
+.wiki-header .avatar {
+    width: 240px;
+    height: 240px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center;
+    border: 4px solid rgba(255, 255, 255, 0.18);
+}
+
+.wiki-header .info {
+    flex: 1;
+    min-width: 0;
+}
+
+.wiki-header .title-line {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 16px;
+}
+
+.wiki-header .title-text {
+    font-size: 72px;
+    font-weight: 700;
+    color: #f0f0f5;
+    line-height: 1;
+}
+
+.wiki-header .final-level {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+}
+
+.wiki-header .basic-info {
+    font-size: 40px;
+    color: #a0a0af;
+    line-height: 1.4;
+    margin-bottom: 12px;
+    word-break: break-word;
+}
+
+.wiki-header .sub-field {
+    margin-top: 16px;
+}
+
+.wiki-header .sub-field .name {
+    font-size: 32px;
+    color: #64dcff;
+    line-height: 1.4;
+}
+
+.wiki-header .sub-field .value {
+    font-size: 32px;
+    color: #a0a0af;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.wiki-divider {
+    margin: 40px 0;
+    border: 0;
+    border-top: 2px solid rgba(96, 96, 117, 0.6);
+}
+
+/* ── 区块标题 ── */
+.section-title {
+    background: rgba(48, 48, 60, 0.92);
+    border-radius: 16px;
+    padding: 12px 32px;
+    font-size: 48px;
+    font-weight: 700;
+    color: #64dcff;
+    line-height: 1.2;
+    margin-bottom: 24px;
+}
+
+/* ── 评分表 ── */
+.score-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-bottom: 24px;
+    font-size: 36px;
+}
+
+.score-table .row-header {
+    background: rgba(56, 56, 78, 0.95);
+    color: #a0a0af;
+    font-size: 36px;
+    font-weight: 700;
+}
+
+.score-table .row-header td {
+    padding: 12px 24px;
+}
+
+.score-table .row-header td:first-child { border-top-left-radius: 12px; border-bottom-left-radius: 12px; }
+.score-table .row-header td:last-child  { border-top-right-radius: 12px; border-bottom-right-radius: 12px; }
+
+.score-table tr.row-data td {
+    padding: 14px 24px;
+    background: rgba(40, 40, 56, 0.82);
+}
+
+.score-table tr.row-data-alt td {
+    background: rgba(48, 48, 64, 0.82);
+}
+
+.score-table tr.row-data td:first-child,
+.score-table tr.row-data-alt td:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+.score-table tr.row-data td:last-child,
+.score-table tr.row-data-alt td:last-child  { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+
+.score-table .col-key   { width: 25%; font-weight: 700; color: #f0f0f5; }
+.score-table .col-level { width: 18%; font-weight: 700; }
+.score-table .col-value { width: 17%; color: #f0f0f5; }
+.score-table .col-bar   { width: 40%; }
+
+.score-bar-bg {
+    position: relative;
+    height: 32px;
+    width: 100%;
+    background: rgba(80, 80, 100, 0.6);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.score-bar-fg {
+    height: 100%;
+    border-radius: 8px;
+}
+
+.level-SSS { color: #ff5050; }
+.level-SS  { color: #ff8c3c; }
+.level-S   { color: #ffc83c; }
+.level-A   { color: #78c878; }
+.level-B   { color: #64a0dc; }
+.level-C   { color: #a0a0aa; }
+.level-D   { color: #8c8c96; }
+
+.bar-SSS { background: #ff5050; }
+.bar-SS  { background: #ff8c3c; }
+.bar-S   { background: #ffc83c; }
+.bar-A   { background: #78c878; }
+.bar-B   { background: #64a0dc; }
+.bar-C   { background: #a0a0aa; }
+.bar-D   { background: #8c8c96; }
+.bar-default { background: #64dcff; }
+
+.total-row {
+    background: rgba(56, 56, 78, 0.95);
+    border-radius: 8px;
+    margin-top: 8px;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.total-row .label {
+    font-size: 36px;
+    font-weight: 700;
+    color: #64dcff;
+}
+
+.total-row .final-icon {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+}
+
+/* ── 装备网格 ── */
+.equip-section {
+    margin-bottom: 24px;
+}
+
+.equip-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.equip-item {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: rgba(40, 40, 56, 0.7);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.equip-item .equip-icon {
+    width: 128px;
+    height: 128px;
+    flex-shrink: 0;
+    border-radius: 12px;
+    background: rgba(80, 80, 100, 0.4);
+    object-fit: contain;
+}
+
+.equip-item .equip-meta {
+    flex: 1;
+    min-width: 0;
+}
+
+.equip-item .equip-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: #f0f0f5;
+    line-height: 1.3;
+    word-break: break-word;
+}
+
+.equip-item .equip-desc {
+    margin-top: 8px;
+    font-size: 28px;
+    color: #a0a0af;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.equip-reason {
+    margin-top: 12px;
+    font-size: 30px;
+    color: #a0a0af;
+    line-height: 1.5;
+    padding: 0 8px;
+    word-break: break-word;
+}
+
+/* ── 进阶表 ── */
+.advance-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 4px;
+    font-size: 30px;
+}
+
+.advance-table .row-header td {
+    background: rgba(56, 56, 78, 0.95);
+    color: #a0a0af;
+    font-size: 32px;
+    font-weight: 700;
+    padding: 12px 16px;
+}
+
+.advance-table .row-header td:first-child { border-top-left-radius: 12px; border-bottom-left-radius: 12px; }
+.advance-table .row-header td:last-child  { border-top-right-radius: 12px; border-bottom-right-radius: 12px; }
+
+.advance-table .row-data td,
+.advance-table .row-data-alt td {
+    padding: 14px 16px;
+    background: rgba(40, 40, 56, 0.82);
+    color: #a0a0af;
+    vertical-align: middle;
+}
+
+.advance-table .row-data-alt td {
+    background: rgba(48, 48, 64, 0.82);
+}
+
+.advance-table .row-data td:first-child,
+.advance-table .row-data-alt td:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+.advance-table .row-data td:last-child,
+.advance-table .row-data-alt td:last-child  { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+
+.advance-table .col-rank {
+    width: 120px;
+    text-align: center;
+    color: #ffc83c;
+    font-weight: 700;
+}
+
+.advance-table .col-rank img {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    vertical-align: middle;
+}
+
+.advance-table .col-desc {
+    word-break: break-word;
+    line-height: 1.5;
+}
+
+.advance-table .col-cost {
+    width: 160px;
+    text-align: center;
+    color: #64dcff;
+    font-weight: 700;
+}
+
+/* ── 通用文本块 ── */
+.text-block {
+    background: rgba(40, 40, 56, 0.7);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+}
+
+.text-block .title {
+    font-size: 36px;
+    font-weight: 700;
+    color: #f0f0f5;
+    line-height: 1.3;
+    margin-bottom: 12px;
+}
+
+.text-block .desc {
+    font-size: 30px;
+    color: #a0a0af;
+    line-height: 1.5;
+    word-break: break-word;
+    white-space: pre-wrap;
+}
+
+/* ── 材料网格 ── */
+.material-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.material-item {
+    background: rgba(40, 40, 56, 0.7);
+    border-radius: 8px;
+    padding: 8px;
+    text-align: center;
+}
+
+.material-item .mat-icon {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+}
+
+.material-item .mat-name {
+    font-size: 22px;
+    color: #f0f0f5;
+    margin-top: 4px;
+    line-height: 1.2;
+    word-break: break-word;
+}
+
+.material-item .mat-count {
+    font-size: 22px;
+    color: #ffc83c;
+    margin-top: 2px;
+}
+
+/* ── 页脚 ── */
+.wiki-footer {
+    margin-top: 40px;
+    text-align: center;
+}
+
+.wiki-footer img { display: inline-block; }

@@ -47,8 +47,17 @@ async def send_index_info(bot: Bot, ev: Event):
         characters = char_data.get("characters", [])
         save_char_data(uid, characters)
 
-    from .draw_query import draw_query_card
-    img = await draw_query_card(ev, uid, index_data, characters)
+    if BBB_CONFIG.get_config("UseHtmlRender").data:
+        try:
+            from ..bbb_render.draw_query_html import draw_query_card_html
+            img = await draw_query_card_html(ev, uid, index_data, characters)
+        except Exception as e:
+            logger.warning(f"[崩坏3] HTML 渲染失败，回退到 PIL: {e}")
+            from .draw_query import draw_query_card
+            img = await draw_query_card(ev, uid, index_data, characters)
+    else:
+        from .draw_query import draw_query_card
+        img = await draw_query_card(ev, uid, index_data, characters)
     await bot.send(img)
 
 
@@ -72,8 +81,17 @@ async def send_refresh_panel(bot: Bot, ev: Event):
     characters = char_data.get("characters", [])
     save_char_data(uid, characters)
 
-    from .draw_query import draw_query_card
-    img = await draw_query_card(ev, uid, index_data, characters)
+    if BBB_CONFIG.get_config("UseHtmlRender").data:
+        try:
+            from ..bbb_render.draw_query_html import draw_query_card_html
+            img = await draw_query_card_html(ev, uid, index_data, characters)
+        except Exception as e:
+            logger.warning(f"[崩坏3] HTML 渲染失败，回退到 PIL: {e}")
+            from .draw_query import draw_query_card
+            img = await draw_query_card(ev, uid, index_data, characters)
+    else:
+        from .draw_query import draw_query_card
+        img = await draw_query_card(ev, uid, index_data, characters)
     await bot.send(img)
 
 

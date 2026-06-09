@@ -1,0 +1,225 @@
+/* BBBUID 帮助页面样式 —— 与 help.html 配套。 */
+
+.help-root {
+    width: 1545px;
+    background: #1c1c26;
+    position: relative;
+    color: #f0f0f5;
+    overflow: hidden;
+}
+
+.help-bg {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center top;
+    background-repeat: no-repeat;
+    z-index: 0;
+}
+
+.help-bg::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(20, 20, 30, 0.55);
+}
+
+.help-content {
+    position: relative;
+    z-index: 1;
+    padding-bottom: 80px;
+}
+
+/* ── Banner ── */
+.help-banner {
+    position: relative;
+    width: 100%;
+    height: 320px;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.help-banner::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.0) 0%, rgba(0,0,0,0.45) 100%);
+}
+
+.banner-inner {
+    position: absolute;
+    left: 89px;
+    bottom: 30px;
+    display: flex;
+    align-items: center;
+    gap: 26px;
+    z-index: 2;
+}
+
+.banner-icon {
+    width: 128px;
+    height: 128px;
+    border-radius: 28px;
+    overflow: hidden;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.4);
+    background: #2c2c3a;
+}
+
+.banner-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.banner-text {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.banner-title-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.banner-title {
+    font-size: 50px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1;
+}
+
+.banner-badge {
+    display: inline-flex;
+    align-items: center;
+    height: 38px;
+    padding: 0 16px;
+    border-radius: 19px;
+    background: rgba(252, 69, 69, 0.85);
+    color: #ffffff;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.banner-sub {
+    font-size: 28px;
+    font-weight: 400;
+    color: #d0d0d8;
+    line-height: 1;
+}
+
+/* ── 分组标题栏 ── */
+.cag-bar {
+    position: relative;
+    margin: 30px 0 14px;
+    padding: 0 60px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    height: 70px;
+    background: rgba(36, 48, 72, 0.65);
+    border-left: 6px solid #50a0ff;
+}
+
+.cag-name {
+    font-size: 38px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1;
+}
+
+.cag-desc {
+    font-size: 22px;
+    font-weight: 400;
+    color: #b4b4c3;
+    line-height: 1;
+}
+
+/* ── 命令网格 ── */
+.cmd-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    padding: 0 45px;
+}
+
+.cmd-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    height: 156px;
+    padding: 22px 24px;
+    border-radius: 18px;
+    background: rgba(42, 42, 58, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+}
+
+.cmd-card.h-0 { box-shadow: inset 4px 0 0 0 #d3433b; }
+.cmd-card.h-1 { box-shadow: inset 4px 0 0 0 #e67e22; }
+.cmd-card.h-2 { box-shadow: inset 4px 0 0 0 #2ecc71; }
+.cmd-card.h-3 { box-shadow: inset 4px 0 0 0 #3498db; }
+.cmd-card.h-4 { box-shadow: inset 4px 0 0 0 #d581db; }
+.cmd-card.h-5 { box-shadow: inset 4px 0 0 0 #dbd7db; }
+
+.cmd-icon {
+    width: 100px;
+    height: 100px;
+    flex-shrink: 0;
+    border-radius: 14px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cmd-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.cmd-text {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+}
+
+.cmd-name {
+    font-size: 32px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cmd-eg {
+    font-size: 22px;
+    font-weight: 400;
+    color: #c8c8d2;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Footer ── */
+.help-footer {
+    margin-top: 40px;
+    text-align: center;
+}
+
+.help-footer img {
+    display: inline-block;
+    max-width: 60%;
+    opacity: 0.85;
+}

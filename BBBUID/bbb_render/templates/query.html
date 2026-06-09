@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<style>
+@font-face {
+    font-family: "MiSans";
+    src: url("{{ file_uri(font_dir / 'MiSans-Bold.ttf') }}") format("truetype");
+    font-weight: 700;
+    font-style: normal;
+}
+</style>
+<link rel="stylesheet" href="{{ file_uri(static_dir / 'common.css') }}">
+<link rel="stylesheet" href="{{ file_uri(static_dir / 'wiki.css') }}">
+<style>
+    body {
+        width: {{ canvas_w }}px;
+        background: #1c1c26;
+    }
+</style>
+</head>
+<body>
+<div class="query-root" style="width: {{ canvas_w }}px;">
+
+    {# ── 标题块 ── #}
+    <div class="title-card"
+         {% if title_bg_uri %}style="background-image: url('{{ title_bg_uri }}');"{% endif %}>
+
+        {% if avatar_uri %}
+        <div class="title-avatar" style="background-image: url('{{ avatar_uri }}');"></div>
+        {% endif %}
+
+        <div class="title-nickname italic">{{ nickname }}</div>
+        <div class="title-uid">UID: {{ uid }}</div>
+        {% if region_name %}<div class="title-region">{{ region_name }}</div>{% endif %}
+
+        {% if eval_icon_uri %}
+        <img class="title-eval-icon" src="{{ eval_icon_uri }}">
+        {% endif %}
+
+        {% if level_bg_uri %}
+        <div class="title-level italic"
+             style="background-image: url('{{ level_bg_uri }}');">Lv.{{ level }}</div>
+        {% endif %}
+
+        <div class="title-info-row">
+            {% for item in info_items %}
+            <div class="title-info-card"
+                 {% if info_bg_uri %}style="background-image: url('{{ info_bg_uri }}');"{% endif %}>
+                <div class="value italic">{{ item.value }}</div>
+                <div class="label">{{ item.label }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {# ── 角色网格 ── #}
+    {% if characters %}
+    <div class="char-grid" style="width: {{ grid_w }}px;">
+        {% for c in characters %}
+        <div class="char-card"
+             {% if avatar_bg_uri %}style="background-image: url('{{ avatar_bg_uri }}');"{% endif %}>
+
+            {% if c.icon_uri %}
+            <div class="char-icon-wrap">
+                <img src="{{ c.icon_uri }}">
+            </div>
+            {% endif %}
+
+            {% if c.star_icon_uri %}
+            <img class="star-icon" src="{{ c.star_icon_uri }}"
+                 style="top: {{ c.star_y }}px;">
+            {% endif %}
+
+            <div class="level-text" style="top: {{ c.level_y }}px;">Lv.{{ c.level }}</div>
+
+            <div class="char-name">{{ c.name }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if footer_uri %}
+    <img class="footer-img" src="{{ footer_uri }}">
+    {% endif %}
+
+</div>
+</body>
+</html>

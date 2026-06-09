@@ -15,6 +15,17 @@ from .draw_partner_wiki import draw_partner_wiki
 from .draw_stigma_wiki import draw_stigma_wiki
 from .draw_elf_wiki import draw_elf_wiki
 from ..bbb_alias.name_convert import alias_to_content_id
+from ..bbb_config.bbb_config import BBB_CONFIG
+
+
+async def _render_wiki(pil_fn, html_fn, detail: dict, label: str):
+    """Render with HTML if enabled, fallback to PIL on error."""
+    if BBB_CONFIG.get_config("UseHtmlRender").data:
+        try:
+            return await html_fn(detail)
+        except Exception as e:
+            logger.warning(f"[崩坏3] [{label}图鉴] HTML 渲染失败，回退到 PIL: {e}")
+    return await pil_fn(detail)
 
 sv_bbb_wiki = SV("崩坏3WIKI")
 
@@ -78,7 +89,8 @@ async def send_role_wiki(bot: Bot, ev: Event):
     logger.info(f"[崩坏3] [角色图鉴] 查询: {name}")
     detail = _find_local("角色", name)
     if detail:
-        img = await draw_role_wiki(detail)
+        from ..bbb_render.draw_wiki_html import draw_role_wiki_html
+        img = await _render_wiki(draw_role_wiki, draw_role_wiki_html, detail, "角色")
         logger.info(f"[崩坏3] [角色图鉴] {name} 渲染完成")
         await bot.send(img)
     else:
@@ -93,7 +105,8 @@ async def send_weapon_wiki(bot: Bot, ev: Event):
     logger.info(f"[崩坏3] [武器图鉴] 查询: {name}")
     detail = _find_local("武器", name)
     if detail:
-        img = await draw_weapon_wiki(detail)
+        from ..bbb_render.draw_wiki_html import draw_weapon_wiki_html
+        img = await _render_wiki(draw_weapon_wiki, draw_weapon_wiki_html, detail, "武器")
         logger.info(f"[崩坏3] [武器图鉴] {name} 渲染完成")
         await bot.send(img)
     else:
@@ -108,7 +121,8 @@ async def send_stigma_wiki(bot: Bot, ev: Event):
     logger.info(f"[崩坏3] [圣痕图鉴] 查询: {name}")
     detail = _find_local("圣痕", name)
     if detail:
-        img = await draw_stigma_wiki(detail)
+        from ..bbb_render.draw_wiki_html import draw_stigma_wiki_html
+        img = await _render_wiki(draw_stigma_wiki, draw_stigma_wiki_html, detail, "圣痕")
         logger.info(f"[崩坏3] [圣痕图鉴] {name} 渲染完成")
         await bot.send(img)
     else:
@@ -123,7 +137,8 @@ async def send_elf_wiki(bot: Bot, ev: Event):
     logger.info(f"[崩坏3] [人偶图鉴] 查询: {name}")
     detail = _find_local("人偶", name)
     if detail:
-        img = await draw_elf_wiki(detail)
+        from ..bbb_render.draw_wiki_html import draw_elf_wiki_html
+        img = await _render_wiki(draw_elf_wiki, draw_elf_wiki_html, detail, "人偶")
         logger.info(f"[崩坏3] [人偶图鉴] {name} 渲染完成")
         await bot.send(img)
     else:
@@ -138,7 +153,8 @@ async def send_partner_wiki(bot: Bot, ev: Event):
     logger.info(f"[崩坏3] [协同者图鉴] 查询: {name}")
     detail = _find_local("协同者", name)
     if detail:
-        img = await draw_partner_wiki(detail)
+        from ..bbb_render.draw_wiki_html import draw_partner_wiki_html
+        img = await _render_wiki(draw_partner_wiki, draw_partner_wiki_html, detail, "协同者")
         logger.info(f"[崩坏3] [协同者图鉴] {name} 渲染完成")
         await bot.send(img)
     else:

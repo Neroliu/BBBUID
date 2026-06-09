@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<style>
+@font-face {
+    font-family: "MiSans";
+    src: url("{{ file_uri(font_dir / 'MiSans-Bold.ttf') }}") format("truetype");
+    font-weight: 700;
+    font-style: normal;
+}
+</style>
+<link rel="stylesheet" href="{{ file_uri(static_dir / 'common.css') }}">
+<link rel="stylesheet" href="{{ file_uri(static_dir / 'update.css') }}">
+<style>
+    body { width: 950px; background: #1c1c26; }
+</style>
+</head>
+<body>
+<div class="update-root">
+
+    {# ── 头部 ── #}
+    <div class="update-header">
+        <div class="dots">
+            {% for x in range(40, 911, 60) %}
+            {% for y_ in range(40, 181, 50) %}
+            {% if (x + y_) % 120 == 0 %}
+            <div class="dot" style="left: {{ x }}px; top: {{ y_ }}px;"></div>
+            {% endif %}
+            {% endfor %}
+            {% endfor %}
+        </div>
+        <div class="header-title">
+            <div class="title-text italic">BBBUID 更新记录</div>
+            <div class="version-text">当前版本: v{{ version }}</div>
+        </div>
+    </div>
+
+    {# ── 条目列表 ── #}
+    <div class="log-list">
+        {% for entry in entries %}
+        <div class="log-entry">
+            <div class="log-badge">{{ entry.index }}</div>
+            <div class="log-text">{{ entry.text }}</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if footer_uri %}
+    <div class="update-footer">
+        <img src="{{ footer_uri }}">
+    </div>
+    {% endif %}
+
+</div>
+</body>
+</html>

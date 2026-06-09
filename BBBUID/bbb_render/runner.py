@@ -13,12 +13,16 @@ async def render_html_to_bytes(
     height: int,
     device_scale_factor: int = 2,
     wait_selector: str | None = None,
+    full_page: bool = False,
 ) -> bytes:
     """Render an HTML string to PNG bytes via Playwright.
 
     `width` / `height` 是 viewport 尺寸（CSS 像素）；`device_scale_factor=2`
     出图分辨率翻倍以保证清晰度。若 HTML 内有需要等待加载的元素，传入
     `wait_selector` 让 Playwright 在截图前等它出现。
+
+    若 `full_page=True`，截图整张页面（包含 viewport 以外的内容），
+    适合内容高度不定的页面（WIKI/帮助等）。否则按 viewport 大小裁剪。
 
     实现细节：HTML 通过临时文件 + `page.goto(file://...)` 加载，而**不是**
     `page.set_content`——后者会让页面的 origin 变成 `about:blank`，Chromium
@@ -61,11 +65,18 @@ async def render_html_to_bytes(
                         f"[崩坏3] [HTML渲染] {len(failures)} 个资源加载失败，"
                         f"前 3 个: {failures[:3]}"
                     )
-                png_bytes = await page.screenshot(
-                    type="png",
-                    clip={"x": 0, "y": 0, "width": width, "height": height},
-                    omit_background=False,
-                )
+                if full_page:
+                    png_bytes = await page.screenshot(
+                        type="png",
+                        full_page=True,
+                        omit_background=False,
+                    )
+                else:
+                    png_bytes = await page.screenshot(
+                        type="png",
+                        clip={"x": 0, "y": 0, "width": width, "height": height},
+                        omit_background=False,
+                    )
                 return png_bytes
             finally:
                 await browser.close()

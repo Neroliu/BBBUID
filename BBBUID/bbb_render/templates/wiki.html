@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<style>
+@font-face {
+    font-family: "MiSans";
+    src: url("{{ file_uri(font_dir / 'MiSans-Bold.ttf') }}") format("truetype");
+    font-weight: 700;
+    font-style: normal;
+}
+</style>
+<link rel="stylesheet" href="{{ file_uri(static_dir / 'common.css') }}">
+<link rel="stylesheet" href="{{ file_uri(static_dir / 'wiki.css') }}">
+<style>
+    body { width: 1800px; background: #1c1c26; }
+</style>
+</head>
+<body>
+
+<div class="wiki-root">
+
+    {% if blur_bg_uri %}
+    <div class="wiki-bg-wrap">
+        <div class="blur-bg" style="background-image: url('{{ blur_bg_uri }}');"></div>
+    </div>
+    {% endif %}
+
+    <div class="wiki-content">
+
+        {# ── 头部 ── #}
+        <div class="wiki-header">
+            {% if avatar_uri %}
+            <div class="avatar" style="background-image: url('{{ avatar_uri }}');"></div>
+            {% endif %}
+            <div class="info">
+                <div class="title-line">
+                    <div class="title-text italic">{{ title }}</div>
+                    {% if final_level_uri %}
+                    <img class="final-level" src="{{ final_level_uri }}">
+                    {% endif %}
+                </div>
+                {% if star_value %}
+                <div class="basic-info" style="color:#ffc83c;">{{ "★" * star_value }}</div>
+                {% endif %}
+                {% if basic_info_text %}
+                <div class="basic-info">{{ basic_info_text }}</div>
+                {% endif %}
+                {% for sf in sub_fields %}
+                <div class="sub-field">
+                    <div class="name">【{{ sf.name }}】</div>
+                    <div class="value">{{ sf.value }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <hr class="wiki-divider">
+
+        {# ── 各 section（按数据顺序） ── #}
+        {% for sec in sections %}
+
+            {% if sec.kind == "score_table" %}
+            <div class="section">
+                <div class="section-title">★ {{ sec.title }}</div>
+                <table class="score-table">
+                    <tr class="row-header">
+                        <td class="col-key">评分项</td>
+                        <td class="col-level">等级</td>
+                        <td class="col-value">分数</td>
+                        <td class="col-bar">评分条</td>
+                    </tr>
+                    {% for row in sec.rows %}
+                    <tr class="{{ 'row-data' if loop.index0 % 2 == 0 else 'row-data-alt' }}">
+                        <td class="col-key">{{ row.key }}</td>
+                        <td class="col-level level-{{ row.level }}">{{ row.level }}</td>
+                        <td class="col-value">{{ row.value }}</td>
+                        <td class="col-bar">
+                            <div class="score-bar-bg">
+                                <div class="score-bar-fg bar-{{ row.level or 'default' }}"
+                                     style="width: {{ row.value }}%;"></div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+                {% if sec.final_level_uri %}
+                <div class="total-row">
+                    <span class="label">总评</span>
+                    <img class="final-icon" src="{{ sec.final_level_uri }}">
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if sec.kind == "equip_groups" %}
+            <div class="section">
+                <div class="section-title">★ {{ sec.title }}</div>
+                {% for grp in sec.groups %}
+                <div class="equip-section">
+                    {% if grp.label %}
+                    <div class="section-title" style="font-size:36px;background:rgba(48,48,60,0.6);">
+                        {{ grp.label }}{% if grp.evaluation %} <span style="color:#a0a0af;font-size:32px;">({{ grp.evaluation }}分)</span>{% endif %}
+                    </div>
+                    {% endif %}
+                    <div class="equip-grid">
+                        {% for eq in grp.equips %}
+                        <div class="equip-item">
+                            {% if eq.icon_uri %}
+                            <img class="equip-icon" src="{{ eq.icon_uri }}">
+                            {% else %}
+                            <div class="equip-icon"></div>
+                            {% endif %}
+                            <div class="equip-meta">
+                                <div class="equip-title">{{ eq.title }}</div>
+                                {% if eq.desc %}<div class="equip-desc">{{ eq.desc }}</div>{% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if grp.reason %}
+                    <div class="equip-reason">{{ grp.reason }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if sec.kind == "advance_table" %}
+            <div class="section">
+                <div class="section-title">★ {{ sec.title }}</div>
+                <table class="advance-table">
+                    <tr class="row-header">
+                        {% for h in sec.headers %}
+                        <td {% if h == "进阶效果" %}class="col-desc"{% elif h == "碎片" %}class="col-cost"{% else %}class="col-rank"{% endif %}>{{ h }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% for row in sec.rows %}
+                    <tr class="{{ 'row-data' if loop.index0 % 2 == 0 else 'row-data-alt' }}">
+                        <td class="col-rank">
+                            {% if row.rank_uri %}<img src="{{ row.rank_uri }}">
+                            {% elif row.stars %}{{ row.stars }}{% else %}-{% endif %}
+                        </td>
+                        <td class="col-desc">{{ row.desc }}</td>
+                        {% for st in row.stats %}
+                        <td class="col-rank" style="color:#f0f0f5;">{{ st }}</td>
+                        {% endfor %}
+                        <td class="col-cost">{{ row.cost }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            {% endif %}
+
+            {% if sec.kind == "text_blocks" %}
+            <div class="section">
+                <div class="section-title">★ {{ sec.title }}</div>
+                {% for b in sec.blocks %}
+                <div class="text-block">
+                    {% if b.title %}<div class="title">{{ b.title }}</div>{% endif %}
+                    {% if b.desc %}<div class="desc">{{ b.desc }}</div>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if sec.kind == "roles" %}
+            <div class="section">
+                <div class="section-title">★ {{ sec.title }}</div>
+                <div class="equip-grid">
+                    {% for r in sec.roles %}
+                    <div class="equip-item">
+                        {% if r.icon_uri %}
+                        <img class="equip-icon" src="{{ r.icon_uri }}" style="border-radius:50%;">
+                        {% else %}
+                        <div class="equip-icon" style="border-radius:50%;"></div>
+                        {% endif %}
+                        <div class="equip-meta">
+                            <div class="equip-title">
+                                {{ r.name }}
+                                {% if r.star_value %}<span style="color:#ffc83c;font-size:28px;margin-left:12px;">{{ "★" * r.star_value }}</span>{% endif %}
+                            </div>
+                            {% if r.desc %}<div class="equip-desc">{{ r.desc }}</div>{% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if sec.kind == "materials" %}
+            <div class="section">
+                <div class="section-title">★ {{ sec.title }}</div>
+                {% for level_data in sec.levels %}
+                <div class="text-block">
+                    <div class="title">Lv.{{ level_data.level }}</div>
+                    <div class="material-grid">
+                        {% for m in level_data.materials %}
+                        <div class="material-item">
+                            {% if m.icon_uri %}<img class="mat-icon" src="{{ m.icon_uri }}">{% endif %}
+                            <div class="mat-name">{{ m.name }}</div>
+                            {% if m.count %}<div class="mat-count">x{{ m.count }}</div>{% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+        {% endfor %}
+
+        {% if footer_uri %}
+        <div class="wiki-footer">
+            <img src="{{ footer_uri }}">
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+</body>
+</html>

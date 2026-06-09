@@ -1,0 +1,122 @@
+/* BBBUID 更新日志样式 —— 与 update_log.html 配套。 */
+
+.update-root {
+    width: 950px;
+    background: #1c1c26;
+    overflow: hidden;
+}
+
+/* ── 头部 ── */
+.update-header {
+    position: relative;
+    height: 220px;
+    background: #243048;
+    overflow: hidden;
+}
+
+.update-header::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0;
+    bottom: 0;
+    height: 4px;
+    background: #50a0ff;
+}
+
+.dots {
+    position: absolute;
+    top: 40px; left: 40px;
+    right: 40px; bottom: 40px;
+    pointer-events: none;
+    opacity: 0.3;
+}
+
+.dot {
+    position: absolute;
+    width: 4px; height: 4px;
+    background: #3c5078;
+    border-radius: 50%;
+}
+
+.header-title {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+.header-title .title-text {
+    font-size: 42px;
+    font-weight: 700;
+    color: #f0f0f5;
+    line-height: 1;
+}
+
+.header-title .version-text {
+    margin-top: 16px;
+    font-size: 22px;
+    font-weight: 400;
+    color: #b4b4c3;
+    line-height: 1;
+}
+
+/* ── 条目列表 ── */
+.log-list {
+    padding: 30px 50px 0;
+}
+
+.log-entry {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    margin-bottom: 8px;
+    border-radius: 12px;
+    min-height: 60px;
+    box-sizing: border-box;
+}
+
+.log-entry:nth-child(odd) {
+    background: rgba(48, 48, 66, 0.63);
+}
+
+.log-entry:nth-child(even) {
+    background: rgba(42, 42, 58, 0.63);
+}
+
+.log-badge {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: #50a0ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1;
+}
+
+.log-text {
+    font-size: 24px;
+    font-weight: 400;
+    color: #f0f0f5;
+    line-height: 1.4;
+    word-break: break-word;
+    min-width: 0;
+    flex: 1;
+}
+
+/* ── 页脚 ── */
+.update-footer {
+    padding: 40px 0 30px;
+    text-align: center;
+}
+
+.update-footer img {
+    display: inline-block;
+    max-width: 80%;
+}
