@@ -45,14 +45,6 @@ async def draw_query_card_html(
     level = role.get("level", "?")
     rating = pref.get("comprehensive_rating", "C")
 
-    region_map = {
-        "android01": "安卓1区",
-        "ios01": "iOS1区",
-        "pc01": "PC1区",
-    }
-    region = role.get("region", "")
-    region_name = region_map.get(region, region)
-
     char_count = len(characters)
     sss_count = stats.get("sss_armor_number", 0)
     five_star_stigma = stats.get("five_star_stigmata_number", 0)
@@ -126,6 +118,7 @@ async def draw_query_card_html(
 
         # Character icon from wiki cache
         icon_uri: str | None = None
+        cache_path = None
         from ..bbb_alias.name_convert import alias_to_char_name, char_name_to_content_id
         standard_name = alias_to_char_name(name) or name
         content_id = char_name_to_content_id(standard_name)
@@ -142,10 +135,18 @@ async def draw_query_card_html(
         if star_path.exists():
             star_icon_uri = file_uri(star_path)
 
-        # Compute positions
-        row = i // CHARS_PER_ROW
-        col = i % CHARS_PER_ROW
-        icon_height = int(159 * 1.4)  # approximate scaled icon height
+        # Compute icon display height from actual image dimensions (same as PIL)
+        icon_width = CHAR_CARD_W - 23  # 159
+        icon_height = 222  # default estimate
+        if cache_path and cache_path.exists():
+            try:
+                from PIL import Image as PILImage
+                img = PILImage.open(cache_path)
+                icon_height = img.height * icon_width // img.width + 4
+            except Exception:
+                pass
+
+        # Positions matching PIL draw_character.py
         star_y = 17 + icon_height + 2
         level_y = 17 + icon_height + 20
 
@@ -181,7 +182,6 @@ async def draw_query_card_html(
         "avatar_uri": avatar_uri,
         "nickname": nickname,
         "uid": uid,
-        "region_name": region_name,
         "level": level,
         "info_items": info_items,
         "characters": char_data_list,

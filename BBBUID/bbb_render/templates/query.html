@@ -30,16 +30,15 @@
         <div class="title-avatar" style="background-image: url('{{ avatar_uri }}');"></div>
         {% endif %}
 
-        <div class="title-nickname italic">{{ nickname }}</div>
+        <div class="title-nickname">{{ nickname }}</div>
         <div class="title-uid">UID: {{ uid }}</div>
-        {% if region_name %}<div class="title-region">{{ region_name }}</div>{% endif %}
 
         {% if eval_icon_uri %}
         <img class="title-eval-icon" src="{{ eval_icon_uri }}">
         {% endif %}
 
         {% if level_bg_uri %}
-        <div class="title-level italic"
+        <div class="title-level"
              style="background-image: url('{{ level_bg_uri }}');">Lv.{{ level }}</div>
         {% endif %}
 
@@ -47,7 +46,7 @@
             {% for item in info_items %}
             <div class="title-info-card"
                  {% if info_bg_uri %}style="background-image: url('{{ info_bg_uri }}');"{% endif %}>
-                <div class="value italic">{{ item.value }}</div>
+                <div class="value">{{ item.value }}</div>
                 <div class="label">{{ item.label }}</div>
             </div>
             {% endfor %}
