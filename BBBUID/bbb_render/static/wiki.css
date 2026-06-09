@@ -166,11 +166,14 @@
     font-weight: 700;
     color: #1e1e1e;
     line-height: 1;
+    /* PIL anchor="rm" means level_y is vertical center of text;
+       CSS top is the top edge, so offset by half the line-height */
+    margin-top: -13px;
 }
 
 .char-card .char-name {
     position: absolute;
-    bottom: 35px;
+    top: 241px;
     left: 0;
     width: 100%;
     text-align: center;
