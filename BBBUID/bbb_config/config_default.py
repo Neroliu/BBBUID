@@ -3,6 +3,7 @@ from typing import Dict
 from gsuid_core.utils.plugins_config.models import (
     GSC,
     GsStrConfig,
+    GsIntConfig,
     GsBoolConfig,
     GsListStrConfig,
 )
@@ -52,5 +53,25 @@ CONFIG_DEFAULT: Dict[str, GSC] = {
         "压缩壁纸缓存大小上限(MB)",
         "裁剪压缩后的壁纸缓存最大占用空间",
         "200",
+    ),
+    "ElysianStrategyEnabled": GsBoolConfig(
+        "乐土攻略查询",
+        "开启后允许查询往世乐土攻略图",
+        True,
+    ),
+    "ElysianStrategyCacheHours": GsIntConfig(
+        "乐土攻略索引缓存时间",
+        "远程索引缓存时间，单位小时",
+        6,
+    ),
+    "ElysianStrategyProxyPrefix": GsStrConfig(
+        "乐土攻略代理前缀",
+        "GitHub Raw 访问代理前缀，留空表示直连",
+        "",
+    ),
+    "ElysianStrategyShowSource": GsBoolConfig(
+        "乐土攻略来源提示",
+        "发送攻略图时是否附带数据来源与更新时间",
+        True,
     ),
 }

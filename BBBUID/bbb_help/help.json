@@ -134,6 +134,51 @@
       }
     ]
   },
+  "乐土攻略": {
+    "desc": "往世乐土攻略图查询",
+    "data": [
+      {
+        "name": "乐土攻略",
+        "desc": "按关键词查询往世乐土攻略图",
+        "eg": "乐土攻略 人律",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "攻略",
+        "desc": "乐土攻略查询简写",
+        "eg": "攻略 人律星环流",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "角色乐土攻略",
+        "desc": "自然格式查询乐土攻略",
+        "eg": "人律乐土攻略",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      },
+      {
+        "name": "更新乐土攻略",
+        "desc": "手动刷新乐土攻略索引",
+        "eg": "更新乐土攻略",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": true
+      },
+      {
+        "name": "乐土关键词列表",
+        "desc": "查看或筛选可用乐土关键词",
+        "eg": "乐土关键词列表 人律",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
+      }
+    ]
+  },
   "WIKI图鉴": {
     "desc": "崩坏3百科查询",
     "data": [
