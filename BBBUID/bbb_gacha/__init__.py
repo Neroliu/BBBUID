@@ -6,7 +6,7 @@ from gsuid_core.models import Event
 
 from ..utils.uid import get_uid
 from ..utils.hint import BIND_UID_HINT
-from .get_gachalogs import save_gachalogs, get_full_gachalogs, get_gacha_summary
+from .get_gachalogs import save_gachalogs, get_full_gachalogs, get_gacha_summary, get_gacha_summary_data
 
 sv_bbb_gacha = SV("崩坏3抽卡记录")
 
@@ -17,8 +17,21 @@ async def send_gacha_log(bot: Bot, ev: Event):
     if not uid:
         return await bot.send(BIND_UID_HINT)
     logger.info(f"[崩坏3] [抽卡记录] 查看记录: UID={uid}")
-    result = await get_gacha_summary(uid)
-    await bot.send(result)
+
+    # 获取结构化数据
+    data = await get_gacha_summary_data(uid, ev)
+    if isinstance(data, str):  # 错误信息
+        return await bot.send(data)
+
+    # 渲染图片
+    try:
+        from .draw_gacha import draw_gacha_img
+        img_bytes = await draw_gacha_img(data, ev)
+        await bot.send(img_bytes)
+    except Exception as e:
+        logger.warning(f"[崩坏3] [抽卡记录] 图片渲染失败，回退到文本: {e}")
+        result = await get_gacha_summary(uid)
+        await bot.send(result)
 
 
 @sv_bbb_gacha.on_fullmatch(("刷新抽卡记录", "更新抽卡记录"), block=True)

@@ -18,8 +18,10 @@ import aiofiles
 
 from gsuid_core.logger import logger
 
+from pathlib import Path
+
 from ..bbb_api import bh3_api
-from ..utils.RESOURCE_PATH import PLAYER_PATH
+from ..utils.RESOURCE_PATH import PLAYER_PATH, WIKI_PATH
 
 
 def _parse_record(item: list[Dict]) -> Dict[str, str]:
@@ -472,3 +474,161 @@ async def get_gacha_summary(uid: str) -> str:
         parts.append("")
 
     return "\n".join(parts).strip()
+
+
+# --- 角色/武器图标缓存路径 ---
+CHAR_ICON_CACHE_DIR = WIKI_PATH / "角色" / "icons"
+WEAPON_ICON_CACHE_DIR = WIKI_PATH / "武器" / "icons"
+
+
+def _get_char_icon_path(char_name: str) -> Path | None:
+    """根据角色名称获取图标路径（支持别名查找）。"""
+    try:
+        from ..bbb_alias.name_convert import alias_to_char_name, char_name_to_content_id
+        standard_name = alias_to_char_name(char_name) or char_name
+        content_id = char_name_to_content_id(standard_name)
+        if content_id:
+            icon_path = CHAR_ICON_CACHE_DIR / f"{content_id}.png"
+            if icon_path.exists():
+                return icon_path
+    except Exception:
+        pass
+    return None
+
+
+def _get_weapon_icon_path(weapon_name: str) -> Path | None:
+    """根据武器名称获取图标路径。"""
+    try:
+        # 尝试从武器索引中查找
+        from ..bbb_wiki.resource_update import get_local_index
+        index = get_local_index("武器")
+        if index:
+            for cid_str, title in index.items():
+                if title == weapon_name:
+                    icon_path = WEAPON_ICON_CACHE_DIR / f"{cid_str}.png"
+                    if icon_path.exists():
+                        return icon_path
+    except Exception:
+        pass
+    return None
+
+
+async def get_gacha_summary_data(uid: str, ev=None) -> Dict | str:
+    """生成抽卡记录结构化数据，供图片渲染使用。"""
+    path = PLAYER_PATH / str(uid)
+    gachalogs_path = path / "gacha_logs.json"
+
+    if not gachalogs_path.exists():
+        return f"UID{uid} 还没有抽卡记录，请先使用「刷新抽卡记录」。"
+
+    async with aiofiles.open(gachalogs_path, "r", encoding="utf-8") as f:
+        gacha_log = json.loads(await f.read())
+
+    data: Dict[str, List[Dict]] = gacha_log.get("data", {})
+    if not data:
+        return f"UID{uid} 还没有抽卡记录，请先使用「刷新抽卡记录」。"
+
+    # 获取玩家信息
+    nickname = "未知舰长"
+    level = 0
+    login_days = 0
+    rating = "C"
+
+    try:
+        index_data = await bh3_api.get_bbb_index(uid)
+        if isinstance(index_data, Dict):
+            role = index_data.get("role", {})
+            stats = index_data.get("stats", {})
+            pref = index_data.get("preference", {})
+            nickname = role.get("nickname", nickname)
+            level = role.get("level", level)
+            login_days = stats.get("active_day_number", login_days)
+            rating = pref.get("comprehensive_rating", rating)
+    except Exception as e:
+        logger.warning(f"[崩坏3] [抽卡记录] 获取玩家信息失败: {e}")
+
+    # 获取角色和武器星级映射
+    char_star_map = await _get_character_star_map()
+    weapon_star_map = await _get_weapon_star_map()
+
+    # 构建卡池数据
+    pools = []
+    for gacha_name, records in data.items():
+        count = len(records)
+        if count == 0:
+            continue
+
+        pool_type = _get_pool_type(gacha_name)
+
+        # 按时间正序排列（从旧到新）
+        sorted_records = sorted(records, key=lambda r: r.get("time", ""))
+
+        # 统计特殊物品之间的抽数
+        items = []
+        pull_since_last = 0
+        gold_count = 0
+        pull_counts = []  # 记录每次出金的抽数
+
+        for r in sorted_records:
+            content = r.get("content", "未知")
+            pull_since_last += 1
+            if _is_special_item(content, pool_type, char_star_map, weapon_star_map):
+                # 提取名称
+                item_name = content
+                icon_path = None
+                if pool_type == "char":
+                    char_name = _extract_character_name(content)
+                    if char_name:
+                        item_name = char_name
+                        icon_path = _get_char_icon_path(char_name)
+                elif pool_type == "weapon":
+                    weapon_name = _extract_weapon_name(content)
+                    if weapon_name:
+                        item_name = weapon_name
+                        icon_path = _get_weapon_icon_path(weapon_name)
+
+                items.append({
+                    "name": item_name,
+                    "content": content,
+                    "icon_path": icon_path,
+                    "pulls": pull_since_last,
+                    "time": r.get("time", ""),
+                })
+                pull_counts.append(pull_since_last)
+                gold_count += 1
+                pull_since_last = 0
+
+        # 计算统计数据
+        avg_pulls = sum(pull_counts) / len(pull_counts) if pull_counts else 0
+        max_pulls = max(pull_counts) if pull_counts else 0
+        avg_rate = f"{(gold_count / count * 100):.1f}%" if count > 0 else "0%"
+
+        # 时间范围
+        start_time = sorted_records[0].get("time", "") if sorted_records else ""
+        end_time = sorted_records[-1].get("time", "") if sorted_records else ""
+
+        # 按时间倒序显示（最新在前）
+        items.reverse()
+
+        pools.append({
+            "name": gacha_name,
+            "type": pool_type,
+            "total_pulls": count,
+            "gold_count": gold_count,
+            "start_time": start_time,
+            "end_time": end_time,
+            "avg_pulls": round(avg_pulls, 1),
+            "max_pulls": max_pulls,
+            "avg_rate": avg_rate,
+            "items": items,
+            "current_pity": pull_since_last,  # 当前距离上次出金的抽数
+        })
+
+    return {
+        "uid": uid,
+        "nickname": nickname,
+        "level": level,
+        "login_days": login_days,
+        "rating": rating,
+        "pools": pools,
+    }
