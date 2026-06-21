@@ -325,6 +325,24 @@ async def _draw_pool_section(pool: Dict) -> Image.Image:
     time_y = name_y + name_h + gap_name_time
     _draw_italic_text(canvas, (name_x, time_y), time_text, time_font, TEXT_DIM)
 
+    # Banner 内统计数据（40px 斜体，竖向居中）
+    stats_font = _ifont(40)
+    stats_ascent = stats_font.getmetrics()[0]
+    stats_baseline = (banner_h - 40) // 2 + stats_ascent
+
+    # 平均抽数 — 左侧与 banner 中线对齐
+    avg_text = f"{avg_pulls:.1f}"
+    _draw_italic_text(canvas, (700, stats_baseline), avg_text, stats_font, TEXT_WHITE, anchor="ls")
+
+    # 抽卡总数 — 右侧距 banner 右侧 450px
+    total_text = str(len(pool.get("raw_records", [])) if "raw_records" in pool else pool.get("total_pulls", 0))
+    _draw_italic_text(canvas, (W - 450, stats_baseline), total_text, stats_font, TEXT_WHITE, anchor="rs")
+
+    # 最高抽数 — 右侧距 banner 右侧 250px
+    max_pulls = pool.get("max_pulls", 0)
+    max_text = str(max_pulls)
+    _draw_italic_text(canvas, (W - 250, stats_baseline), max_text, stats_font, TEXT_WHITE, anchor="rs")
+
     # 表情图标（不缩放），竖向居中于 banner，右侧距 banner 右侧 100px
     emotion_path = _get_emotion_icon(avg_pulls)
     if emotion_path:
