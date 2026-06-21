@@ -219,7 +219,7 @@ async def save_gachalogs(uid: str, is_force: bool = False) -> str:
     parts = [f"✅UID{uid} 数据更新成功！本次更新 {total_add} 条"]
     for gacha_name, delta in deltas.items():
         if delta > 0:
-            parts.append(f"  {gacha_name} +{delta}")
+            parts.append(f"  {gacha_name} 新增 {delta} 条记录")
     return "\n".join(parts)
 
 
