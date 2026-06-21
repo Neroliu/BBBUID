@@ -41,12 +41,51 @@ def _record_key(record: Dict[str, str]) -> Tuple[str, str]:
 
 
 async def _get_authkey(uid: str) -> str | None:
-    server_id = await bh3_api.get_bbb_server(uid)
-    raw = await bh3_api.get_authkey_by_cookie(uid, "bh3_cn", server_id or "prod_gf_cn")
-    if isinstance(raw, int):
-        logger.warning(f"[崩坏3] [抽卡记录] 获取 authkey 失败: {raw}")
+    """获取 authkey。需要通过 stoken 调用 genAuthKey API。"""
+    server_id = await bh3_api.get_bbb_server(uid) or "prod_gf_cn"
+
+    # get_authkey_by_cookie 内部 get_stoken 不传 game_name，
+    # 会导致查找 uid 字段而非 bbb_uid，这里手动传 game_name="bbb"
+    from gsuid_core.utils.database.models import GsUser
+    stoken = await GsUser.get_user_stoken_by_uid(uid, "bbb")
+    if not stoken:
+        logger.warning(f"[崩坏3] [抽卡记录] 未找到 stoken (uid={uid})")
         return None
-    return raw.get("authkey")
+
+    import copy
+    from gsuid_core.utils.api.mys.tools import get_web_ds_token, mys_version
+    from gsuid_core.utils.api.mys.api import GET_AUTHKEY_URL
+    import random as _random
+
+    HEADER = copy.deepcopy(bh3_api._HEADER)
+    HEADER["Cookie"] = stoken
+    HEADER["DS"] = get_web_ds_token(True)
+    HEADER["User-Agent"] = "okhttp/4.8.0"
+    HEADER["x-rpc-app_version"] = mys_version
+    HEADER["x-rpc-sys_version"] = "12"
+    HEADER["x-rpc-client_type"] = "5"
+    HEADER["x-rpc-channel"] = "mihoyo"
+    HEADER["x-rpc-device_id"] = "".join(_random.choices("0123456789abcdef", k=32))
+    HEADER["x-rpc-device_name"] = "Mi 10"
+    HEADER["x-rpc-device_model"] = "Mi 10"
+    HEADER["Referer"] = "https://app.mihoyo.com"
+    HEADER["Host"] = "api-takumi.mihoyo.com"
+
+    data = await bh3_api._mys_request(
+        url=GET_AUTHKEY_URL,
+        method="POST",
+        header=HEADER,
+        data={
+            "auth_appid": "webview_gacha",
+            "game_biz": "bh3_cn",
+            "game_uid": uid,
+            "region": server_id,
+        },
+    )
+    if isinstance(data, dict) and "data" in data:
+        return data["data"].get("authkey")
+    logger.warning(f"[崩坏3] [抽卡记录] genAuthKey 失败: {data}")
+    return None
 
 
 async def _get_gacha_menus(uid: str, authkey: str) -> List[Dict]:
@@ -123,7 +162,7 @@ async def save_gachalogs(uid: str, is_force: bool = False) -> str:
     # 获取 authkey
     authkey = await _get_authkey(uid)
     if not authkey:
-        return "[崩坏3] 获取 authkey 失败，请检查 Cookie 是否已绑定且未过期。"
+        return "[崩坏3] 获取 authkey 失败，请先绑定 stoken 后再使用抽卡记录功能。\n绑定方式：使用 bbb扫码登陆 或在 webconsole 中绑定 stoken。"
 
     # 获取卡池列表
     menus = await _get_gacha_menus(uid, authkey)
