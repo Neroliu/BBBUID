@@ -338,8 +338,8 @@ async def _draw_pool_section(pool: Dict) -> Image.Image:
     total_text = str(pool.get("total_pulls", 0))
     _draw_italic_text(canvas, (W - 470, stats_baseline), total_text, stats_font, TEXT_WHITE, anchor="rs")
 
-    # 第二个平均抽数 — 右侧距 banner 右侧 400px
-    _draw_italic_text(canvas, (W - 400, stats_baseline), avg_text, stats_font, TEXT_WHITE, anchor="rs")
+    # 第二个平均抽数 — 右侧距 banner 右侧 370px
+    _draw_italic_text(canvas, (W - 370, stats_baseline), avg_text, stats_font, TEXT_WHITE, anchor="rs")
 
     # 表情图标（不缩放），竖向居中于 banner，右侧距 banner 右侧 100px
     emotion_path = _get_emotion_icon(avg_pulls)
