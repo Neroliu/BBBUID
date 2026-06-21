@@ -308,12 +308,14 @@ async def get_gacha_summary(uid: str) -> str:
             content = r.get("content", "未知")
             item_counts[content] = item_counts.get(content, 0) + 1
 
-        # 按数量排序，取前10
-        sorted_items = sorted(item_counts.items(), key=lambda x: -x[1])[:10]
+        # 按数量排序，取前20
+        sorted_items = sorted(item_counts.items(), key=lambda x: -x[1])[:20]
 
         parts.append(f"【{gacha_name}】共 {count} 条")
         for item, cnt in sorted_items:
             parts.append(f"  {item} x{cnt}")
+        if len(item_counts) > 20:
+            parts.append(f"  ...还有 {len(item_counts) - 20} 种")
 
         # 最近一条记录时间
         if records:
