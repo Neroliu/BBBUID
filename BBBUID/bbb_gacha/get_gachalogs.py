@@ -291,38 +291,12 @@ def _extract_weapon_name(content: str) -> str | None:
 
 
 async def _get_character_star_map() -> Dict[str, int]:
-    """从 wiki 获取角色星级映射。返回 {角色名: starValue}"""
+    """从本地 wiki 数据获取角色星级映射。返回 {角色名: starValue}"""
     star_map: Dict[str, int] = {}
     try:
         from ..bbb_wiki.resource_update import get_local_index, get_local_detail
-        from ..bbb_wiki.wiki_api import (
-            get_channel_content_list, get_content_detail, parse_evaluation_from_detail,
-        )
-
+        from ..bbb_wiki.wiki_api import parse_evaluation_from_detail
         index = get_local_index("角色")
-        # 本地无数据时，从 API 拉取列表
-        if not index:
-            items = await get_channel_content_list(18)  # 18 = 角色频道
-            if items:
-                for item in items:
-                    cid = item["content_id"]
-                    title = item["title"]
-                    try:
-                        detail = await get_content_detail(cid)
-                        if not detail:
-                            continue
-                        evaluation = parse_evaluation_from_detail(detail)
-                        advance = evaluation.get("advanceGeneral", [])
-                        if advance:
-                            sv = advance[0].get("starValue", 0)
-                            if sv:
-                                star_map[title] = sv
-                    except Exception:
-                        continue
-                logger.info(f"[崩坏3] [抽卡记录] 从 API 获取角色星级: {len(star_map)} 条")
-            return star_map
-
-        # 本地有数据，逐个读取
         for cid_str, title in index.items():
             detail = get_local_detail("角色", int(cid_str))
             if not detail:
@@ -350,37 +324,12 @@ async def _get_character_star_map() -> Dict[str, int]:
 
 
 async def _get_weapon_star_map() -> Dict[str, int]:
-    """从 wiki 获取武器星级映射。返回 {武器名: starValue}"""
+    """从本地 wiki 数据获取武器星级映射。返回 {武器名: starValue}"""
     star_map: Dict[str, int] = {}
     try:
         from ..bbb_wiki.resource_update import get_local_index, get_local_detail
-        from ..bbb_wiki.wiki_api import (
-            get_channel_content_list, get_content_detail, parse_weapon_data_from_detail,
-        )
-
+        from ..bbb_wiki.wiki_api import parse_weapon_data_from_detail
         index = get_local_index("武器")
-        # 本地无数据时，从 API 拉取列表
-        if not index:
-            items = await get_channel_content_list(20)  # 20 = 武器频道
-            if items:
-                for item in items:
-                    cid = item["content_id"]
-                    title = item["title"]
-                    try:
-                        detail = await get_content_detail(cid)
-                        if not detail:
-                            continue
-                        weapon_data = detail.get("weapon_data") or parse_weapon_data_from_detail(detail)
-                        info = weapon_data.get("info", {})
-                        sv = info.get("starValue", 0)
-                        if sv:
-                            star_map[title] = sv
-                    except Exception:
-                        continue
-                logger.info(f"[崩坏3] [抽卡记录] 从 API 获取武器星级: {len(star_map)} 条")
-            return star_map
-
-        # 本地有数据，逐个读取
         for cid_str, title in index.items():
             detail = get_local_detail("武器", int(cid_str))
             if not detail:
