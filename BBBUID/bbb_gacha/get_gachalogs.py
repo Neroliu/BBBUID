@@ -630,5 +630,6 @@ async def get_gacha_summary_data(uid: str, ev=None) -> Dict | str:
         "level": level,
         "login_days": login_days,
         "rating": rating,
+        "index_data": index_data if isinstance(index_data, Dict) else {},
         "pools": pools,
     }
