@@ -191,7 +191,7 @@ async def _get_random_wallpaper() -> Image.Image | None:
             comp_dir = _get_compressed_cache_dir(cid)
 
             # 1) Check compressed cache first
-            comp_files = sorted(comp_dir.glob("*.jpg"), key=lambda f: f.stat().st_mtime)
+            comp_files = sorted((f for f in comp_dir.glob("*.jpg") if f.is_file()), key=lambda f: f.stat().st_mtime)
             if comp_files:
                 f = random.choice(comp_files)
                 try:

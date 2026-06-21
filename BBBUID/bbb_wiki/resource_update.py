@@ -880,8 +880,11 @@ async def _enforce_wallpaper_cache_limits():
 def _enforce_dir_limits(base_dir: Path, max_count: int, max_size: int):
     """Enforce count and size limits on files under base_dir (recursive).
     Removes oldest files first when limits are exceeded."""
-    files = sorted(base_dir.rglob("*.*"), key=lambda f: f.stat().st_mtime)
-    files = [f for f in files if f.suffix in (".png", ".jpg", ".jpeg")]
+    files = [
+        f for f in base_dir.rglob("*.*")
+        if f.is_file() and f.suffix in (".png", ".jpg", ".jpeg") and "@eaDir" not in f.parts
+    ]
+    files.sort(key=lambda f: f.stat().st_mtime)
     total_size = sum(f.stat().st_size for f in files)
 
     # Remove by count
