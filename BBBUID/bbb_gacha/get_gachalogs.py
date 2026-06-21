@@ -282,15 +282,12 @@ def _extract_character_name(content: str) -> str | None:
     return name if name else None
 
 
-def _get_star_label(star_value: int) -> str:
-    """根据星级返回标签。"""
-    if star_value >= 4:
-        return "S"
-    elif star_value >= 3:
-        return "A"
-    elif star_value >= 2:
-        return "B"
-    return ""
+def _extract_weapon_name(content: str) -> str | None:
+    """从补给内容中提取武器名称。格式: [武器]XXX"""
+    if not content.startswith("[武器]"):
+        return None
+    name = content.replace("[武器]", "").strip()
+    return name if name else None
 
 
 async def _get_character_star_map() -> Dict[str, int]:
@@ -328,6 +325,28 @@ async def _get_character_star_map() -> Dict[str, int]:
     return star_map
 
 
+async def _get_weapon_star_map() -> Dict[str, int]:
+    """从 wiki 获取武器星级映射。返回 {武器名: starValue}"""
+    star_map: Dict[str, int] = {}
+    try:
+        from ..bbb_wiki.resource_update import get_local_index, get_local_detail
+        from ..bbb_wiki.wiki_api import parse_weapon_data_from_detail
+        index = get_local_index("武器")
+        for cid_str, title in index.items():
+            detail = get_local_detail("武器", int(cid_str))
+            if not detail:
+                continue
+            # 从 weapon_data 获取星级
+            weapon_data = detail.get("weapon_data") or parse_weapon_data_from_detail(detail)
+            info = weapon_data.get("info", {})
+            star_value = info.get("starValue", 0)
+            if star_value:
+                star_map[title] = star_value
+    except Exception as e:
+        logger.warning(f"[崩坏3] [抽卡记录] 获取武器星级失败: {e}")
+    return star_map
+
+
 async def get_gacha_summary(uid: str) -> str:
     """生成抽卡记录文本摘要。"""
     path = PLAYER_PATH / str(uid)
@@ -346,8 +365,9 @@ async def get_gacha_summary(uid: str) -> str:
     data_time = gacha_log.get("data_time", "未知")
     total = sum(len(records) for records in data.values())
 
-    # 获取角色星级映射
-    star_map = await _get_character_star_map()
+    # 获取角色和武器星级映射
+    char_star_map = await _get_character_star_map()
+    weapon_star_map = await _get_weapon_star_map()
 
     parts = [f"📊 UID{uid} 抽卡记录（共 {total} 条）"]
     parts.append(f"数据更新时间：{data_time}")
@@ -359,9 +379,10 @@ async def get_gacha_summary(uid: str) -> str:
             parts.append(f"【{gacha_name}】暂无记录")
             continue
 
-        # 统计补给内容，分离角色和其他物品
+        # 统计补给内容
         item_counts: Dict[str, int] = {}
         s_rank_chars: List[Tuple[str, int]] = []
+        five_star_weapons: List[Tuple[str, int]] = []
         for r in records:
             content = r.get("content", "未知")
             item_counts[content] = item_counts.get(content, 0) + 1
@@ -369,9 +390,16 @@ async def get_gacha_summary(uid: str) -> str:
         # 检查角色是否为 S 初始阶级
         for content, cnt in item_counts.items():
             char_name = _extract_character_name(content)
-            if char_name and char_name in star_map:
-                if star_map[char_name] >= 4:  # S rank
+            if char_name and char_name in char_star_map:
+                if char_star_map[char_name] >= 4:  # S rank
                     s_rank_chars.append((content, cnt))
+
+        # 检查武器是否为 5 星
+        for content, cnt in item_counts.items():
+            weapon_name = _extract_weapon_name(content)
+            if weapon_name and weapon_name in weapon_star_map:
+                if weapon_star_map[weapon_name] >= 5:  # 5 star
+                    five_star_weapons.append((content, cnt))
 
         # 按数量排序，取前20
         sorted_items = sorted(item_counts.items(), key=lambda x: -x[1])[:20]
@@ -380,8 +408,15 @@ async def get_gacha_summary(uid: str) -> str:
 
         # S 初始阶级角色单独显示
         if s_rank_chars:
-            parts.append("  ★ S初始阶级：")
+            parts.append("  ★ S初始阶级角色：")
             for content, cnt in s_rank_chars:
+                parts.append(f"    {content} x{cnt}")
+            parts.append("")
+
+        # 5 星武器单独显示
+        if five_star_weapons:
+            parts.append("  ★ 5星武器：")
+            for content, cnt in five_star_weapons:
                 parts.append(f"    {content} x{cnt}")
             parts.append("")
 
