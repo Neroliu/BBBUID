@@ -251,13 +251,11 @@ async def _draw_pool_section(pool: Dict) -> Image.Image:
     end_time = pool.get("end_time", "")
     current_pity = pool.get("current_pity", 0)
 
-    # 卡片宽度
-    card_w = W - 60  # 左右各30px边距
-
     # 计算网格区域高度
     items_per_row = 8
     item_size = 100
     item_gap = 10
+    grid_margin = 30  # 网格区域左右边距
     num_rows = (len(items) + items_per_row - 1) // items_per_row if items else 1
     grid_h = num_rows * (item_size + item_gap) + item_gap
 
@@ -270,17 +268,15 @@ async def _draw_pool_section(pool: Dict) -> Image.Image:
     # 总高度
     total_h = banner_h + stats_h + grid_h + 30
 
-    # 创建画布
-    canvas = Image.new("RGBA", (card_w, total_h), (0, 0, 0, 0))
+    # 创建画布（宽度 = 画布全宽，banner 本身是 1400 宽）
+    canvas = Image.new("RGBA", (W, total_h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(canvas)
 
-    # 绘制 banner 背景（不缩放，使用原始尺寸，超出裁剪）
+    # 绘制 banner 背景（不缩放，原始尺寸，从左侧开始）
     banner_path = RES_DIR / "banner.png"
     if banner_path.exists():
         banner_bg = Image.open(banner_path).convert("RGBA")
-        bw, bh = banner_bg.size
-        # 不缩放，直接贴，超出卡片宽度的部分自然截断
-        canvas.alpha_composite(banner_bg, (0, 0), (0, 0, min(bw, card_w), min(bh, banner_h)))
+        canvas.alpha_composite(banner_bg, (0, 0))
 
     # --- Banner 区域：全部斜体 ---
     # 卡池名称 (46px, #FEE772)
@@ -305,7 +301,7 @@ async def _draw_pool_section(pool: Dict) -> Image.Image:
     if emotion_path:
         emotion_img = Image.open(emotion_path).convert("RGBA")
         emotion_img = emotion_img.resize((60, 60), Image.Resampling.LANCZOS)
-        canvas.alpha_composite(emotion_img, (card_w - 80, 10))
+        canvas.alpha_composite(emotion_img, (W - 80, 10))
 
     # 统计数据区
     stats_y = banner_h + 10
@@ -323,7 +319,8 @@ async def _draw_pool_section(pool: Dict) -> Image.Image:
 
     # 角色/武器网格
     grid_y = banner_h + stats_h + 10
-    grid_start_x = (card_w - (items_per_row * (item_size + item_gap) - item_gap)) // 2
+    grid_w = items_per_row * (item_size + item_gap) - item_gap
+    grid_start_x = (W - grid_w) // 2
 
     # 加载边框
     frame_path = RES_DIR / "char_frame2.png"
@@ -420,7 +417,7 @@ async def draw_gacha_img(data: Dict, ev=None) -> bytes:
     # 绘制每个卡池
     current_y = player_h
     for pool_img in pool_imgs:
-        canvas.alpha_composite(pool_img, (30, current_y))
+        canvas.alpha_composite(pool_img, (0, current_y))
         current_y += pool_img.height + 20
 
     # 裁剪到实际内容高度
