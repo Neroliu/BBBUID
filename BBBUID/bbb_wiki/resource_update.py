@@ -358,6 +358,17 @@ async def update_channel(channel_name: str, channel_id: int):
             updated.append(cid)
         elif old_item != item["title"]:
             updated.append(cid)
+        else:
+            # title 未变，检查 summary 是否变化（预告→正式等场景）
+            old_detail = _load_detail(channel_name, int(cid))
+            if old_detail:
+                old_summary = old_detail.get("summary", "")
+                new_summary = item.get("summary", "")
+                if old_summary != new_summary:
+                    updated.append(cid)
+            else:
+                # 有索引但无详情，需要补全
+                updated.append(cid)
 
     total = len(added) + len(updated)
     if not total and not removed:
