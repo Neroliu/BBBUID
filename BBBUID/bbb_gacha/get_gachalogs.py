@@ -274,6 +274,60 @@ async def get_full_gachalogs(uid: str) -> str:
             _full_lock.remove(uid)
 
 
+def _extract_character_name(content: str) -> str | None:
+    """从补给内容中提取角色名称。格式: [角色]XXX角色卡"""
+    if not content.startswith("[角色]"):
+        return None
+    name = content.replace("[角色]", "").replace("角色卡", "").strip()
+    return name if name else None
+
+
+def _get_star_label(star_value: int) -> str:
+    """根据星级返回标签。"""
+    if star_value >= 4:
+        return "S"
+    elif star_value >= 3:
+        return "A"
+    elif star_value >= 2:
+        return "B"
+    return ""
+
+
+async def _get_character_star_map() -> Dict[str, int]:
+    """从 wiki 获取角色星级映射。返回 {角色名: starValue}"""
+    star_map: Dict[str, int] = {}
+    try:
+        from ..bbb_wiki.resource_update import get_local_index, get_local_detail
+        index = get_local_index("角色")
+        for cid_str, title in index.items():
+            detail = get_local_detail("角色", int(cid_str))
+            if not detail:
+                continue
+            # 从 evaluation 或 basic_info 获取星级
+            star_value = 0
+            evaluation = detail.get("evaluation", {})
+            if evaluation:
+                # 尝试从 advanceGeneral 获取初始星级
+                advance = evaluation.get("advanceGeneral", [])
+                if advance:
+                    star_value = advance[0].get("starValue", 0)
+            if not star_value:
+                # 从 basic_info 推断
+                basic_info = detail.get("basic_info", {})
+                rank = basic_info.get("角色评级", "")
+                if "S" in rank:
+                    star_value = 4
+                elif "A" in rank:
+                    star_value = 3
+                elif "B" in rank:
+                    star_value = 2
+            if star_value:
+                star_map[title] = star_value
+    except Exception as e:
+        logger.warning(f"[崩坏3] [抽卡记录] 获取角色星级失败: {e}")
+    return star_map
+
+
 async def get_gacha_summary(uid: str) -> str:
     """生成抽卡记录文本摘要。"""
     path = PLAYER_PATH / str(uid)
@@ -292,6 +346,9 @@ async def get_gacha_summary(uid: str) -> str:
     data_time = gacha_log.get("data_time", "未知")
     total = sum(len(records) for records in data.values())
 
+    # 获取角色星级映射
+    star_map = await _get_character_star_map()
+
     parts = [f"📊 UID{uid} 抽卡记录（共 {total} 条）"]
     parts.append(f"数据更新时间：{data_time}")
     parts.append("")
@@ -302,16 +359,32 @@ async def get_gacha_summary(uid: str) -> str:
             parts.append(f"【{gacha_name}】暂无记录")
             continue
 
-        # 统计补给内容
+        # 统计补给内容，分离角色和其他物品
         item_counts: Dict[str, int] = {}
+        s_rank_chars: List[Tuple[str, int]] = []
         for r in records:
             content = r.get("content", "未知")
             item_counts[content] = item_counts.get(content, 0) + 1
+
+        # 检查角色是否为 S 初始阶级
+        for content, cnt in item_counts.items():
+            char_name = _extract_character_name(content)
+            if char_name and char_name in star_map:
+                if star_map[char_name] >= 4:  # S rank
+                    s_rank_chars.append((content, cnt))
 
         # 按数量排序，取前20
         sorted_items = sorted(item_counts.items(), key=lambda x: -x[1])[:20]
 
         parts.append(f"【{gacha_name}】共 {count} 条")
+
+        # S 初始阶级角色单独显示
+        if s_rank_chars:
+            parts.append("  ★ S初始阶级：")
+            for content, cnt in s_rank_chars:
+                parts.append(f"    {content} x{cnt}")
+            parts.append("")
+
         for item, cnt in sorted_items:
             parts.append(f"  {item} x{cnt}")
         if len(item_counts) > 20:
