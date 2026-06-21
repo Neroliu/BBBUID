@@ -309,15 +309,17 @@ async def _draw_pool_section(pool: Dict) -> Image.Image:
     _draw_italic_text(canvas, (name_x, name_y), pool_name, name_font, GOLD_YELLOW)
 
     # "已x抽未出" — 与卡池名称底部对齐，左侧距卡池名称右侧 10px
-    bottom_y = name_y + name_h
+    # 用 font metrics 计算基线，避免 italic transform 导致 anchor 偏移
+    ascent = name_font.getmetrics()[0]
+    baseline_y = name_y + ascent
     pity_x = name_x + name_w + 10
-    _draw_italic_text(canvas, (pity_x, bottom_y), "已", _ifont(28), TEXT_WHITE, anchor="ld")
+    _draw_italic_text(canvas, (pity_x, baseline_y), "已", _ifont(28), TEXT_WHITE, anchor="ls")
     pity_x += 30
     pity_text = str(current_pity)
-    _draw_italic_text(canvas, (pity_x, bottom_y), pity_text, _ifont(34), PITY_RED, anchor="ld")
+    _draw_italic_text(canvas, (pity_x, baseline_y), pity_text, _ifont(34), PITY_RED, anchor="ls")
     pity_bbox = draw.textbbox((0, 0), pity_text, font=_ifont(34))
     pity_x += pity_bbox[2] - pity_bbox[0] + 8
-    _draw_italic_text(canvas, (pity_x, bottom_y), "抽未出", _ifont(28), TEXT_WHITE, anchor="ld")
+    _draw_italic_text(canvas, (pity_x, baseline_y), "抽未出", _ifont(28), TEXT_WHITE, anchor="ls")
 
     # 时间范围，在卡池名称下方，间距 15px
     time_y = name_y + name_h + gap_name_time
@@ -357,15 +359,15 @@ async def _draw_pool_section(pool: Dict) -> Image.Image:
             except Exception:
                 pass
 
-        # 绘制抽数标注
+        # 绘制抽数标注（28px，与格子底部对齐，底部间距 5px）
         pulls = item.get("pulls", 0)
         pulls_text = f"{pulls}抽"
         draw.text(
-            (item_x + frame_w // 2, item_y + frame_h + 5),
+            (item_x + frame_w // 2, item_y + frame_h - 5),
             pulls_text,
-            font=_font(14),
+            font=_font(28),
             fill=TEXT_BLACK,
-            anchor="mt",
+            anchor="mb",
         )
 
     return canvas
