@@ -20,6 +20,9 @@ ELYSIAN_LOCAL_INDEX_PATH = ELYSIAN_REALM_PATH / "local-index.json"
 ELYSIAN_META_PATH = ELYSIAN_REALM_PATH / "meta.json"
 ELYSIAN_IMAGE_CACHE_PATH = ELYSIAN_REALM_PATH / "images"
 
+PLAYER_PATH = MAIN_PATH / "players"
+PLAYER_PATH.mkdir(parents=True, exist_ok=True)
+
 
 CHANNEL_MAP = {
     "角色": 18,

@@ -16,6 +16,8 @@ from .api import (
     BH3_OLD_ABYSS_API,
     BH3_BATTLE_FIELD_API,
     BH3_GODWAR_API,
+    BH3_GACHA_MENUS_API,
+    BH3_GACHA_LOG_API,
 )
 from .models import (
     BH3IndexData,
@@ -144,3 +146,67 @@ class BH3Api(_MysApi):
         if isinstance(data, Dict):
             data = cast(BH3GodWarData, data["data"])
         return data
+
+    # ── 抽卡记录（自助查询链路） ──
+
+    def _bh3_gacha_header(self) -> Dict:
+        return {
+            **self._HEADER,
+            "origin": "https://webstatic.mihoyo.com",
+            "referer": "https://webstatic.mihoyo.com/",
+        }
+
+    def _bh3_gacha_base_params(self, uid: str, authkey: str) -> Dict:
+        return {
+            "page_id": "5",
+            "auth_appid": "csc",
+            "game_biz": "bh3_cn",
+            "lang": "zh-cn",
+            "authkey": authkey,
+            "authkey_ver": "1",
+            "sign_type": "2",
+            "community_select_uid": uid,
+            "bbs_auth_required": "true",
+            "bbs_game_role_required": "bh3_cn",
+            "app_client": "bbs",
+            "source": "service-center",
+            "source_point": "SvcCenterSelf",
+            "win_direction": "portrait",
+        }
+
+    async def get_bh3_gacha_menus(
+        self, uid: str, authkey: str, gacha_type: str = "1",
+    ) -> Union[Dict, int]:
+        params = {
+            **self._bh3_gacha_base_params(uid, authkey),
+            "type": gacha_type,
+        }
+        data = await self._mys_request(
+            url=BH3_GACHA_MENUS_API,
+            method="GET",
+            header=self._bh3_gacha_header(),
+            params=params,
+        )
+        if isinstance(data, dict) and "data" in data:
+            return data["data"]
+        return -51 if data is None else -1
+
+    async def get_bh3_gacha_log_by_authkey(
+        self, uid: str, authkey: str, gacha_type: str, page: int = 1,
+    ) -> Union[Dict, int]:
+        params = {
+            **self._bh3_gacha_base_params(uid, authkey),
+            "type": gacha_type,
+            "page": str(page),
+            "size": "20",
+            "end_id": "0",
+        }
+        data = await self._mys_request(
+            url=BH3_GACHA_LOG_API,
+            method="GET",
+            header=self._bh3_gacha_header(),
+            params=params,
+        )
+        if isinstance(data, dict) and "data" in data:
+            return data["data"]
+        return -51 if data is None else -1

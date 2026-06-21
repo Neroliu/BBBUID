@@ -14,3 +14,7 @@ BH3_GODWAR_API = "/godWar"
 
 # Account API for server lookup
 BH3_BIND_API = f"{GS_BASE}/binding/api/getUserGameRolesByCookie"
+
+# BH3 Gacha Record API (self-help query service)
+BH3_GACHA_MENUS_API = "https://public-operation-common.mihoyo.com/common/bh3_self_help_query/UserMenuQuery/GetMenus"
+BH3_GACHA_LOG_API   = "https://public-operation-common.mihoyo.com/common/bh3_self_help_query/UserGachaQuery/GetUserGacha"
