@@ -266,3 +266,55 @@ async def get_full_gachalogs(uid: str) -> str:
     finally:
         if uid in _full_lock:
             _full_lock.remove(uid)
+
+
+async def get_gacha_summary(uid: str) -> str:
+    """生成抽卡记录文本摘要。"""
+    path = PLAYER_PATH / str(uid)
+    gachalogs_path = path / "gacha_logs.json"
+
+    if not gachalogs_path.exists():
+        return f"🌱UID{uid} 还没有抽卡记录，请先使用「刷新抽卡记录」。"
+
+    async with aiofiles.open(gachalogs_path, "r", encoding="utf-8") as f:
+        gacha_log = json.loads(await f.read())
+
+    data: Dict[str, List[Dict]] = gacha_log.get("data", {})
+    if not data:
+        return f"🌱UID{uid} 还没有抽卡记录，请先使用「刷新抽卡记录」。"
+
+    data_time = gacha_log.get("data_time", "未知")
+    total = sum(len(records) for records in data.values())
+
+    parts = [f"📊 UID{uid} 抽卡记录（共 {total} 条）"]
+    parts.append(f"数据更新时间：{data_time}")
+    parts.append("")
+
+    for gacha_name, records in data.items():
+        count = len(records)
+        if count == 0:
+            parts.append(f"【{gacha_name}】暂无记录")
+            continue
+
+        # 统计补给内容
+        item_counts: Dict[str, int] = {}
+        for r in records:
+            content = r.get("content", "未知")
+            item_counts[content] = item_counts.get(content, 0) + 1
+
+        # 按数量排序，取前10
+        sorted_items = sorted(item_counts.items(), key=lambda x: -x[1])[:10]
+
+        parts.append(f"【{gacha_name}】共 {count} 条")
+        for item, cnt in sorted_items:
+            parts.append(f"  {item} x{cnt}")
+
+        # 最近一条记录时间
+        if records:
+            last_time = records[0].get("time", "")
+            if last_time:
+                parts.append(f"  最近：{last_time}")
+
+        parts.append("")
+
+    return "\n".join(parts).strip()
