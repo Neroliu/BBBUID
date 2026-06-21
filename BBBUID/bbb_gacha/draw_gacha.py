@@ -283,17 +283,25 @@ async def _draw_pool_section(pool: Dict) -> Image.Image:
         canvas.alpha_composite(banner_bg, (0, 0))
 
     # --- Banner 区域：全部斜体 ---
-    # 卡池名称 (46px, #FEE772)，竖向居中于 banner，距左边 120px
+    # 卡池名称和时间作为整体竖向居中
     name_font = _ifont(46)
     name_bbox = draw.textbbox((0, 0), pool_name, font=name_font)
     name_h = name_bbox[3] - name_bbox[1]
-    name_y = (banner_h - name_h) // 2
+    name_w = name_bbox[2] - name_bbox[0]
+    time_font = _ifont(22)
+    time_text = f"{_fmt_time(start_time)} ~ {_fmt_time(end_time)}"
+    time_bbox = draw.textbbox((0, 0), time_text, font=time_font)
+    time_h = time_bbox[3] - time_bbox[1]
+    gap_name_time = 15
+    group_h = name_h + gap_name_time + time_h
+    group_y = (banner_h - group_h) // 2
+
     name_x = 120
+    name_y = group_y
     _draw_italic_text(canvas, (name_x, name_y), pool_name, name_font, GOLD_YELLOW)
 
-    # "已x抽未出" — 与卡池名称底部对齐，贴着卡池名称右侧，间距 10px
-    name_w = name_bbox[2] - name_bbox[0]
-    bottom_y = name_y + name_h  # 卡池名称底部 y
+    # "已x抽未出" — 与卡池名称底部对齐，左侧距卡池名称右侧 10px
+    bottom_y = name_y + name_h
     pity_x = name_x + name_w + 10
     _draw_italic_text(canvas, (pity_x, bottom_y), "已", _ifont(28), TEXT_WHITE, anchor="ld")
     pity_x += 30
@@ -303,17 +311,16 @@ async def _draw_pool_section(pool: Dict) -> Image.Image:
     pity_x += pity_bbox[2] - pity_bbox[0] + 8
     _draw_italic_text(canvas, (pity_x, bottom_y), "抽未出", _ifont(28), TEXT_WHITE, anchor="ld")
 
-    # 抽卡时间范围（斜体 22px 暗灰），与卡池名称左对齐，在卡池名称下方，间距 10px
-    time_text = f"{_fmt_time(start_time)} ~ {_fmt_time(end_time)}"
-    time_y = name_y + name_h + 10
-    _draw_italic_text(canvas, (name_x, time_y), time_text, _ifont(22), TEXT_DIM)
+    # 时间范围，在卡池名称下方，间距 15px
+    time_y = name_y + name_h + gap_name_time
+    _draw_italic_text(canvas, (name_x, time_y), time_text, time_font, TEXT_DIM)
 
-    # 表情图标（不缩放），竖向居中于 banner，右侧距 banner 右侧 120px
+    # 表情图标（不缩放），竖向居中于 banner，右侧距 banner 右侧 100px
     emotion_path = _get_emotion_icon(avg_pulls)
     if emotion_path:
         emotion_img = Image.open(emotion_path).convert("RGBA")
         ew, eh = emotion_img.size
-        emotion_x = W - 120 - ew
+        emotion_x = W - 100 - ew
         emotion_y = (banner_h - eh) // 2
         canvas.alpha_composite(emotion_img, (emotion_x, emotion_y))
 
