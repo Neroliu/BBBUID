@@ -31,6 +31,7 @@ TEXT_DIM = (160, 160, 175)
 GOLD_YELLOW = (254, 231, 114)  # #FEE772
 PITY_RED = (255, 80, 80)
 ACCENT_BLUE = (100, 180, 255)
+TEXT_BLACK = (30, 30, 30)
 
 # --- Font Cache ---
 _font_cache: dict[int, ImageFont.FreeTypeFont] = {}
@@ -258,18 +259,18 @@ async def _draw_pool_section(pool: Dict) -> Image.Image:
     end_time = pool.get("end_time", "")
     current_pity = pool.get("current_pity", 0)
 
+    # Banner 背景实际高度
+    banner_h = 190
+
     # 计算网格区域高度
-    items_per_row = 8
+    items_per_row = 7
     item_size = 100
     item_gap = 10
     num_rows = (len(items) + items_per_row - 1) // items_per_row if items else 1
     grid_h = num_rows * (item_size + item_gap) + item_gap
 
-    # 标题区高度
-    banner_h = 80
-
     # 总高度
-    total_h = banner_h + grid_h + 30
+    total_h = banner_h + 30 + grid_h + 30
 
     # 创建画布（宽度 = 画布全宽，banner 本身是 1400 宽）
     canvas = Image.new("RGBA", (W, total_h), (0, 0, 0, 0))
@@ -282,41 +283,42 @@ async def _draw_pool_section(pool: Dict) -> Image.Image:
         canvas.alpha_composite(banner_bg, (0, 0))
 
     # --- Banner 区域：全部斜体 ---
-    # 卡池名称 (46px, #FEE772)，竖向居中，距左边50px
+    # 卡池名称 (46px, #FEE772)，竖向居中于 banner，距左边 120px
     name_font = _ifont(46)
     name_bbox = draw.textbbox((0, 0), pool_name, font=name_font)
     name_h = name_bbox[3] - name_bbox[1]
     name_y = (banner_h - name_h) // 2
-    _draw_italic_text(canvas, (50, name_y), pool_name, name_font, GOLD_YELLOW)
+    name_x = 120
+    _draw_italic_text(canvas, (name_x, name_y), pool_name, name_font, GOLD_YELLOW)
 
-    # "已x抽未出" — 跟卡池名称底部对齐，贴着卡池名称右侧，间距10px
+    # "已x抽未出" — 与卡池名称底部对齐，贴着卡池名称右侧，间距 10px
     name_w = name_bbox[2] - name_bbox[0]
-    pity_x = 50 + name_w + 10
-    # 底部对齐：卡池名称底部 y = name_y + name_h
-    # "已" 和 "抽未出" 28px，抽数 34px，底部对齐
-    bottom_y = name_y + name_h
-    _draw_italic_text(canvas, (pity_x, bottom_y - 28), "已", _ifont(28), TEXT_WHITE, anchor="ls")
+    bottom_y = name_y + name_h  # 卡池名称底部 y
+    pity_x = name_x + name_w + 10
+    _draw_italic_text(canvas, (pity_x, bottom_y), "已", _ifont(28), TEXT_WHITE, anchor="ld")
     pity_x += 30
     pity_text = str(current_pity)
-    _draw_italic_text(canvas, (pity_x, bottom_y - 34), pity_text, _ifont(34), PITY_RED, anchor="ls")
+    _draw_italic_text(canvas, (pity_x, bottom_y), pity_text, _ifont(34), PITY_RED, anchor="ld")
     pity_bbox = draw.textbbox((0, 0), pity_text, font=_ifont(34))
     pity_x += pity_bbox[2] - pity_bbox[0] + 8
-    _draw_italic_text(canvas, (pity_x, bottom_y - 28), "抽未出", _ifont(28), TEXT_WHITE, anchor="ls")
+    _draw_italic_text(canvas, (pity_x, bottom_y), "抽未出", _ifont(28), TEXT_WHITE, anchor="ld")
 
-    # 抽卡时间范围（斜体 22px 暗灰），与卡池名称左对齐，在卡池名称下方，间距10px
+    # 抽卡时间范围（斜体 22px 暗灰），与卡池名称左对齐，在卡池名称下方，间距 10px
     time_text = f"{_fmt_time(start_time)} ~ {_fmt_time(end_time)}"
     time_y = name_y + name_h + 10
-    _draw_italic_text(canvas, (50, time_y), time_text, _ifont(22), TEXT_DIM)
+    _draw_italic_text(canvas, (name_x, time_y), time_text, _ifont(22), TEXT_DIM)
 
-    # 右侧表情图标
+    # 表情图标（不缩放），竖向居中于 banner，右侧距 banner 右侧 120px
     emotion_path = _get_emotion_icon(avg_pulls)
     if emotion_path:
         emotion_img = Image.open(emotion_path).convert("RGBA")
-        emotion_img = emotion_img.resize((60, 60), Image.Resampling.LANCZOS)
-        canvas.alpha_composite(emotion_img, (W - 80, 10))
+        ew, eh = emotion_img.size
+        emotion_x = W - 120 - ew
+        emotion_y = (banner_h - eh) // 2
+        canvas.alpha_composite(emotion_img, (emotion_x, emotion_y))
 
-    # 角色/武器网格
-    grid_y = banner_h + 10
+    # 角色/武器网格（banner 下方 30px 开始）
+    grid_y = banner_h + 30
     grid_w = items_per_row * (item_size + item_gap) - item_gap
     grid_start_x = (W - grid_w) // 2
 
@@ -355,7 +357,7 @@ async def _draw_pool_section(pool: Dict) -> Image.Image:
             (item_x + item_size // 2, item_y + item_size + 5),
             pulls_text,
             font=_font(14),
-            fill=TEXT_WHITE,
+            fill=TEXT_BLACK,
             anchor="mt",
         )
 
