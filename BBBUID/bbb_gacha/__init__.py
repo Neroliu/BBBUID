@@ -40,6 +40,7 @@ async def send_refresh_gacha(bot: Bot, ev: Event):
     if not uid:
         return await bot.send(BIND_UID_HINT)
     logger.info(f"[崩坏3] [抽卡记录] 增量刷新: UID={uid}")
+    await bot.send(f"UID{uid}开始更新抽卡记录，需要一定时间，请勿重复更新，只能更新最近30天的抽卡记录")
     result = await save_gachalogs(uid)
     await bot.send(result)
 
@@ -50,5 +51,6 @@ async def send_full_refresh_gacha(bot: Bot, ev: Event):
     if not uid:
         return await bot.send(BIND_UID_HINT)
     logger.info(f"[崩坏3] [抽卡记录] 全量刷新: UID={uid}")
+    await bot.send(f"UID{uid}开始更新抽卡记录，需要一定时间，请勿重复更新，只能更新最近30天的抽卡记录")
     result = await get_full_gachalogs(uid)
     await bot.send(result)
