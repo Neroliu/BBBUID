@@ -188,11 +188,20 @@ async def search_content(keyword: str, channel_id: Optional[int] = None) -> List
 
 
 def parse_evaluation_from_detail(detail: Dict) -> Dict:
+    # 优先查找专门的评价 section
     for section in detail.get("contents", []):
         if section.get("name") in ("角色评价", "协同者评价", "人偶评价"):
             parsed = _parse_html_data(section.get("text", ""))
             if parsed:
                 return _parse_role_evaluation(parsed)
+    # 新版 wiki 可能把评价数据放在角色介绍中
+    for section in detail.get("contents", []):
+        if section.get("name") in ("角色介绍", "协同者介绍", "人偶介绍"):
+            parsed = _parse_html_data(section.get("text", ""))
+            if parsed:
+                result = _parse_role_evaluation(parsed)
+                if result.get("hexagon") or result.get("advanceGeneral"):
+                    return result
     return {"avatar": "", "hexagon": [], "finalLevel": "", "subFields": [], "equipments": [], "advanceGeneral": [], "advanceData": []}
 
 
