@@ -268,7 +268,7 @@ async def get_full_gachalogs(uid: str) -> str:
         async with aiofiles.open(gachalogs_path, "w", encoding="utf-8") as f:
             await f.write(json.dumps(gacha_log, ensure_ascii=False))
 
-        return await save_gachalogs(uid)
+        return await save_gachalogs(uid, is_force=True)
     finally:
         if uid in _full_lock:
             _full_lock.remove(uid)
