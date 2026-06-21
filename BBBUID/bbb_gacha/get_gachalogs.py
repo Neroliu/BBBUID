@@ -297,6 +297,10 @@ async def _get_character_star_map() -> Dict[str, int]:
         from ..bbb_wiki.resource_update import get_local_index, get_local_detail
         from ..bbb_wiki.wiki_api import parse_evaluation_from_detail
         index = get_local_index("角色")
+        if not index:
+            logger.info("[崩坏3] [抽卡记录] 角色索引为空，跳过星级查询")
+            return star_map
+        logger.info(f"[崩坏3] [抽卡记录] 角色索引: {len(index)} 条")
         for cid_str, title in index.items():
             detail = get_local_detail("角色", int(cid_str))
             if not detail:
@@ -330,6 +334,10 @@ async def _get_weapon_star_map() -> Dict[str, int]:
         from ..bbb_wiki.resource_update import get_local_index, get_local_detail
         from ..bbb_wiki.wiki_api import parse_weapon_data_from_detail
         index = get_local_index("武器")
+        if not index:
+            logger.info("[崩坏3] [抽卡记录] 武器索引为空，跳过星级查询")
+            return star_map
+        logger.info(f"[崩坏3] [抽卡记录] 武器索引: {len(index)} 条")
         for cid_str, title in index.items():
             detail = get_local_detail("武器", int(cid_str))
             if not detail:
