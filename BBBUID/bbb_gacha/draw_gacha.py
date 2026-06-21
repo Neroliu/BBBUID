@@ -158,14 +158,18 @@ def _draw_player_info(
     """复用便笺(mr)指令的玩家信息条渲染。"""
     draw = ImageDraw.Draw(canvas)
 
-    # 使用 player_info_bar_long.png 作为背景
+    # 使用 player_info_bar_long.png 作为背景（等比放大到1360宽）
     info_bar = _load_res("player_info_bar_long.png")
     if info_bar:
-        bar_w, bar_h = info_bar.size
-        bar_x = (W - bar_w) // 2
+        orig_w, orig_h = info_bar.size
+        scale = 1360 / orig_w
+        bar_w = 1360
+        bar_h = round(orig_h * scale)
+        info_bar = info_bar.resize((bar_w, bar_h), Image.Resampling.LANCZOS)
+        bar_x = 20
         canvas.paste(info_bar, (bar_x, y), info_bar)
     else:
-        bar_x = 50
+        bar_x = 20
         bar_h = 192
 
     # 头像 — 在背景图区域内居中
@@ -385,9 +389,12 @@ async def draw_gacha_img(data: Dict, ev=None) -> bytes:
         except Exception as e:
             logger.warning(f"[崩坏3] [抽卡渲染] 获取头像失败: {e}")
 
-    # 玩家信息条高度
+    # 玩家信息条高度（等比放大到1360宽）
     info_bar = _load_res("player_info_bar_long.png")
-    player_h = info_bar.height + 20 if info_bar else 210
+    if info_bar:
+        player_h = round(info_bar.height * (1360 / info_bar.width)) + 20
+    else:
+        player_h = 210
 
     # 计算卡池区域
     pool_imgs = []
