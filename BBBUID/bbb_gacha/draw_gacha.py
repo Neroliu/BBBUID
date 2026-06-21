@@ -262,14 +262,22 @@ async def _draw_pool_section(pool: Dict) -> Image.Image:
     # Banner 背景实际高度
     banner_h = 190
 
-    # 计算网格区域高度
+    # 计算网格区域
     items_per_row = 7
-    item_size = 100
-    item_gap = 10
+    col_gap = 10
+    row_gap = 15
     num_rows = (len(items) + items_per_row - 1) // items_per_row if items else 1
-    grid_h = num_rows * (item_size + item_gap) + item_gap
+
+    # 加载边框（不缩放，使用原图尺寸）
+    frame_path = RES_DIR / "char_frame2.png"
+    frame_img = None
+    frame_w, frame_h = 180, 240
+    if frame_path.exists():
+        frame_img = Image.open(frame_path).convert("RGBA")
+        frame_w, frame_h = frame_img.size
 
     # 总高度
+    grid_h = num_rows * frame_h + (num_rows - 1) * row_gap
     total_h = banner_h + 30 + grid_h + 30
 
     # 创建画布（宽度 = 画布全宽，banner 本身是 1400 宽）
@@ -324,36 +332,28 @@ async def _draw_pool_section(pool: Dict) -> Image.Image:
         emotion_y = (banner_h - eh) // 2
         canvas.alpha_composite(emotion_img, (emotion_x, emotion_y))
 
-    # 角色/武器网格（banner 下方 30px 开始）
+    # 角色/武器网格（banner 下方 30px 开始，距左边 90px）
     grid_y = banner_h + 30
-    grid_w = items_per_row * (item_size + item_gap) - item_gap
-    grid_start_x = (W - grid_w) // 2
-
-    # 加载边框
-    frame_path = RES_DIR / "char_frame2.png"
-    frame_img = None
-    if frame_path.exists():
-        frame_img = Image.open(frame_path).convert("RGBA")
+    grid_start_x = 90
 
     for i, item in enumerate(items):
         row = i // items_per_row
         col = i % items_per_row
 
-        item_x = grid_start_x + col * (item_size + item_gap)
-        item_y = grid_y + row * (item_size + item_gap)
+        item_x = grid_start_x + col * (frame_w + col_gap)
+        item_y = grid_y + row * (frame_h + row_gap)
 
-        # 绘制边框背景
+        # 绘制边框背景（不缩放，原始尺寸）
         if frame_img:
-            framed = frame_img.resize((item_size, item_size + 25), Image.Resampling.LANCZOS)
-            canvas.alpha_composite(framed, (item_x, item_y))
+            canvas.alpha_composite(frame_img, (item_x, item_y))
 
-        # 绘制角色/武器图标
+        # 绘制角色/武器图标（比边框稍小，居中）
         icon_path = item.get("icon_path")
         if icon_path and isinstance(icon_path, Path) and icon_path.exists():
             try:
                 icon = Image.open(icon_path).convert("RGBA")
-                icon = icon.resize((item_size - 10, item_size - 10), Image.Resampling.LANCZOS)
-                canvas.alpha_composite(icon, (item_x + 5, item_y + 5))
+                icon = icon.resize((frame_w - 16, frame_w - 16), Image.Resampling.LANCZOS)
+                canvas.alpha_composite(icon, (item_x + 8, item_y + 8))
             except Exception:
                 pass
 
@@ -361,7 +361,7 @@ async def _draw_pool_section(pool: Dict) -> Image.Image:
         pulls = item.get("pulls", 0)
         pulls_text = f"{pulls}抽"
         draw.text(
-            (item_x + item_size // 2, item_y + item_size + 5),
+            (item_x + frame_w // 2, item_y + frame_h + 5),
             pulls_text,
             font=_font(14),
             fill=TEXT_BLACK,
