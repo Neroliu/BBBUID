@@ -364,11 +364,10 @@ async def update_channel(channel_name: str, channel_id: int):
             if old_detail:
                 old_summary = old_detail.get("summary", "")
                 new_summary = item.get("summary", "")
-                if old_summary != new_summary:
+                # 仅当两边都有 summary 且不同时才触发更新
+                if old_summary and new_summary and old_summary != new_summary:
                     updated.append(cid)
-            else:
-                # 有索引但无详情，需要补全
-                updated.append(cid)
+            # 无详情文件不主动补全（避免每次重启都拉全量）
 
     total = len(added) + len(updated)
     if not total and not removed:

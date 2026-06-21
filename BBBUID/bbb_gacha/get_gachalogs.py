@@ -300,17 +300,37 @@ async def _get_character_star_map() -> Dict[str, int]:
         if not index:
             logger.info("[崩坏3] [抽卡记录] 角色索引为空，跳过星级查询")
             return star_map
-        logger.info(f"[崩坏3] [抽卡记录] 角色索引: {len(index)} 条")
         for cid_str, title in index.items():
             detail = get_local_detail("角色", int(cid_str))
             if not detail:
                 continue
             star_value = 0
-            evaluation = detail.get("evaluation") or parse_evaluation_from_detail(detail)
-            if evaluation:
-                advance = evaluation.get("advanceGeneral", [])
-                if advance:
-                    star_value = advance[0].get("starValue", 0)
+            # 优先从 ext 字段的 filter 文本中提取初始阶级
+            ext = detail.get("ext", "")
+            if isinstance(ext, str):
+                try:
+                    import json as _json
+                    ext_data = _json.loads(ext)
+                    for v in ext_data.values():
+                        filter_text = v.get("filter", {}).get("text", "")
+                        if "初始阶级/S" in filter_text:
+                            star_value = 4
+                            break
+                        elif "初始阶级/A" in filter_text:
+                            star_value = 3
+                            break
+                        elif "初始阶级/B" in filter_text:
+                            star_value = 2
+                            break
+                except Exception:
+                    pass
+            # 回退到 evaluation
+            if not star_value:
+                evaluation = detail.get("evaluation") or parse_evaluation_from_detail(detail)
+                if evaluation:
+                    advance = evaluation.get("advanceGeneral", [])
+                    if advance:
+                        star_value = advance[0].get("starValue", 0)
             if not star_value:
                 basic_info = detail.get("basic_info", {})
                 rank = basic_info.get("角色评级", "")
@@ -322,6 +342,7 @@ async def _get_character_star_map() -> Dict[str, int]:
                     star_value = 2
             if star_value:
                 star_map[title] = star_value
+        logger.info(f"[崩坏3] [抽卡记录] 角色星级: {len(star_map)}/{len(index)} 条")
     except Exception as e:
         logger.warning(f"[崩坏3] [抽卡记录] 获取角色星级失败: {e}")
     return star_map
