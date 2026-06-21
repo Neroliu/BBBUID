@@ -7,16 +7,22 @@ from typing import Dict
 from PIL import Image, ImageDraw, ImageFont
 
 from gsuid_core.logger import logger
+from gsuid_core.models import Event
 from gsuid_core.utils.fonts.fonts import core_font
 from gsuid_core.utils.image.convert import convert_img
 
-from ..bbb_data.draw_title import draw_title
+from ..bbb_data.avatar_utils import get_cached_avatar, draw_decorated_avatar
+from ..bbb_data.draw_title import EVAL_RATING_TO_ICON
 
 # --- Resource Paths ---
 RES_DIR = Path(__file__).parent / "res"
+NOTE_RES_DIR = Path(__file__).parent.parent / "bbb_data" / "note_res"
+EVAL_ICON_DIR = Path(__file__).parent.parent / "bbb_data" / "res" / "eval_icon"
+TITLE_RES_DIR = Path(__file__).parent.parent / "bbb_data" / "res" / "title"
+INFO_RES_DIR = Path(__file__).parent.parent / "bbb_data" / "res" / "info"
 
 # --- Canvas ---
-W = 1080
+W = 1400
 
 # --- Colors ---
 TEXT_WHITE = (255, 255, 255)
@@ -24,6 +30,7 @@ TEXT_GRAY = (200, 200, 210)
 TEXT_DIM = (160, 160, 175)
 GOLD_YELLOW = (254, 231, 114)  # #FEE772
 PITY_RED = (255, 80, 80)
+ACCENT_BLUE = (100, 180, 255)
 
 # --- Font Cache ---
 _font_cache: dict[int, ImageFont.FreeTypeFont] = {}
@@ -91,6 +98,16 @@ def _draw_italic_text(
     canvas.alpha_composite(skewed, (bbox[0] - PAD, bbox[1] - PAD))
 
 
+def _load_res(name: str, res_dir: Path = NOTE_RES_DIR) -> Image.Image | None:
+    path = res_dir / name
+    if path.exists():
+        try:
+            return Image.open(path).convert("RGBA")
+        except Exception:
+            pass
+    return None
+
+
 def _get_emotion_icon(avg_pulls: float) -> Path | None:
     """根据平均抽数获取对应的表情图标路径。"""
     emotion_dir = RES_DIR / "servantemoticon"
@@ -112,19 +129,114 @@ def _get_emotion_icon(avg_pulls: float) -> Path | None:
 
 
 def _load_background() -> Image.Image:
-    """加载背景图，按宽度1080等比缩放，居中裁剪到画布高度。"""
+    """加载背景图，按宽度1400等比缩放，不拉伸。"""
     bg_path = RES_DIR / "bg.jpg"
     if bg_path.exists():
         bg = Image.open(bg_path).convert("RGBA")
         iw, ih = bg.size
-        # 等比缩放：宽度适配 W
-        scale = W / iw
-        new_w = W
-        new_h = round(ih * scale)
-        bg = bg.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        if iw != W:
+            scale = W / iw
+            new_w = W
+            new_h = round(ih * scale)
+            bg = bg.resize((new_w, new_h), Image.Resampling.LANCZOS)
     else:
         bg = Image.new("RGBA", (W, 800), (30, 35, 50, 255))
     return bg
+
+
+def _draw_player_info(
+    canvas: Image.Image,
+    y: int,
+    ev: Event,
+    nickname: str,
+    uid: str,
+    level: int,
+    active_days: int,
+    rating: str,
+    avatar_img: Image.Image | None = None,
+) -> None:
+    """复用便笺(mr)指令的玩家信息条渲染。"""
+    draw = ImageDraw.Draw(canvas)
+
+    # 使用 player_info_bar_long.png 作为背景
+    info_bar = _load_res("player_info_bar_long.png")
+    if info_bar:
+        bar_w, bar_h = info_bar.size
+        bar_x = (W - bar_w) // 2
+        canvas.paste(info_bar, (bar_x, y), info_bar)
+    else:
+        bar_x = 50
+        bar_h = 192
+
+    # 头像 — 在背景图区域内居中
+    avatar_x = bar_x + 90
+    if avatar_img is not None:
+        try:
+            aw, ah = avatar_img.size
+            avatar_y = y + (bar_h - ah) // 2
+            canvas.alpha_composite(avatar_img, (avatar_x, avatar_y))
+        except Exception:
+            pass
+
+    # 昵称/UID/等级 — 整体以头像为锚点，距头像右边40px
+    if avatar_img is not None:
+        text_x = avatar_x + avatar_img.size[0] + 40
+    else:
+        text_x = avatar_x + 152 + 40
+
+    # 昵称
+    _draw_italic_text(canvas, (text_x, y + 36), nickname, _ifont(54), TEXT_WHITE)
+
+    # UID
+    draw.text((text_x, y + 36 + 54 + 10), f"UID {uid}", font=_font(28), fill=TEXT_DIM)
+
+    # 等级徽章
+    level_bg_path = TITLE_RES_DIR / "level_bg.png"
+    if level_bg_path.exists():
+        level_bg = Image.open(level_bg_path).convert("RGBA")
+        orig_w, orig_h = level_bg.size
+        scale = 110 / orig_w
+        new_w, new_h = int(orig_w * scale), int(orig_h * scale)
+        level_bg = level_bg.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        lv_x = text_x + int(draw.textlength(f"UID {uid}", font=_font(28))) + 16
+        lv_y = y + 36 + 54 + 10
+        canvas.alpha_composite(level_bg, (lv_x, lv_y))
+        draw.text((lv_x + new_w // 2, lv_y + new_h // 2), f"Lv.{level}", font=_font(20), fill=TEXT_WHITE, anchor="mm")
+    else:
+        level_text = f"Lv.{level}"
+        lw = int(draw.textlength(level_text, font=_font(20)))
+        lv_x = text_x + int(draw.textlength(f"UID {uid}", font=_font(28))) + 16
+        lv_y = y + 36 + 54 + 10
+        draw.rounded_rectangle((lv_x, lv_y, lv_x + lw + 16, lv_y + 28), radius=4, fill=ACCENT_BLUE)
+        draw.text((lv_x + 8 + lw // 2, lv_y + 14), level_text, font=_font(20), fill=TEXT_WHITE, anchor="mm")
+
+    # 累计登舰
+    info_bg_path = INFO_RES_DIR / "info_bg.png"
+    info_bg_img = None
+    info_w, info_h = 174, 100
+    if info_bg_path.exists():
+        info_bg_img = Image.open(info_bg_path).convert("RGBA")
+        info_w, info_h = info_bg_img.size
+
+    days_x = bar_x + bar_w - 340 if info_bar else W - 340
+    days_card_y = y + (bar_h - info_h) // 2
+    if info_bg_img:
+        canvas.alpha_composite(info_bg_img, (days_x, days_card_y))
+
+    days_value_y = days_card_y + 35
+    days_value_bottom = days_value_y + 18
+    days_title_y = days_value_bottom + 8 + 14
+    draw.text((days_x + info_w // 2, days_value_y), str(active_days), font=_font(36), fill=TEXT_WHITE, anchor="mm")
+    draw.text((days_x + info_w // 2, days_title_y), "累计登舰", font=_font(28), fill=TEXT_DIM, anchor="mm")
+
+    # 评级图标
+    icon_name = EVAL_RATING_TO_ICON.get(rating.upper(), "SealedDanIcon01.png")
+    icon_path = EVAL_ICON_DIR / icon_name
+    if icon_path.exists():
+        eval_icon = Image.open(icon_path).convert("RGBA").resize((110, 110), Image.Resampling.LANCZOS)
+        icon_x = bar_x + bar_w - 60 - 110 if info_bar else W - 170
+        icon_y = y + (bar_h - 110) // 2
+        canvas.alpha_composite(eval_icon, (icon_x, icon_y))
 
 
 async def _draw_pool_section(pool: Dict) -> Image.Image:
@@ -132,8 +244,6 @@ async def _draw_pool_section(pool: Dict) -> Image.Image:
     pool_type = pool.get("type", "char")
     pool_name = pool.get("name", "未知卡池")
     items = pool.get("items", [])
-    total_pulls = pool.get("total_pulls", 0)
-    gold_count = pool.get("gold_count", 0)
     avg_pulls = pool.get("avg_pulls", 0)
     max_pulls = pool.get("max_pulls", 0)
     avg_rate = pool.get("avg_rate", "0%")
@@ -164,29 +274,26 @@ async def _draw_pool_section(pool: Dict) -> Image.Image:
     canvas = Image.new("RGBA", (card_w, total_h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(canvas)
 
-    # 绘制 banner 背景
+    # 绘制 banner 背景（不缩放，使用原始尺寸，超出裁剪）
     banner_path = RES_DIR / "banner.png"
     if banner_path.exists():
         banner_bg = Image.open(banner_path).convert("RGBA")
-        banner_bg = banner_bg.resize((card_w, banner_h), Image.Resampling.LANCZOS)
-        canvas.alpha_composite(banner_bg, (0, 0))
+        bw, bh = banner_bg.size
+        # 不缩放，直接贴，超出卡片宽度的部分自然截断
+        canvas.alpha_composite(banner_bg, (0, 0), (0, 0, min(bw, card_w), min(bh, banner_h)))
 
     # --- Banner 区域：全部斜体 ---
     # 卡池名称 (46px, #FEE772)
     _draw_italic_text(canvas, (20, 17), pool_name, _ifont(46), GOLD_YELLOW)
 
     # "已x抽未出" — x 是红色 34px，其他白色 28px
-    hint = POOL_HINTS.get(pool_type, "S角色")
     pity_x = 200
-    # "已"
     _draw_italic_text(canvas, (pity_x, 26), "已", _ifont(28), TEXT_WHITE)
     pity_x += 30
-    # 抽数（红色 34px）
     pity_text = str(current_pity)
     _draw_italic_text(canvas, (pity_x, 22), pity_text, _ifont(34), PITY_RED)
     pity_bbox = draw.textbbox((0, 0), pity_text, font=_ifont(34))
     pity_x += pity_bbox[2] - pity_bbox[0] + 8
-    # "抽未出"
     _draw_italic_text(canvas, (pity_x, 26), "抽未出", _ifont(28), TEXT_WHITE)
 
     # 抽卡时间范围（斜体 18px 暗灰）
@@ -266,46 +373,35 @@ async def draw_gacha_img(data: Dict, ev=None) -> bytes:
     bg = _load_background()
     bg_w, bg_h = bg.size
 
-    # 获取 index_data 用于 draw_title
-    index_data = data.get("index_data", {})
     uid = data.get("uid", "")
     nickname = data.get("nickname", "未知舰长")
     level = data.get("level", 0)
+    login_days = data.get("login_days", 0)
     rating = data.get("rating", "C")
 
-    # 复用 bbbmr 的玩家信息条
-    try:
-        title_img = await draw_title(
-            ev=ev,
-            uid=uid,
-            nickname=nickname,
-            level=level,
-            rating=rating,
-            region_name="",
-            index_data=index_data,
-            char_count=0,
-        )
-    except Exception as e:
-        logger.warning(f"[崩坏3] [抽卡渲染] draw_title 失败: {e}")
-        title_img = Image.new("RGBA", (W, 180), (30, 35, 50, 255))
+    # 头像
+    avatar_img = None
+    if ev:
+        try:
+            avatar = await get_cached_avatar(ev, ev.user_id)
+            avatar_img = draw_decorated_avatar(avatar, 179)
+        except Exception as e:
+            logger.warning(f"[崩坏3] [抽卡渲染] 获取头像失败: {e}")
 
-    # 如果 title_img 宽度不等于 W，等比缩放
-    if title_img.width != W:
-        scale = W / title_img.width
-        new_h = round(title_img.height * scale)
-        title_img = title_img.resize((W, new_h), Image.Resampling.LANCZOS)
+    # 玩家信息条高度
+    info_bar = _load_res("player_info_bar_long.png")
+    player_h = info_bar.height + 20 if info_bar else 210
 
-    title_h = title_img.height
-
-    # 计算总高度：标题 + 卡池区域
-    pool_heights = []
+    # 计算卡池区域
+    pool_imgs = []
     for pool in data.get("pools", []):
         pool_img = await _draw_pool_section(pool)
-        pool_heights.append(pool_img)
+        pool_imgs.append(pool_img)
 
-    total_h = title_h + sum(p.height for p in pool_heights) + 20 * len(pool_heights) + 40
+    total_pool_h = sum(p.height for p in pool_imgs) + 20 * len(pool_imgs) + 40
+    total_h = player_h + total_pool_h
 
-    # 创建最终画布，从背景中裁剪（不拉伸）
+    # 创建最终画布
     final_h = max(total_h, bg_h)
     canvas = Image.new("RGBA", (W, final_h), (30, 35, 50, 255))
 
@@ -313,12 +409,17 @@ async def draw_gacha_img(data: Dict, ev=None) -> bytes:
     bg_y = (final_h - bg_h) // 2
     canvas.alpha_composite(bg, (0, bg_y))
 
-    # 绘制玩家信息条
-    canvas.alpha_composite(title_img, (0, 0))
+    # 绘制玩家信息条（复用便笺 mr 的渲染）
+    _draw_player_info(
+        canvas, 0, ev, nickname, uid,
+        int(level) if str(level).isdigit() else 0,
+        int(login_days) if str(login_days).isdigit() else 0,
+        rating, avatar_img,
+    )
 
     # 绘制每个卡池
-    current_y = title_h + 20
-    for pool_img in pool_heights:
+    current_y = player_h
+    for pool_img in pool_imgs:
         canvas.alpha_composite(pool_img, (30, current_y))
         current_y += pool_img.height + 20
 
