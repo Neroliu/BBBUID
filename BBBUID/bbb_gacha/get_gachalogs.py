@@ -124,15 +124,21 @@ async def _fetch_gacha_type(
         if not raw_list:
             break
 
+        found_existing = False
         for raw_item in raw_list:
             record = _parse_record(raw_item.get("item", []))
             if not record.get("time") or not record.get("content"):
                 continue
             key = _record_key(record)
-            if key in existing_keys and not is_force:
-                # 增量模式：遇到已存在记录，收集完本页新增后停止
+            if key in existing_keys:
+                found_existing = True
+                continue
+            if not is_force and found_existing:
+                # 已存在记录之后的不再处理（后续页也不拉了）
                 return new_records
             new_records.append(record)
+        if found_existing and not is_force:
+            return new_records
 
     return new_records
 
