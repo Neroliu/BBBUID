@@ -373,8 +373,29 @@ async def _get_weapon_star_map() -> Dict[str, int]:
     return star_map
 
 
+def _is_s_rank_char(content: str, char_star_map: Dict[str, int]) -> bool:
+    """判断是否为 S 初始阶级角色。"""
+    char_name = _extract_character_name(content)
+    if char_name and char_name in char_star_map:
+        return char_star_map[char_name] >= 4
+    return False
+
+
+def _is_5star_weapon(content: str, weapon_star_map: Dict[str, int]) -> bool:
+    """判断是否为 5 星武器。"""
+    weapon_name = _extract_weapon_name(content)
+    if weapon_name and weapon_name in weapon_star_map:
+        return weapon_star_map[weapon_name] >= 5
+    return False
+
+
+def _is_partner(content: str) -> bool:
+    """判断是否为协同者。"""
+    return content.startswith("[协同者]")
+
+
 async def get_gacha_summary(uid: str) -> str:
-    """生成抽卡记录文本摘要。"""
+    """生成抽卡记录文本摘要：只显示 S 角色 / 5星武器 / 协同者，带抽数统计。"""
     path = PLAYER_PATH / str(uid)
     gachalogs_path = path / "gacha_logs.json"
 
@@ -405,57 +426,47 @@ async def get_gacha_summary(uid: str) -> str:
             parts.append(f"【{gacha_name}】暂无记录")
             continue
 
-        # 统计补给内容
-        item_counts: Dict[str, int] = {}
-        s_rank_chars: List[Tuple[str, int]] = []
-        five_star_weapons: List[Tuple[str, int]] = []
-        for r in records:
+        # 按时间正序排列（从旧到新）
+        sorted_records = sorted(records, key=lambda r: r.get("time", ""))
+
+        # 解析每条记录，标记是否为 S/5星/协同者
+        parsed: List[Tuple[str, bool]] = []
+        for r in sorted_records:
             content = r.get("content", "未知")
-            item_counts[content] = item_counts.get(content, 0) + 1
+            is_special = (
+                _is_s_rank_char(content, char_star_map)
+                or _is_5star_weapon(content, weapon_star_map)
+                or _is_partner(content)
+            )
+            parsed.append((content, is_special))
 
-        # 检查角色是否为 S 初始阶级
-        for content, cnt in item_counts.items():
-            char_name = _extract_character_name(content)
-            if char_name and char_name in char_star_map:
-                if char_star_map[char_name] >= 4:  # S rank
-                    s_rank_chars.append((content, cnt))
+        # 统计：S/5星/协同者之间的抽数
+        highlights: List[Tuple[str, int, str]] = []  # (内容, 距上次抽数, 时间)
+        pull_since_last = 0
+        last_time = ""
 
-        # 检查武器是否为 5 星
-        for content, cnt in item_counts.items():
-            weapon_name = _extract_weapon_name(content)
-            if weapon_name and weapon_name in weapon_star_map:
-                if weapon_star_map[weapon_name] >= 5:  # 5 star
-                    five_star_weapons.append((content, cnt))
+        for i, (content, is_special) in enumerate(parsed):
+            pull_since_last += 1
+            time_str = sorted_records[i].get("time", "")
+            if is_special:
+                highlights.append((content, pull_since_last, time_str))
+                pull_since_last = 0
 
-        # 按数量排序，取前20
-        sorted_items = sorted(item_counts.items(), key=lambda x: -x[1])[:20]
+        # 按时间倒序显示（最新在前）
+        highlights.reverse()
 
-        parts.append(f"【{gacha_name}】共 {count} 条")
+        parts.append(f"【{gacha_name}】共 {count} 抽")
 
-        # S 初始阶级角色单独显示
-        if s_rank_chars:
-            parts.append("  ★ S初始阶级角色：")
-            for content, cnt in s_rank_chars:
-                parts.append(f"    {content} x{cnt}")
-            parts.append("")
-
-        # 5 星武器单独显示
-        if five_star_weapons:
-            parts.append("  ★ 5星武器：")
-            for content, cnt in five_star_weapons:
-                parts.append(f"    {content} x{cnt}")
-            parts.append("")
-
-        for item, cnt in sorted_items:
-            parts.append(f"  {item} x{cnt}")
-        if len(item_counts) > 20:
-            parts.append(f"  ...还有 {len(item_counts) - 20} 种")
-
-        # 最近一条记录时间
-        if records:
-            last_time = records[0].get("time", "")
-            if last_time:
-                parts.append(f"  最近：{last_time}")
+        if not highlights:
+            parts.append("  未抽到 S 角色 / 5星武器 / 协同者")
+            if pull_since_last > 0:
+                parts.append(f"  已连续 {pull_since_last} 抽未出")
+        else:
+            for content, pulls, time_str in highlights:
+                parts.append(f"  {content}  ({pulls}抽)  {time_str}")
+            # 距离上一个 S/5星/协同者 还有多少抽未出
+            if pull_since_last > 0:
+                parts.append(f"  ---- 已连续 {pull_since_last} 抽未出 ----")
 
         parts.append("")
 
