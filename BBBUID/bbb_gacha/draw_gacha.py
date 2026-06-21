@@ -349,21 +349,21 @@ async def _draw_pool_section(pool: Dict) -> Image.Image:
         if frame_img:
             canvas.alpha_composite(frame_img, (item_x, item_y))
 
-        # 绘制角色/武器图标（比边框缩小 18px，向下偏移 1px）
+        # 绘制角色/武器图标（比边框缩小 20px，向下偏移 12px）
         icon_path = item.get("icon_path")
         if icon_path and isinstance(icon_path, Path) and icon_path.exists():
             try:
                 icon = Image.open(icon_path).convert("RGBA")
-                icon = icon.resize((frame_w - 18, frame_w - 18), Image.Resampling.LANCZOS)
-                canvas.alpha_composite(icon, (item_x + 9, item_y + 9))
+                icon = icon.resize((frame_w - 20, frame_w - 20), Image.Resampling.LANCZOS)
+                canvas.alpha_composite(icon, (item_x + 10, item_y + 12))
             except Exception:
                 pass
 
-        # 绘制抽数标注（28px，与格子底部对齐，底部间距 15px）
+        # 绘制抽数标注（28px，与格子底部对齐，底部间距 25px）
         pulls = item.get("pulls", 0)
         pulls_text = f"{pulls}抽"
         draw.text(
-            (item_x + frame_w // 2, item_y + frame_h - 15),
+            (item_x + frame_w // 2, item_y + frame_h - 25),
             pulls_text,
             font=_font(28),
             fill=TEXT_BLACK,
