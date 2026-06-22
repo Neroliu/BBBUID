@@ -162,11 +162,6 @@ async def save_gachalogs(uid: str, is_force: bool = False, skip_dedup: bool = Fa
     # 记录旧数量
     old_total = sum(len(v) for v in history.values())
 
-    # 构建已有记录的去重集合（用于增量刷新合并去重）
-    existing_keys: Dict[str, set[Tuple[str, str]]] = {}
-    for gacha_name, records in history.items():
-        existing_keys[gacha_name] = {_record_key(r) for r in records}
-
     # 获取 authkey
     authkey = await _get_authkey(uid)
     if not authkey:
@@ -189,7 +184,6 @@ async def save_gachalogs(uid: str, is_force: bool = False, skip_dedup: bool = Fa
 
         if gacha_name not in history:
             history[gacha_name] = []
-            existing_keys[gacha_name] = set()
 
         new_records = await _fetch_gacha_type(
             uid, authkey, gacha_type,
@@ -202,14 +196,20 @@ async def save_gachalogs(uid: str, is_force: bool = False, skip_dedup: bool = Fa
                 history[gacha_name].extend(new_records)
                 added = len(new_records)
             else:
-                # 增量刷新：用 existing_keys 去重后合并
-                added = 0
-                for r in new_records:
+                # 增量刷新：API 数据全部追加，再与本地数据合并去重
+                # API 数据放后面，去重时保留后面的记录（API 优先）
+                all_records = history[gacha_name] + new_records
+                deduped = []
+                seen_keys: set[Tuple[str, str]] = set()
+                for r in reversed(all_records):
                     key = _record_key(r)
-                    if key not in existing_keys[gacha_name]:
-                        history[gacha_name].append(r)
-                        existing_keys[gacha_name].add(key)
-                        added += 1
+                    if key not in seen_keys:
+                        deduped.append(r)
+                        seen_keys.add(key)
+                deduped.reverse()
+                old_count = len(history[gacha_name])
+                history[gacha_name] = deduped
+                added = len(deduped) - old_count
             # 按时间降序排列
             history[gacha_name].sort(key=lambda x: x.get("time", ""), reverse=True)
             deltas[gacha_name] = added
