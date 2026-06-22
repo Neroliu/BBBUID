@@ -126,19 +126,27 @@ async def _fetch_gacha_type(
         if not raw_list:
             break
 
+        logger.info(f"[崩坏3] [抽卡记录] type={gacha_type} page={page} API返回 {len(raw_list)} 条")
+
         found_existing = False
+        skipped_parse = 0
+        skipped_dup = 0
         for raw_item in raw_list:
             record = _parse_record(raw_item.get("item", []))
             if not record.get("time") or not record.get("content"):
+                skipped_parse += 1
+                logger.debug(f"[崩坏3] [抽卡记录] 解析跳过: {raw_item.get('item', [])}")
                 continue
             key = _record_key(record)
             if key in existing_keys:
                 found_existing = True
+                skipped_dup += 1
                 continue
             if not is_force and found_existing:
-                # 已存在记录之后的不再处理（后续页也不拉了）
+                logger.info(f"[崩坏3] [抽卡记录] type={gacha_type} 遇到已存在记录，停止拉取。新增 {len(new_records)} 条，解析跳过 {skipped_parse} 条，重复跳过 {skipped_dup} 条")
                 return new_records
             new_records.append(record)
+        logger.info(f"[崩坏3] [抽卡记录] type={gacha_type} page={page} 处理完成: 新增 {len(new_records)} 条，解析跳过 {skipped_parse} 条，重复跳过 {skipped_dup} 条")
         if found_existing and not is_force:
             return new_records
 
