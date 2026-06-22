@@ -191,6 +191,7 @@ async def save_gachalogs(uid: str, is_force: bool = False, skip_dedup: bool = Fa
         )
 
         if new_records:
+            old_count = len(history[gacha_name])
             if skip_dedup:
                 # 全量刷新：删除本地中与 API 时间范围重叠的记录，再追加 API 数据
                 min_api_time = min(r.get("time", "") for r in new_records)
@@ -201,9 +202,13 @@ async def save_gachalogs(uid: str, is_force: bool = False, skip_dedup: bool = Fa
                 added = len(new_records)
                 logger.info(f"[崩坏3] [抽卡记录] {gacha_name}: 覆盖 {len(old_records) - len(older)} 条，新增 {added} 条，保留 {len(older)} 条更早记录")
             else:
-                # 增量刷新：API 数据直接追加，不做去重
-                history[gacha_name].extend(new_records)
-                added = len(new_records)
+                # 增量刷新：与本地比较，相同的跳过，不同的追加
+                local_keys = {_record_key(r) for r in history[gacha_name]}
+                for r in new_records:
+                    if _record_key(r) not in local_keys:
+                        history[gacha_name].append(r)
+                        local_keys.add(_record_key(r))
+                added = len(history[gacha_name]) - old_count
             # 按时间降序排列
             history[gacha_name].sort(key=lambda x: x.get("time", ""), reverse=True)
             deltas[gacha_name] = added
