@@ -232,6 +232,35 @@
       }
     ]
   },
+  "抽卡记录": {
+    "desc": "抽卡记录查询与更新",
+    "data": [
+      {
+        "name": "抽卡记录",
+        "desc": "查看抽卡记录图片",
+        "eg": "抽卡记录",
+        "need_ck": false,
+        "need_sk": true,
+        "need_admin": false
+      },
+      {
+        "name": "刷新抽卡记录",
+        "desc": "增量更新抽卡记录",
+        "eg": "刷新抽卡记录",
+        "need_ck": false,
+        "need_sk": true,
+        "need_admin": false
+      },
+      {
+        "name": "全量刷新抽卡记录",
+        "desc": "全量更新抽卡记录",
+        "eg": "全量刷新抽卡记录",
+        "need_ck": false,
+        "need_sk": true,
+        "need_admin": false
+      }
+    ]
+  },
   "别名管理": {
     "desc": "角色别名自定义",
     "data": [
