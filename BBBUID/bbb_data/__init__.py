@@ -232,3 +232,42 @@ async def send_godwar_info(bot: Bot, ev: Event):
         lines.append(f"       分数:{score} 难度:{punish} 时间:{settle}")
 
     await bot.send("\n".join(lines))
+
+
+# --- 手账 (Hand Account) ---
+
+sv_bbb_handbook = SV("崩坏3手账")
+
+
+@sv_bbb_handbook.on_fullmatch(("手账", "手帐"), block=True)
+async def send_handbook(bot: Bot, ev: Event):
+    uid = await get_uid(bot, ev)
+    if not uid:
+        return await bot.send(BIND_UID_HINT)
+    logger.info(f"[崩坏3] [手账] 查询: UID={uid}")
+
+    import asyncio
+    count_data, finance_data = await asyncio.gather(
+        bh3_api.get_bbb_handbook_count(uid),
+        bh3_api.get_bbb_weekly_finance(uid),
+    )
+
+    lines = [f"[崩坏3] UID{uid} 本月手账"]
+
+    if isinstance(count_data, dict):
+        count = count_data.get("count", 0)
+        lines.append(f"角色&装备补给卡: {count} 张")
+    else:
+        lines.append(f"角色&装备补给卡: 查询失败")
+
+    if isinstance(finance_data, dict):
+        month_hcoin = finance_data.get("month_hcoin", 0)
+        month_star = finance_data.get("month_star", 0)
+        day_hcoin = finance_data.get("day_hcoin", 0)
+        day_star = finance_data.get("day_star", 0)
+        lines.append(f"本月水晶: {month_hcoin}  (今日 +{day_hcoin})")
+        lines.append(f"本月星石: {month_star}  (今日 +{day_star})")
+    else:
+        lines.append(f"水晶/星石: 查询失败")
+
+    await bot.send("\n".join(lines))

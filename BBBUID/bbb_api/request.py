@@ -18,6 +18,8 @@ from .api import (
     BH3_GODWAR_API,
     BH3_GACHA_MENUS_API,
     BH3_GACHA_LOG_API,
+    BH3_HAND_BOOK_COUNT_API,
+    BH3_WEEKLY_FINANCE_API,
 )
 from .models import (
     BH3IndexData,
@@ -206,6 +208,70 @@ class BH3Api(_MysApi):
             method="GET",
             header=self._bh3_gacha_header(),
             params=params,
+        )
+        if isinstance(data, dict) and "data" in data:
+            return data["data"]
+        return -51 if data is None else -1
+
+    # ── 手账 (Hand Account) ──
+
+    async def get_bbb_handbook_count(self, uid: str) -> Union[Dict, int]:
+        """获取角色&装备补给卡数量。"""
+        server = await self.get_bbb_server(uid)
+        if not server:
+            return -51
+
+        ck = await self.bbb_get_ck(uid)
+        if not ck:
+            return -51
+
+        HEADER = copy.deepcopy(self._HEADER)
+        HEADER["Cookie"] = ck
+        HEADER["origin"] = "https://webstatic.mihoyo.com"
+        HEADER["referer"] = "https://webstatic.mihoyo.com/"
+
+        params = {
+            "game_biz": "bh3_cn",
+            "bind_uid": uid,
+            "bind_region": server,
+        }
+        data = await self._mys_request(
+            url=BH3_HAND_BOOK_COUNT_API,
+            method="GET",
+            header=HEADER,
+            params=params,
+            game_name="bbb",
+        )
+        if isinstance(data, dict) and "data" in data:
+            return data["data"]
+        return -51 if data is None else -1
+
+    async def get_bbb_weekly_finance(self, uid: str) -> Union[Dict, int]:
+        """获取星石和水晶数量。"""
+        server = await self.get_bbb_server(uid)
+        if not server:
+            return -51
+
+        ck = await self.bbb_get_ck(uid)
+        if not ck:
+            return -51
+
+        HEADER = copy.deepcopy(self._HEADER)
+        HEADER["Cookie"] = ck
+        HEADER["origin"] = "https://webstatic.mihoyo.com"
+        HEADER["referer"] = "https://webstatic.mihoyo.com/"
+
+        params = {
+            "game_biz": "bh3_cn",
+            "bind_uid": uid,
+            "bind_region": server,
+        }
+        data = await self._mys_request(
+            url=BH3_WEEKLY_FINANCE_API,
+            method="GET",
+            header=HEADER,
+            params=params,
+            game_name="bbb",
         )
         if isinstance(data, dict) and "data" in data:
             return data["data"]

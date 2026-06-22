@@ -131,6 +131,14 @@
         "need_ck": true,
         "need_sk": false,
         "need_admin": false
+      },
+      {
+        "name": "手账",
+        "desc": "查询本月水晶/星石/补给卡",
+        "eg": "手账",
+        "need_ck": true,
+        "need_sk": false,
+        "need_admin": false
       }
     ]
   },

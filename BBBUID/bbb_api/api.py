@@ -18,3 +18,7 @@ BH3_BIND_API = f"{GS_BASE}/binding/api/getUserGameRolesByCookie"
 # BH3 Gacha Record API (self-help query service)
 BH3_GACHA_MENUS_API = "https://public-operation-common.mihoyo.com/common/bh3_self_help_query/UserMenuQuery/GetMenus"
 BH3_GACHA_LOG_API   = "https://public-operation-common.mihoyo.com/common/bh3_self_help_query/UserGachaQuery/GetUserGacha"
+
+# BH3 Hand Account API (手账)
+BH3_HAND_BOOK_COUNT_API = "https://api-takumi.mihoyo.com/event/handbook/current_month_count"
+BH3_WEEKLY_FINANCE_API  = "https://api.mihoyo.com/bh3-weekly_finance/api/index"
