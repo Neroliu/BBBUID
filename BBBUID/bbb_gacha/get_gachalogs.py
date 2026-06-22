@@ -144,8 +144,9 @@ async def _fetch_gacha_type(
     return new_records
 
 
-async def save_gachalogs(uid: str, is_force: bool = False) -> str:
-    """增量刷新抽卡记录，返回摘要文本。"""
+async def save_gachalogs(uid: str, is_force: bool = False, skip_dedup: bool = False) -> str:
+    """增量/全量刷新抽卡记录，返回摘要文本。
+    skip_dedup=True 时直接追加 API 数据，不做去重（全量刷新用）。"""
     path = PLAYER_PATH / str(uid)
     path.mkdir(parents=True, exist_ok=True)
     gachalogs_path = path / "gacha_logs.json"
@@ -196,14 +197,19 @@ async def save_gachalogs(uid: str, is_force: bool = False) -> str:
         )
 
         if new_records:
-            # 增量刷新：用 existing_keys 去重后合并
-            added = 0
-            for r in new_records:
-                key = _record_key(r)
-                if key not in existing_keys[gacha_name]:
-                    history[gacha_name].append(r)
-                    existing_keys[gacha_name].add(key)
-                    added += 1
+            if skip_dedup:
+                # 全量刷新：直接追加，不做去重
+                history[gacha_name].extend(new_records)
+                added = len(new_records)
+            else:
+                # 增量刷新：用 existing_keys 去重后合并
+                added = 0
+                for r in new_records:
+                    key = _record_key(r)
+                    if key not in existing_keys[gacha_name]:
+                        history[gacha_name].append(r)
+                        existing_keys[gacha_name].add(key)
+                        added += 1
             # 按时间降序排列
             history[gacha_name].sort(key=lambda x: x.get("time", ""), reverse=True)
             deltas[gacha_name] = added
@@ -235,7 +241,7 @@ _full_lock: list[str] = []
 
 
 async def get_full_gachalogs(uid: str) -> str:
-    """全量刷新：备份旧数据，拉取最近记录，相同时间用 API 数据覆盖，更早的本地数据保留。"""
+    """全量刷新：备份旧数据，用 API 数据覆盖相同时间范围，更早的本地数据保留。"""
     if uid in _full_lock:
         return "当前正在全量刷新抽卡记录中，请勿重试！请稍后再试..."
 
@@ -253,42 +259,39 @@ async def get_full_gachalogs(uid: str) -> str:
         shutil.copy(gachalogs_path, backup_path)
         logger.info(f"[崩坏3] [抽卡记录] 已备份到 {backup_path}")
 
-        # 读取旧数据
+        # 拉取 API 数据（不做去重，直接追加）
+        result_msg = await save_gachalogs(uid, is_force=True, skip_dedup=True)
+
+        # 读取拉取后的数据（包含旧数据 + 新追加的 API 数据）
         async with aiofiles.open(gachalogs_path, "r", encoding="utf-8") as f:
+            merged_log = json.loads(await f.read())
+        merged_history: Dict[str, List[Dict]] = merged_log.get("data", {})
+
+        # 读取备份的旧数据
+        async with aiofiles.open(backup_path, "r", encoding="utf-8") as f:
             old_log = json.loads(await f.read())
         old_history: Dict[str, List[Dict]] = old_log.get("data", {})
 
-        # 清空后拉取（save_gachalogs 会重新写文件）
-        old_log["data"] = {}
-        async with aiofiles.open(gachalogs_path, "w", encoding="utf-8") as f:
-            await f.write(json.dumps(old_log, ensure_ascii=False))
-
-        result_msg = await save_gachalogs(uid, is_force=True)
-
-        # 读取拉取后的新数据
-        async with aiofiles.open(gachalogs_path, "r", encoding="utf-8") as f:
-            new_log = json.loads(await f.read())
-        new_history: Dict[str, List[Dict]] = new_log.get("data", {})
-
-        # 找出 API 数据的最早时间，保留本地更早的数据
+        # 对每个卡池：用 API 数据覆盖相同时间范围，保留更早的旧数据
         for gacha_name, old_records in old_history.items():
-            new_records = new_history.get(gacha_name, [])
-            if new_records:
-                # API 数据的最早时间
-                min_new_time = min(r.get("time", "") for r in new_records)
-                # 保留比 API 数据更早的本地记录
-                older_records = [r for r in old_records if r.get("time", "") < min_new_time]
-                if older_records:
-                    new_history[gacha_name] = new_records + older_records
-                    new_history[gacha_name].sort(key=lambda x: x.get("time", ""), reverse=True)
-                    logger.info(f"[崩坏3] [抽卡记录] {gacha_name}: 保留 {len(older_records)} 条更早记录")
-            else:
-                # API 没拉到该卡池数据，保留本地全部
-                new_history[gacha_name] = old_records
+            merged_records = merged_history.get(gacha_name, [])
+            if not merged_records:
+                # API 没拉到该卡池数据，保留旧数据
+                merged_history[gacha_name] = old_records
+                continue
 
-        new_log["data"] = new_history
+            # API 数据的最早时间
+            min_api_time = min(r.get("time", "") for r in merged_records)
+            # 保留比 API 数据更早的旧记录
+            older_records = [r for r in old_records if r.get("time", "") < min_api_time]
+            if older_records:
+                merged_history[gacha_name] = merged_records + older_records
+                merged_history[gacha_name].sort(key=lambda x: x.get("time", ""), reverse=True)
+                logger.info(f"[崩坏3] [抽卡记录] {gacha_name}: 保留 {len(older_records)} 条更早记录")
+
+        merged_log["data"] = merged_history
         async with aiofiles.open(gachalogs_path, "w", encoding="utf-8") as f:
-            await f.write(json.dumps(new_log, ensure_ascii=False))
+            await f.write(json.dumps(merged_log, ensure_ascii=False))
 
         return result_msg
     finally:
