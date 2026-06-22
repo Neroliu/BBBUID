@@ -423,8 +423,16 @@ async def draw_gacha_img(data: Dict, ev=None) -> bytes:
         pool_img = await _draw_pool_section(pool)
         pool_imgs.append(pool_img)
 
+    # Footer
+    footer_path = Path(__file__).parent.parent / "bbb_data" / "footer.png"
+    footer_img = None
+    footer_h = 0
+    if footer_path.exists():
+        footer_img = Image.open(footer_path).convert("RGBA")
+        _, footer_h = footer_img.size
+
     total_pool_h = sum(p.height for p in pool_imgs) + 20 * len(pool_imgs) + 40
-    total_h = player_h + total_pool_h
+    total_h = player_h + total_pool_h + footer_h
 
     # 创建最终画布
     final_h = max(total_h, bg_h)
@@ -447,6 +455,14 @@ async def draw_gacha_img(data: Dict, ev=None) -> bytes:
     for pool_img in pool_imgs:
         canvas.alpha_composite(pool_img, (0, current_y))
         current_y += pool_img.height + 20
+
+    # 绘制 footer（底部对齐，横向居中）
+    if footer_img:
+        fw, fh = footer_img.size
+        fx = (W - fw) // 2
+        fy = current_y + 10
+        canvas.alpha_composite(footer_img, (fx, fy))
+        current_y = fy + fh
 
     # 裁剪到实际内容高度
     canvas = canvas.crop((0, 0, W, current_y + 20))
