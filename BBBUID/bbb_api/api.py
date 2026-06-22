@@ -21,4 +21,6 @@ BH3_GACHA_LOG_API   = "https://public-operation-common.mihoyo.com/common/bh3_sel
 
 # BH3 Hand Account API (手账)
 BH3_HAND_BOOK_COUNT_API = "https://api-takumi.mihoyo.com/event/handbook/current_month_count"
+BH3_HAND_BOOK_LAST_MONTH_COUNT_API = "https://api-takumi.mihoyo.com/event/handbook/last_month_count"
 BH3_WEEKLY_FINANCE_API  = "https://api.mihoyo.com/bh3-weekly_finance/api/index"
+BH3_WEEKLY_FINANCE_LAST_MONTH_API = "https://api.mihoyo.com/bh3-weekly_finance/api/getLastMonthInfo"
