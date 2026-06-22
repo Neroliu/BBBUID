@@ -128,27 +128,18 @@ async def _fetch_gacha_type(
 
         logger.info(f"[崩坏3] [抽卡记录] type={gacha_type} page={page} API返回 {len(raw_list)} 条")
 
-        found_existing = False
         skipped_parse = 0
-        skipped_dup = 0
         for raw_item in raw_list:
             record = _parse_record(raw_item.get("item", []))
             if not record.get("time") or not record.get("content"):
                 skipped_parse += 1
-                logger.debug(f"[崩坏3] [抽卡记录] 解析跳过: {raw_item.get('item', [])}")
                 continue
-            key = _record_key(record)
-            if key in existing_keys:
-                found_existing = True
-                skipped_dup += 1
-                continue
-            if not is_force and found_existing:
-                logger.info(f"[崩坏3] [抽卡记录] type={gacha_type} 遇到已存在记录，停止拉取。新增 {len(new_records)} 条，解析跳过 {skipped_parse} 条，重复跳过 {skipped_dup} 条")
-                return new_records
             new_records.append(record)
-        logger.info(f"[崩坏3] [抽卡记录] type={gacha_type} page={page} 处理完成: 新增 {len(new_records)} 条，解析跳过 {skipped_parse} 条，重复跳过 {skipped_dup} 条")
-        if found_existing and not is_force:
-            return new_records
+        logger.info(f"[崩坏3] [抽卡记录] type={gacha_type} page={page} 处理完成: 新增 {len(new_records)} 条，解析跳过 {skipped_parse} 条")
+
+        # API 返回不足一页，说明已到最后
+        if len(raw_list) < 10:
+            break
 
     return new_records
 
@@ -205,14 +196,10 @@ async def save_gachalogs(uid: str, is_force: bool = False) -> str:
         )
 
         if new_records:
-            # 去重后合并
-            added = 0
-            for r in new_records:
-                key = _record_key(r)
-                if key not in existing_keys[gacha_name]:
-                    history[gacha_name].append(r)
-                    existing_keys[gacha_name].add(key)
-                    added += 1
+            # 直接追加，不做 (time, content) 去重
+            # 原因：同一时间戳的不同抽次可能产出相同材料，无法区分
+            history[gacha_name].extend(new_records)
+            added = len(new_records)
             # 按时间降序排列
             history[gacha_name].sort(key=lambda x: x.get("time", ""), reverse=True)
             deltas[gacha_name] = added
