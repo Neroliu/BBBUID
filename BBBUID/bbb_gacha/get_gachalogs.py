@@ -161,11 +161,6 @@ async def save_gachalogs(uid: str, is_force: bool = False) -> str:
     # 记录旧数量
     old_total = sum(len(v) for v in history.values())
 
-    # 构建已有记录的去重集合
-    existing_keys: Dict[str, set[Tuple[str, str]]] = {}
-    for gacha_name, records in history.items():
-        existing_keys[gacha_name] = {_record_key(r) for r in records}
-
     # 获取 authkey
     authkey = await _get_authkey(uid)
     if not authkey:
@@ -188,22 +183,15 @@ async def save_gachalogs(uid: str, is_force: bool = False) -> str:
 
         if gacha_name not in history:
             history[gacha_name] = []
-            existing_keys[gacha_name] = set()
 
         new_records = await _fetch_gacha_type(
             uid, authkey, gacha_type,
-            existing_keys[gacha_name], is_force,
+            set(), is_force,
         )
 
         if new_records:
-            # 合并时用 existing_keys 去重，防止跨次刷新重复
-            added = 0
-            for r in new_records:
-                key = _record_key(r)
-                if key not in existing_keys[gacha_name]:
-                    history[gacha_name].append(r)
-                    existing_keys[gacha_name].add(key)
-                    added += 1
+            history[gacha_name].extend(new_records)
+            added = len(new_records)
             # 按时间降序排列
             history[gacha_name].sort(key=lambda x: x.get("time", ""), reverse=True)
             deltas[gacha_name] = added
