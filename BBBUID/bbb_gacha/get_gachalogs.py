@@ -235,7 +235,7 @@ _full_lock: list[str] = []
 
 
 async def get_full_gachalogs(uid: str) -> str:
-    """全量刷新：备份旧数据，裁剪 5 个月前记录，然后增量拉取。"""
+    """全量刷新：备份旧数据，清空历史，以 API 数据为准重新拉取。"""
     if uid in _full_lock:
         return "当前正在全量刷新抽卡记录中，请勿重试！请稍后再试..."
 
@@ -253,19 +253,10 @@ async def get_full_gachalogs(uid: str) -> str:
         shutil.copy(gachalogs_path, backup_path)
         logger.info(f"[崩坏3] [抽卡记录] 已备份到 {backup_path}")
 
-        # 读取并裁剪
+        # 清空历史，以 API 数据为准
         async with aiofiles.open(gachalogs_path, "r", encoding="utf-8") as f:
             gacha_log = json.loads(await f.read())
-
-        threshold = datetime.now() - timedelta(days=150)
-        history: Dict[str, List[Dict]] = gacha_log.get("data", {})
-        for gacha_name in list(history.keys()):
-            history[gacha_name] = [
-                r for r in history[gacha_name]
-                if r.get("time", "") > threshold.strftime("%Y-%m-%d %H:%M:%S")
-            ]
-
-        gacha_log["data"] = history
+        gacha_log["data"] = {}
         async with aiofiles.open(gachalogs_path, "w", encoding="utf-8") as f:
             await f.write(json.dumps(gacha_log, ensure_ascii=False))
 
