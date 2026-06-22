@@ -225,7 +225,7 @@
       {
         "name": "WIKI搜索",
         "desc": "关键词搜索百科",
-        "eg": "bbbwiki薪炎",
+        "eg": "wiki薪炎",
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
