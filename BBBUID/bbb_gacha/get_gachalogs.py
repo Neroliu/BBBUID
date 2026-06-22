@@ -196,10 +196,14 @@ async def save_gachalogs(uid: str, is_force: bool = False) -> str:
         )
 
         if new_records:
-            # 直接追加，不做 (time, content) 去重
-            # 原因：同一时间戳的不同抽次可能产出相同材料，无法区分
-            history[gacha_name].extend(new_records)
-            added = len(new_records)
+            # 合并时用 existing_keys 去重，防止跨次刷新重复
+            added = 0
+            for r in new_records:
+                key = _record_key(r)
+                if key not in existing_keys[gacha_name]:
+                    history[gacha_name].append(r)
+                    existing_keys[gacha_name].add(key)
+                    added += 1
             # 按时间降序排列
             history[gacha_name].sort(key=lambda x: x.get("time", ""), reverse=True)
             deltas[gacha_name] = added
