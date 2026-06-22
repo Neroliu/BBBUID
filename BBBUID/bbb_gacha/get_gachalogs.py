@@ -192,24 +192,18 @@ async def save_gachalogs(uid: str, is_force: bool = False, skip_dedup: bool = Fa
 
         if new_records:
             if skip_dedup:
-                # 全量刷新：直接追加，不做去重
+                # 全量刷新：删除本地中与 API 时间范围重叠的记录，再追加 API 数据
+                min_api_time = min(r.get("time", "") for r in new_records)
+                old_records = history[gacha_name]
+                # 保留比 API 最早时间更早的本地记录
+                older = [r for r in old_records if r.get("time", "") < min_api_time]
+                history[gacha_name] = older + new_records
+                added = len(new_records)
+                logger.info(f"[崩坏3] [抽卡记录] {gacha_name}: 覆盖 {len(old_records) - len(older)} 条，新增 {added} 条，保留 {len(older)} 条更早记录")
+            else:
+                # 增量刷新：API 数据直接追加，不做去重
                 history[gacha_name].extend(new_records)
                 added = len(new_records)
-            else:
-                # 增量刷新：API 数据全部追加，再与本地数据合并去重
-                # API 数据放后面，去重时保留后面的记录（API 优先）
-                all_records = history[gacha_name] + new_records
-                deduped = []
-                seen_keys: set[Tuple[str, str]] = set()
-                for r in reversed(all_records):
-                    key = _record_key(r)
-                    if key not in seen_keys:
-                        deduped.append(r)
-                        seen_keys.add(key)
-                deduped.reverse()
-                old_count = len(history[gacha_name])
-                history[gacha_name] = deduped
-                added = len(deduped) - old_count
             # 按时间降序排列
             history[gacha_name].sort(key=lambda x: x.get("time", ""), reverse=True)
             deltas[gacha_name] = added
