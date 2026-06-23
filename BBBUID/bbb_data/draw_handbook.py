@@ -311,28 +311,37 @@ async def draw_handbook_img(
     else:
         section_title = "截止本月，舰长本月已收到..."
 
-    _draw_section_title(canvas, 40, 360, section_title)
+    # Player info bar bottom: 120 + 192 = 312
+    # Monthly section: 60px gap from player info
+    monthly_title_y = 312 + 60  # 372
+    _draw_section_title(canvas, 40, monthly_title_y, section_title)
 
     # Monthly bars
     bar_w, bar_h = 600, 140
+    bar_gap = 20
 
-    # Bar 1: Monthly crystals
+    # Bar positions: 20px gap after title (title ~46px high)
+    monthly_bar_y = monthly_title_y + 46 + bar_gap  # 438
+
+    # Bar 1: Monthly crystals (left)
     bar1_img = _load_handbook_res("bar1.png")
     if bar1_img:
-        canvas.paste(bar1_img, (40, 420), bar1_img)
-    _draw_bar_number(canvas, 40, 420, bar_w, bar_h, str(finance_data.get("month_hcoin", 0)))
+        canvas.paste(bar1_img, (40, monthly_bar_y), bar1_img)
+    _draw_bar_number(canvas, 40, monthly_bar_y, bar_w, bar_h, str(finance_data.get("month_hcoin", 0)))
 
-    # Bar 2: Monthly stars
+    # Bar 2: Monthly stars (right, 20px gap from crystals)
     bar2_img = _load_handbook_res("bar2.png")
+    star_x = 40 + bar_w + bar_gap  # 660
     if bar2_img:
-        canvas.paste(bar2_img, (700, 420), bar2_img)
-    _draw_bar_number(canvas, 700, 420, bar_w, bar_h, str(finance_data.get("month_star", 0)))
+        canvas.paste(bar2_img, (star_x, monthly_bar_y), bar2_img)
+    _draw_bar_number(canvas, star_x, monthly_bar_y, bar_w, bar_h, str(finance_data.get("month_star", 0)))
 
-    # Bar 3: Monthly supply cards
+    # Bar 3: Monthly supply cards (below crystals, 20px gap)
     bar3_img = _load_handbook_res("bar3.png")
+    supply_y = monthly_bar_y + bar_h + bar_gap  # 598
     if bar3_img:
-        canvas.paste(bar3_img, (40, 580), bar3_img)
-    _draw_bar_number(canvas, 40, 580, bar_w, bar_h, str(count_data.get("count", 0)))
+        canvas.paste(bar3_img, (40, supply_y), bar3_img)
+    _draw_bar_number(canvas, 40, supply_y, bar_w, bar_h, str(count_data.get("count", 0)))
 
     logger.info(f"[崩坏3] [手账渲染] 月度数据完成 ({time.time()-t_start:.2f}s)")
 
@@ -340,18 +349,25 @@ async def draw_handbook_img(
     day_hcoin = finance_data.get("day_hcoin")
     day_star = finance_data.get("day_star")
     if day_hcoin is not None or day_star is not None:
-        _draw_section_title(canvas, 40, 760, "今日，舰长已收到...")
+        # Monthly section bottom: supply_y + bar_h = 738
+        # Daily section: 120px gap from monthly
+        monthly_bottom = supply_y + bar_h  # 738
+        daily_title_y = monthly_bottom + 120  # 858
+        _draw_section_title(canvas, 40, daily_title_y, "今日，舰长已收到...")
+
+        # Daily bar positions: 20px gap after title
+        daily_bar_y = daily_title_y + 46 + bar_gap  # 924
 
         # Today bars
         # Bar 1: Today crystals
         if bar1_img:
-            canvas.paste(bar1_img, (40, 840), bar1_img)
-        _draw_bar_number(canvas, 40, 840, bar_w, bar_h, str(day_hcoin or 0))
+            canvas.paste(bar1_img, (40, daily_bar_y), bar1_img)
+        _draw_bar_number(canvas, 40, daily_bar_y, bar_w, bar_h, str(day_hcoin or 0))
 
-        # Bar 2: Today stars
+        # Bar 2: Today stars (20px gap from crystals)
         if bar2_img:
-            canvas.paste(bar2_img, (700, 840), bar2_img)
-        _draw_bar_number(canvas, 700, 840, bar_w, bar_h, str(day_star or 0))
+            canvas.paste(bar2_img, (star_x, daily_bar_y), bar2_img)
+        _draw_bar_number(canvas, star_x, daily_bar_y, bar_w, bar_h, str(day_star or 0))
 
         logger.info(f"[崩坏3] [手账渲染] 今日数据完成 ({time.time()-t_start:.2f}s)")
 
