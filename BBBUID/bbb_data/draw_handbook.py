@@ -318,7 +318,8 @@ async def draw_handbook_img(
     logger.info(f"[崩坏3] [手账渲染] 玩家信息完成 ({time.time()-t_start:.2f}s)")
 
     # --- Monthly Section ---
-    month_str = finance_data.get("month", "")
+    month_raw = finance_data.get("month", "")
+    month_str = str(month_raw) if month_raw else ""
     day_hcoin = finance_data.get("day_hcoin")
     day_star = finance_data.get("day_star")
     is_current_month = day_hcoin is not None or day_star is not None
