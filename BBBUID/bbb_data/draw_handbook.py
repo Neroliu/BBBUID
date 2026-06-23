@@ -293,7 +293,7 @@ async def draw_handbook_img(
         pass
 
     _draw_player_info(
-        canvas, 40, ev, nickname, uid,
+        canvas, 120, ev, nickname, uid,
         int(level) if str(level).isdigit() else 0,
         int(active_days) if str(active_days).isdigit() else 0,
         rating, avatar_img,
@@ -311,7 +311,7 @@ async def draw_handbook_img(
     else:
         section_title = "截止本月，舰长本月已收到..."
 
-    _draw_section_title(canvas, 90, 280, section_title)
+    _draw_section_title(canvas, 40, 360, section_title)
 
     # Monthly bars
     bar_w, bar_h = 600, 140
@@ -319,20 +319,20 @@ async def draw_handbook_img(
     # Bar 1: Monthly crystals
     bar1_img = _load_handbook_res("bar1.png")
     if bar1_img:
-        canvas.paste(bar1_img, (90, 340), bar1_img)
-    _draw_bar_number(canvas, 90, 340, bar_w, bar_h, str(finance_data.get("month_hcoin", 0)))
+        canvas.paste(bar1_img, (40, 420), bar1_img)
+    _draw_bar_number(canvas, 40, 420, bar_w, bar_h, str(finance_data.get("month_hcoin", 0)))
 
     # Bar 2: Monthly stars
     bar2_img = _load_handbook_res("bar2.png")
     if bar2_img:
-        canvas.paste(bar2_img, (790, 340), bar2_img)
-    _draw_bar_number(canvas, 790, 340, bar_w, bar_h, str(finance_data.get("month_star", 0)))
+        canvas.paste(bar2_img, (740, 420), bar2_img)
+    _draw_bar_number(canvas, 740, 420, bar_w, bar_h, str(finance_data.get("month_star", 0)))
 
     # Bar 3: Monthly supply cards
     bar3_img = _load_handbook_res("bar3.png")
     if bar3_img:
-        canvas.paste(bar3_img, (90, 500), bar3_img)
-    _draw_bar_number(canvas, 90, 500, bar_w, bar_h, str(count_data.get("count", 0)))
+        canvas.paste(bar3_img, (40, 580), bar3_img)
+    _draw_bar_number(canvas, 40, 580, bar_w, bar_h, str(count_data.get("count", 0)))
 
     logger.info(f"[崩坏3] [手账渲染] 月度数据完成 ({time.time()-t_start:.2f}s)")
 
@@ -340,18 +340,18 @@ async def draw_handbook_img(
     day_hcoin = finance_data.get("day_hcoin")
     day_star = finance_data.get("day_star")
     if day_hcoin is not None or day_star is not None:
-        _draw_section_title(canvas, 90, 680, "今日，舰长已收到...")
+        _draw_section_title(canvas, 40, 760, "今日，舰长已收到...")
 
         # Today bars
         # Bar 1: Today crystals
         if bar1_img:
-            canvas.paste(bar1_img, (90, 740), bar1_img)
-        _draw_bar_number(canvas, 90, 740, bar_w, bar_h, str(day_hcoin or 0))
+            canvas.paste(bar1_img, (40, 820), bar1_img)
+        _draw_bar_number(canvas, 40, 820, bar_w, bar_h, str(day_hcoin or 0))
 
         # Bar 2: Today stars
         if bar2_img:
-            canvas.paste(bar2_img, (790, 740), bar2_img)
-        _draw_bar_number(canvas, 790, 740, bar_w, bar_h, str(day_star or 0))
+            canvas.paste(bar2_img, (740, 820), bar2_img)
+        _draw_bar_number(canvas, 740, 820, bar_w, bar_h, str(day_star or 0))
 
         logger.info(f"[崩坏3] [手账渲染] 今日数据完成 ({time.time()-t_start:.2f}s)")
 
