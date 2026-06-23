@@ -341,14 +341,28 @@ async def draw_handbook_img(
         ]
     else:
         # Last month: use month from data
+        month_num = "X"
         if month_str:
-            try:
-                dt = datetime.strptime(month_str, "%Y-%m")
-                month_num = str(dt.month)
-            except Exception:
-                month_num = "X"
-        else:
-            month_num = "X"
+            # Try multiple date formats
+            for fmt in ["%Y-%m", "%Y%m", "%Y年%m月"]:
+                try:
+                    dt = datetime.strptime(month_str, fmt)
+                    month_num = str(dt.month)
+                    break
+                except ValueError:
+                    continue
+            # If all formats fail, try to extract month number directly
+            if month_num == "X":
+                # Handle formats like "2024-05" or just "5"
+                parts = month_str.replace("年", "-").replace("月", "").split("-")
+                if len(parts) >= 2:
+                    try:
+                        month_num = str(int(parts[1]))
+                    except ValueError:
+                        pass
+                elif month_str.isdigit():
+                    month_num = str(int(month_str))
+
         title_segments = [
             ("舰长", TEXT_WHITE),
             (month_num, ACCENT_YELLOW),
