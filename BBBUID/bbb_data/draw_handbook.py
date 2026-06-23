@@ -31,6 +31,7 @@ TEXT_DIM = (160, 160, 175)
 ACCENT_BLUE = (100, 180, 255)
 ACCENT_GREEN = (100, 220, 140)
 ACCENT_ORANGE = (255, 180, 80)
+ACCENT_YELLOW = (254, 231, 114)  # #FEE772
 
 _font_cache: dict[int, ImageFont.FreeTypeFont] = {}
 _italic_font_cache: dict[int, ImageFont.FreeTypeFont] = {}
@@ -124,6 +125,21 @@ def _draw_section_title(canvas: Image.Image, x: int, y: int, text: str) -> None:
     _draw_italic_text(canvas, (x, y), text, _ifont(44), TEXT_WHITE)
 
 
+def _draw_multi_color_title(
+    canvas: Image.Image,
+    x: int,
+    y: int,
+    segments: list[tuple[str, tuple[int, ...]]],
+) -> None:
+    """Render title with multiple colored segments."""
+    draw = ImageDraw.Draw(canvas)
+    font = _ifont(44)
+    current_x = x
+    for text, color in segments:
+        _draw_italic_text(canvas, (current_x, y), text, font, color)
+        current_x += int(draw.textlength(text, font=font))
+
+
 def _draw_bar_number(
     canvas: Image.Image,
     x: int,
@@ -131,6 +147,7 @@ def _draw_bar_number(
     bar_w: int,
     bar_h: int,
     number: str,
+    color: tuple[int, ...] = ACCENT_YELLOW,
 ) -> None:
     """Draw number on the right side of a bar, vertically centered."""
     _draw_italic_text(
@@ -138,7 +155,7 @@ def _draw_bar_number(
         (x + bar_w - 30, y + bar_h // 2),
         number,
         _ifont(40),
-        TEXT_WHITE,
+        color,
         anchor="rm",
     )
 
@@ -302,19 +319,43 @@ async def draw_handbook_img(
 
     # --- Monthly Section ---
     month_str = finance_data.get("month", "")
-    if month_str:
-        try:
-            dt = datetime.strptime(month_str, "%Y-%m")
-            section_title = f"截止 {dt.month:02d} 月 11 日，舰长本月已收到..."
-        except Exception:
-            section_title = "截止本月，舰长本月已收到..."
-    else:
-        section_title = "截止本月，舰长本月已收到..."
+    day_hcoin = finance_data.get("day_hcoin")
+    day_star = finance_data.get("day_star")
+    is_current_month = day_hcoin is not None or day_star is not None
 
     # Player info bar bottom: 120 + 192 = 312
     # Monthly section: 60px gap from player info
     monthly_title_y = 312 + 60  # 372
-    _draw_section_title(canvas, 40, monthly_title_y, section_title)
+
+    if is_current_month:
+        # Current month: use local time
+        now = datetime.now(tz=CST)
+        month_num = f"{now.month:02d}"
+        day_num = f"{now.day:02d}"
+        title_segments = [
+            ("截止 ", TEXT_WHITE),
+            (month_num, ACCENT_YELLOW),
+            (" 月 ", TEXT_WHITE),
+            (day_num, ACCENT_YELLOW),
+            (" 日，舰长本月已收到...", TEXT_WHITE),
+        ]
+    else:
+        # Last month: use month from data
+        if month_str:
+            try:
+                dt = datetime.strptime(month_str, "%Y-%m")
+                month_num = str(dt.month)
+            except Exception:
+                month_num = "X"
+        else:
+            month_num = "X"
+        title_segments = [
+            ("舰长", TEXT_WHITE),
+            (month_num, ACCENT_YELLOW),
+            ("月已收到...", TEXT_WHITE),
+        ]
+
+    _draw_multi_color_title(canvas, 40, monthly_title_y, title_segments)
 
     # Monthly bars
     bar_w, bar_h = 600, 140
@@ -348,14 +389,16 @@ async def draw_handbook_img(
     logger.info(f"[崩坏3] [手账渲染] 月度数据完成 ({time.time()-t_start:.2f}s)")
 
     # --- Today Section (only if day data exists) ---
-    day_hcoin = finance_data.get("day_hcoin")
-    day_star = finance_data.get("day_star")
-    if day_hcoin is not None or day_star is not None:
+    if is_current_month:
         # Monthly section bottom: supply_y + bar_h
         # Daily section: 130px gap from monthly
         monthly_bottom = supply_y + bar_h  # 776
         daily_title_y = monthly_bottom + 130  # 906
-        _draw_section_title(canvas, 40, daily_title_y, "今日，舰长已收到...")
+        daily_title_segments = [
+            ("今日", ACCENT_YELLOW),
+            ("，舰长已收到...", TEXT_WHITE),
+        ]
+        _draw_multi_color_title(canvas, 40, daily_title_y, daily_title_segments)
 
         # Daily bar positions: 30px gap after italic title
         daily_title_gap = 30
@@ -365,12 +408,12 @@ async def draw_handbook_img(
         # Bar 1: Today crystals
         if bar1_img:
             canvas.paste(bar1_img, (40, daily_bar_y), bar1_img)
-        _draw_bar_number(canvas, 40, daily_bar_y, bar_w, bar_h, str(day_hcoin or 0))
+        _draw_bar_number(canvas, 40, daily_bar_y, bar_w, bar_h, str(finance_data.get("day_hcoin", 0)))
 
         # Bar 2: Today stars (20px gap from crystals)
         if bar2_img:
             canvas.paste(bar2_img, (star_x, daily_bar_y), bar2_img)
-        _draw_bar_number(canvas, star_x, daily_bar_y, bar_w, bar_h, str(day_star or 0))
+        _draw_bar_number(canvas, star_x, daily_bar_y, bar_w, bar_h, str(finance_data.get("day_star", 0)))
 
         logger.info(f"[崩坏3] [手账渲染] 今日数据完成 ({time.time()-t_start:.2f}s)")
 
