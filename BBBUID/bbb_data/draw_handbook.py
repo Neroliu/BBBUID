@@ -121,7 +121,7 @@ def _crop_center(img: Image.Image, tw: int, th: int) -> Image.Image:
 
 def _draw_section_title(canvas: Image.Image, x: int, y: int, text: str) -> None:
     """Render section title with italic style."""
-    _draw_italic_text(canvas, (x, y), text, _ifont(36), TEXT_WHITE)
+    _draw_italic_text(canvas, (x, y), text, _ifont(48), TEXT_WHITE)
 
 
 def _draw_bar_number(
@@ -325,14 +325,14 @@ async def draw_handbook_img(
     # Bar 2: Monthly stars
     bar2_img = _load_handbook_res("bar2.png")
     if bar2_img:
-        canvas.paste(bar2_img, (740, 420), bar2_img)
-    _draw_bar_number(canvas, 740, 420, bar_w, bar_h, str(finance_data.get("month_star", 0)))
+        canvas.paste(bar2_img, (40, 580), bar2_img)
+    _draw_bar_number(canvas, 40, 580, bar_w, bar_h, str(finance_data.get("month_star", 0)))
 
     # Bar 3: Monthly supply cards
     bar3_img = _load_handbook_res("bar3.png")
     if bar3_img:
-        canvas.paste(bar3_img, (40, 580), bar3_img)
-    _draw_bar_number(canvas, 40, 580, bar_w, bar_h, str(count_data.get("count", 0)))
+        canvas.paste(bar3_img, (40, 740), bar3_img)
+    _draw_bar_number(canvas, 40, 740, bar_w, bar_h, str(count_data.get("count", 0)))
 
     logger.info(f"[崩坏3] [手账渲染] 月度数据完成 ({time.time()-t_start:.2f}s)")
 
@@ -340,18 +340,18 @@ async def draw_handbook_img(
     day_hcoin = finance_data.get("day_hcoin")
     day_star = finance_data.get("day_star")
     if day_hcoin is not None or day_star is not None:
-        _draw_section_title(canvas, 40, 760, "今日，舰长已收到...")
+        _draw_section_title(canvas, 40, 920, "今日，舰长已收到...")
 
         # Today bars
         # Bar 1: Today crystals
         if bar1_img:
-            canvas.paste(bar1_img, (40, 820), bar1_img)
-        _draw_bar_number(canvas, 40, 820, bar_w, bar_h, str(day_hcoin or 0))
+            canvas.paste(bar1_img, (40, 1000), bar1_img)
+        _draw_bar_number(canvas, 40, 1000, bar_w, bar_h, str(day_hcoin or 0))
 
         # Bar 2: Today stars
         if bar2_img:
-            canvas.paste(bar2_img, (740, 820), bar2_img)
-        _draw_bar_number(canvas, 740, 820, bar_w, bar_h, str(day_star or 0))
+            canvas.paste(bar2_img, (40, 1160), bar2_img)
+        _draw_bar_number(canvas, 40, 1160, bar_w, bar_h, str(day_star or 0))
 
         logger.info(f"[崩坏3] [手账渲染] 今日数据完成 ({time.time()-t_start:.2f}s)")
 
