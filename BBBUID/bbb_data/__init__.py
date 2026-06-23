@@ -247,33 +247,31 @@ async def send_handbook(bot: Bot, ev: Event):
     logger.info(f"[崩坏3] [手账] 查询: UID={uid}")
 
     import asyncio
-    count_data, finance_data = await asyncio.gather(
+    index_data, count_data, finance_data = await asyncio.gather(
+        bh3_api.get_bbb_index(uid),
         bh3_api.get_bbb_handbook_count(uid),
         bh3_api.get_bbb_weekly_finance(uid),
     )
 
-    lines = [f"[崩坏3] UID{uid} 本月手账"]
+    if isinstance(index_data, int):
+        return await bot.send(bbb_error_reply(index_data))
 
-    if isinstance(count_data, dict):
-        count = count_data.get("count", 0)
-        lines.append(f"角色&装备补给卡: {count} 张")
+    if isinstance(count_data, dict) and isinstance(finance_data, dict):
+        from .draw_handbook import draw_handbook_img
+        img = await draw_handbook_img(ev, uid, index_data, count_data, finance_data)
+        await bot.send(img)
     else:
-        lines.append(f"角色&装备补给卡: 查询失败")
-
-    if isinstance(finance_data, dict):
-        month = finance_data.get("month", "")
-        if month:
-            lines.append(f"月份: {month}")
-        month_hcoin = finance_data.get("month_hcoin", 0)
-        month_star = finance_data.get("month_star", 0)
-        day_hcoin = finance_data.get("day_hcoin", 0)
-        day_star = finance_data.get("day_star", 0)
-        lines.append(f"本月水晶: {month_hcoin}  (今日 +{day_hcoin})")
-        lines.append(f"本月星石: {month_star}  (今日 +{day_star})")
-    else:
-        lines.append(f"水晶/星石: 查询失败")
-
-    await bot.send("\n".join(lines))
+        lines = [f"[崩坏3] UID{uid} 本月手账"]
+        if isinstance(count_data, dict):
+            lines.append(f"角色&装备补给卡: {count_data.get('count', 0)} 张")
+        else:
+            lines.append(f"角色&装备补给卡: 查询失败")
+        if isinstance(finance_data, dict):
+            lines.append(f"本月水晶: {finance_data.get('month_hcoin', 0)}  (今日 +{finance_data.get('day_hcoin', 0)})")
+            lines.append(f"本月星石: {finance_data.get('month_star', 0)}  (今日 +{finance_data.get('day_star', 0)})")
+        else:
+            lines.append(f"水晶/星石: 查询失败")
+        await bot.send("\n".join(lines))
 
 
 @sv_bbb_handbook.on_fullmatch(("手账上个月", "手帐上个月"), block=True)
@@ -284,28 +282,28 @@ async def send_handbook_last_month(bot: Bot, ev: Event):
     logger.info(f"[崩坏3] [手账上个月] 查询: UID={uid}")
 
     import asyncio
-    count_data, finance_data = await asyncio.gather(
+    index_data, count_data, finance_data = await asyncio.gather(
+        bh3_api.get_bbb_index(uid),
         bh3_api.get_bbb_handbook_last_month_count(uid),
         bh3_api.get_bbb_weekly_finance_last_month(uid),
     )
 
-    lines = [f"[崩坏3] UID{uid} 上月手账"]
+    if isinstance(index_data, int):
+        return await bot.send(bbb_error_reply(index_data))
 
-    if isinstance(count_data, dict):
-        count = count_data.get("count", 0)
-        lines.append(f"角色&装备补给卡: {count} 张")
+    if isinstance(count_data, dict) and isinstance(finance_data, dict):
+        from .draw_handbook import draw_handbook_img
+        img = await draw_handbook_img(ev, uid, index_data, count_data, finance_data)
+        await bot.send(img)
     else:
-        lines.append(f"角色&装备补给卡: 查询失败")
-
-    if isinstance(finance_data, dict):
-        month = finance_data.get("month", "")
-        if month:
-            lines.append(f"月份: {month}")
-        month_hcoin = finance_data.get("month_hcoin", 0)
-        month_star = finance_data.get("month_star", 0)
-        lines.append(f"上月水晶: {month_hcoin}")
-        lines.append(f"上月星石: {month_star}")
-    else:
-        lines.append(f"水晶/星石: 查询失败")
-
-    await bot.send("\n".join(lines))
+        lines = [f"[崩坏3] UID{uid} 上月手账"]
+        if isinstance(count_data, dict):
+            lines.append(f"角色&装备补给卡: {count_data.get('count', 0)} 张")
+        else:
+            lines.append(f"角色&装备补给卡: 查询失败")
+        if isinstance(finance_data, dict):
+            lines.append(f"上月水晶: {finance_data.get('month_hcoin', 0)}")
+            lines.append(f"上月星石: {finance_data.get('month_star', 0)}")
+        else:
+            lines.append(f"水晶/星石: 查询失败")
+        await bot.send("\n".join(lines))
