@@ -21,7 +21,7 @@ W = 1300
 H = 1300
 
 # --- Resource Paths ---
-HANDBOOK_RES_DIR = Path("/app/napcat/config/手账")
+HANDBOOK_RES_DIR = Path(__file__).parent / "handbook_res"
 COMMON_RES_DIR = Path(__file__).parent / "note_res"
 
 # --- Colors ---
