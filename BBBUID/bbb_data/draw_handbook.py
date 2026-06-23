@@ -121,7 +121,7 @@ def _crop_center(img: Image.Image, tw: int, th: int) -> Image.Image:
 
 def _draw_section_title(canvas: Image.Image, x: int, y: int, text: str) -> None:
     """Render section title with italic style."""
-    _draw_italic_text(canvas, (x, y), text, _ifont(46), TEXT_WHITE)
+    _draw_italic_text(canvas, (x, y), text, _ifont(44), TEXT_WHITE)
 
 
 def _draw_bar_number(
@@ -320,8 +320,8 @@ async def draw_handbook_img(
     bar_w, bar_h = 600, 140
     bar_gap = 20
 
-    # Bar positions: 20px gap after title (title ~46px high)
-    monthly_bar_y = monthly_title_y + 46 + bar_gap  # 438
+    # Bar positions: 20px gap after italic title (title 44px high)
+    monthly_bar_y = monthly_title_y + 44 + bar_gap  # 436
 
     # Bar 1: Monthly crystals (left)
     bar1_img = _load_handbook_res("bar1.png")
@@ -338,7 +338,7 @@ async def draw_handbook_img(
 
     # Bar 3: Monthly supply cards (below crystals, 20px gap)
     bar3_img = _load_handbook_res("bar3.png")
-    supply_y = monthly_bar_y + bar_h + bar_gap  # 598
+    supply_y = monthly_bar_y + bar_h + bar_gap  # 596
     if bar3_img:
         canvas.paste(bar3_img, (40, supply_y), bar3_img)
     _draw_bar_number(canvas, 40, supply_y, bar_w, bar_h, str(count_data.get("count", 0)))
@@ -349,14 +349,14 @@ async def draw_handbook_img(
     day_hcoin = finance_data.get("day_hcoin")
     day_star = finance_data.get("day_star")
     if day_hcoin is not None or day_star is not None:
-        # Monthly section bottom: supply_y + bar_h = 738
-        # Daily section: 120px gap from monthly
-        monthly_bottom = supply_y + bar_h  # 738
-        daily_title_y = monthly_bottom + 120  # 858
+        # Monthly section bottom: supply_y + bar_h = 736
+        # Daily section: 130px gap from monthly
+        monthly_bottom = supply_y + bar_h  # 736
+        daily_title_y = monthly_bottom + 130  # 866
         _draw_section_title(canvas, 40, daily_title_y, "今日，舰长已收到...")
 
-        # Daily bar positions: 20px gap after title
-        daily_bar_y = daily_title_y + 46 + bar_gap  # 924
+        # Daily bar positions: 20px gap after italic title
+        daily_bar_y = daily_title_y + 44 + bar_gap  # 930
 
         # Today bars
         # Bar 1: Today crystals
