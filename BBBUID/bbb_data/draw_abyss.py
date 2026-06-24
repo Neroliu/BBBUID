@@ -306,7 +306,7 @@ async def draw_abyss(
     )
 
     # 获取玩家信息 (从index接口获取)
-    from ..bbb_api.request import bh3_api
+    from ..bbb_api import bh3_api
     index_data = await bh3_api.get_bbb_index(uid)
     if isinstance(index_data, int):
         index_data = {}
