@@ -5,8 +5,10 @@ from typing import Dict, List, Optional
 
 from PIL import Image, ImageDraw, ImageFont
 
+from gsuid_core.utils.image.convert import convert_img
+
 from ..utils.RESOURCE_PATH import WIKI_PATH
-from .avatar_utils import draw_decorated_avatar, get_cached_avatar
+from .avatar_utils import get_cached_avatar
 
 # --- 常量定义 ---
 
@@ -366,4 +368,4 @@ async def draw_abyss(
     final_h = y_pos + footer.height + 40
     canvas = canvas.crop((0, 0, W, final_h))
 
-    return canvas.convert("RGB")
+    return await convert_img(canvas)
