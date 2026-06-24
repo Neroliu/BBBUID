@@ -8,6 +8,7 @@ from PIL import Image, ImageDraw, ImageFont
 from gsuid_core.utils.fonts.fonts import core_font
 from gsuid_core.utils.image.convert import convert_img
 
+from ..utils.RESOURCE_PATH import WIKI_PATH
 from .avatar_utils import get_cached_avatar, draw_decorated_avatar
 from .draw_character import draw_character_card, _get_cached_star_icon, _add_rounded_corners, CHAR_RES_DIR
 from .draw_note import W, _draw_player_info
