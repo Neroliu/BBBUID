@@ -9,7 +9,7 @@ from gsuid_core.utils.fonts.fonts import core_font
 from gsuid_core.utils.image.convert import convert_img
 
 from ..utils.RESOURCE_PATH import WIKI_PATH
-from .avatar_utils import get_cached_avatar
+from .avatar_utils import get_cached_avatar, draw_decorated_avatar
 from .draw_note import W, _draw_player_info
 
 # --- 常量定义 ---
@@ -66,6 +66,16 @@ ACCENT_BLUE = (100, 150, 255, 255)
 
 # 角色头像缓存目录 (from draw_character.py)
 CHAR_ICON_CACHE_DIR = WIKI_PATH / "角色" / "icons"
+CHAR_RES_DIR = Path(__file__).parent / "res" / "char"
+STAR_ICON_RES_DIR = CHAR_RES_DIR / "star_icon"
+
+STAR_TO_ICON = {
+    1: "StarElf_B.png",
+    2: "StarElf_A.png",
+    3: "StarElf_S.png",
+    4: "StarElf_SS.png",
+    5: "StarElf_SSS.png",
+}
 
 _font_cache: dict[int, ImageFont.FreeTypeFont] = {}
 _italic_font_cache: dict[int, ImageFont.FreeTypeFont] = {}
@@ -145,29 +155,75 @@ def _add_rounded_corners(img: Image.Image, radius: int) -> Image.Image:
     return result
 
 
-async def _get_char_icon(char_name: str, size: int = 120) -> Image.Image:
-    """从wiki缓存获取角色头像 (from draw_character.py)"""
+async def _draw_char_card(
+    canvas: Image.Image,
+    x: int,
+    y: int,
+    char_name: str,
+    star: int,
+    card_w: int = 130,
+) -> None:
+    """绘制角色卡片 (icon + star + level, 无名称) — from draw_character.py"""
     from ..bbb_alias.name_convert import alias_to_char_name, char_name_to_content_id
 
+    card_h = 180
+    bg_path = CHAR_RES_DIR / "avatar_bg.png"
+    if bg_path.exists():
+        card = Image.open(bg_path).convert("RGBA")
+        card = card.resize((card_w, card_h), Image.Resampling.LANCZOS)
+    else:
+        card = Image.new("RGBA", (card_w, card_h), (28, 28, 38, 255))
+    draw = ImageDraw.Draw(card)
+
+    # 获取角色头像
     standard_name = alias_to_char_name(char_name)
     if not standard_name:
         standard_name = char_name
-
     content_id = char_name_to_content_id(standard_name)
+    char_icon = None
     if content_id:
         cache_path = CHAR_ICON_CACHE_DIR / f"{content_id}.png"
         if cache_path.exists():
             try:
-                icon = Image.open(cache_path).convert("RGBA")
-                icon_w = size
-                icon_h = icon.height * icon_w // icon.width
-                icon = icon.resize((icon_w, icon_h), Image.Resampling.LANCZOS)
-                icon = _add_rounded_corners(icon, 1)
-                return icon
+                char_icon = Image.open(cache_path).convert("RGBA")
             except Exception:
                 pass
+    if char_icon is None:
+        char_icon = Image.new("RGBA", (100, 100), (100, 100, 100, 255))
 
-    return Image.new("RGBA", (size, size), (100, 100, 100, 255))
+    # 缩放头像: 宽度填满卡片，保持比例
+    icon_width = card_w - 23
+    icon_height = char_icon.height * icon_width // char_icon.width + 4
+    char_icon = char_icon.resize((icon_width, icon_height), Image.Resampling.LANCZOS)
+    char_icon = _add_rounded_corners(char_icon, 1)
+    icon_x = (card_w - icon_width) // 2 + 1
+    icon_y = 8
+    card.alpha_composite(char_icon, (icon_x, icon_y))
+
+    # 星级图标
+    star_icon_name = STAR_TO_ICON.get(star, "StarElf_B.png")
+    star_path = STAR_ICON_RES_DIR / star_icon_name
+    star_render_h = 28
+    if star_path.exists():
+        try:
+            star_icon = Image.open(star_path).convert("RGBA")
+            orig_w, orig_h = star_icon.size
+            scale = star_render_h / orig_h
+            star_icon = star_icon.resize((int(orig_w * scale), star_render_h), Image.Resampling.LANCZOS)
+            card.alpha_composite(star_icon, (12, icon_y + icon_height + 2))
+        except Exception:
+            pass
+
+    # 等级文字
+    draw.text(
+        (card_w - 20, icon_y + icon_height + 16),
+        "Lv.1",
+        font=_font(22),
+        fill=(30, 30, 30),
+        anchor="rm",
+    )
+
+    canvas.alpha_composite(card, (x, y))
 
 
 def _draw_line_chart(
@@ -255,14 +311,14 @@ async def _draw_abyss_record(
     score_w = score_bbox[2] - score_bbox[0]
     _draw_italic_text(canvas, (1400 - 200 - score_w, y_offset + 40), score_text, _font(36), TEXT_WHITE)
 
-    # 6. 绘制角色头像 (from draw_character.py, without name)
+    # 6. 绘制角色卡片 (from draw_character.py, without name)
     char_x = 30
-    char_y = y_offset + 130
+    char_y = y_offset + 100
     for char in lineup[:4]:
         char_name = char.get("name", "")
         if char_name:
-            icon = await _get_char_icon(char_name, 120)
-            canvas.alpha_composite(icon, (char_x, char_y))
+            star = char.get("star", 0)
+            await _draw_char_card(canvas, char_x, char_y, char_name, star)
             char_x += 140
 
     # 7. 绘制右侧信息 (排名、段位、杯数、结算时间)
@@ -340,8 +396,14 @@ async def draw_abyss(
 
     # 2. 绘制玩家信息条 — 直接复用draw_note的代码
     y_pos = 40
+    avatar_img = None
+    if user_avatar is not None:
+        try:
+            avatar_img = draw_decorated_avatar(user_avatar, 179)
+        except Exception:
+            pass
     _draw_player_info(
-        canvas, y_pos, None, nickname, uid, level, active_days, rating, user_avatar
+        canvas, y_pos, None, nickname, uid, level, active_days, rating, avatar_img
     )
     y_pos += 192 + 18  # info bar height + gap to chart
 
