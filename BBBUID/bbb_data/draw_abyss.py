@@ -102,7 +102,7 @@ def _draw_italic_text(
 
 async def _get_char_icon(char_name: str) -> Image.Image:
     """从wiki缓存获取角色头像"""
-    from ..bbb_wiki.resource_update import alias_to_char_name, char_name_to_content_id
+    from ..bbb_alias.name_convert import alias_to_char_name, char_name_to_content_id
 
     try:
         standard_name = alias_to_char_name(char_name)
@@ -144,6 +144,7 @@ def _draw_user_header(
         bar_x = (W - bar_w) // 2
     else:
         bar_x = 50
+        bar_w = 1300
         bar_h = 192
 
     # 累计积分显示
