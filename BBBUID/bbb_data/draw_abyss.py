@@ -5,10 +5,12 @@ from typing import Dict, List, Optional
 
 from PIL import Image, ImageDraw, ImageFont
 
+from gsuid_core.utils.fonts.fonts import core_font
 from gsuid_core.utils.image.convert import convert_img
 
 from ..utils.RESOURCE_PATH import WIKI_PATH
 from .avatar_utils import get_cached_avatar
+from .draw_note import W
 
 # --- 常量定义 ---
 
@@ -66,6 +68,12 @@ ACCENT_BLUE = (100, 150, 255, 255)
 CHAR_ICON_CACHE_DIR = WIKI_PATH / "角色" / "icons"
 
 
+_font_cache: dict[int, ImageFont.FreeTypeFont] = {}
+_italic_font_cache: dict[int, ImageFont.FreeTypeFont] = {}
+
+SKEW = 0.25  # italic slant factor
+
+
 def _load_res(filename: str) -> Optional[Image.Image]:
     """加载资源文件"""
     path = ABYSS_RES_DIR / filename
@@ -75,31 +83,56 @@ def _load_res(filename: str) -> Optional[Image.Image]:
 
 
 def _font(size: int) -> ImageFont.FreeTypeFont:
-    """加载字体"""
-    font_path = Path(__file__).parent / "res" / "font" / "mh3.ttf"
-    if font_path.exists():
-        return ImageFont.truetype(str(font_path), size)
-    return ImageFont.load_default()
+    if size not in _font_cache:
+        _font_cache[size] = core_font(size)
+    return _font_cache[size]
 
 
 def _ifont(size: int) -> ImageFont.FreeTypeFont:
-    """加载斜体字体"""
-    font_path = Path(__file__).parent / "res" / "font" / "mh3_bold.ttf"
-    if font_path.exists():
-        return ImageFont.truetype(str(font_path), size)
-    return _font(size)
+    if size not in _italic_font_cache:
+        _italic_font_cache[size] = core_font(size)
+    return _italic_font_cache[size]
 
 
 def _draw_italic_text(
     canvas: Image.Image,
-    xy: tuple,
+    xy: tuple[float, float],
     text: str,
     font: ImageFont.FreeTypeFont,
-    fill: tuple,
+    fill: tuple[int, ...],
+    anchor: str | None = None,
 ) -> None:
-    """绘制斜体文字"""
+    """Draw text with an italic slant by applying an affine skew transform."""
+    if not text:
+        return
+
+    PAD = 16
+
     draw = ImageDraw.Draw(canvas)
-    draw.text(xy, text, font=font, fill=fill)
+    glyph_bbox = draw.textbbox((0, 0), text, font=font)
+    gx0, gy0, gx1, gy1 = glyph_bbox
+    gw = gx1 - gx0
+    gh = gy1 - gy0
+
+    tmp_w = gw + PAD + int(gh * SKEW) + PAD
+    tmp_h = gh + PAD + PAD
+    ink_x = PAD - gx0
+    ink_y = PAD - gy0
+
+    tmp = Image.new("RGBA", (tmp_w, tmp_h), (0, 0, 0, 0))
+    tmp_draw = ImageDraw.Draw(tmp)
+    tmp_draw.text((ink_x, ink_y), text, font=font, fill=fill)
+
+    pivot_y = PAD + gh
+    skewed = tmp.transform(
+        (tmp_w, tmp_h),
+        Image.AFFINE,
+        (1, SKEW, -SKEW * pivot_y, 0, 1, 0),
+        Image.Resampling.BICUBIC,
+    )
+
+    bbox = draw.textbbox(xy, text, font=font, anchor=anchor)
+    canvas.alpha_composite(skewed, (bbox[0] - PAD, bbox[1] - PAD))
 
 
 async def _get_char_icon(char_name: str) -> Image.Image:
@@ -131,14 +164,13 @@ def _draw_user_header(
     cumulative_score: int = 0,
 ) -> int:
     """绘制玩家信息条 (从draw_note.py复用)"""
-    from .draw_note import _draw_player_info, W
+    from .draw_note import _draw_player_info
 
-    # 调用note中的玩家信息绘制函数
     _draw_player_info(
         canvas, y, None, nickname, uid, level, active_days, rating, avatar_img
     )
 
-    # 在信息条右侧添加累计积分
+    # 累计积分显示 — 叠加在信息条右侧
     draw = ImageDraw.Draw(canvas)
     info_bar = _load_res("player_info_bar_long.png")
     if info_bar:
@@ -149,7 +181,6 @@ def _draw_user_header(
         bar_w = 1300
         bar_h = 192
 
-    # 累计积分显示
     score_x = bar_x + bar_w - 340 - 180
     score_y = y + bar_h // 2 - 20
     draw.text((score_x, score_y), str(cumulative_score), font=_font(36), fill=TEXT_WHITE)
@@ -237,13 +268,13 @@ async def _draw_abyss_record(
     lineup = report.get("lineup", [])
 
     # 4. 绘制段位名称 (左上角)
-    draw.text((30, y_offset + 40), level_name, font=_ifont(40), fill=TEXT_WHITE)
+    _draw_italic_text(canvas, (30, y_offset + 40), level_name, _ifont(40), TEXT_WHITE)
 
     # 5. 绘制积分 (右上角)
     score_text = f"积分: {score}"
     score_bbox = draw.textbbox((0, 0), score_text, font=_font(36))
     score_w = score_bbox[2] - score_bbox[0]
-    draw.text((1400 - 200 - score_w, y_offset + 40), score_text, font=_font(36), fill=TEXT_WHITE)
+    _draw_italic_text(canvas, (1400 - 200 - score_w, y_offset + 40), score_text, _font(36), TEXT_WHITE)
 
     # 6. 绘制角色头像 (从wiki缓存加载)
     char_x = 30
@@ -261,11 +292,11 @@ async def _draw_abyss_record(
     info_y = y_offset + 100
 
     # 排名
-    draw.text((info_x, info_y), f"排名: {rank}", font=_font(28), fill=TEXT_WHITE)
+    _draw_italic_text(canvas, (info_x, info_y), f"排名: {rank}", _font(28), TEXT_WHITE)
     info_y += 45
 
     # 段位
-    draw.text((info_x, info_y), f"段位: {level_name}", font=_font(28), fill=TEXT_WHITE)
+    _draw_italic_text(canvas, (info_x, info_y), f"段位: {level_name}", _font(28), TEXT_WHITE)
     info_y += 45
 
     # 杯数
@@ -273,14 +304,14 @@ async def _draw_abyss_record(
     if settled_cup != 0:
         cup_change = f"({settled_cup:+d})"
         cup_text += cup_change
-    draw.text((info_x, info_y), cup_text, font=_font(28), fill=TEXT_WHITE)
+    _draw_italic_text(canvas, (info_x, info_y), cup_text, _font(28), TEXT_WHITE)
     info_y += 45
 
     # 结算时间
     ts = int(report.get("updated_time_second", 0))
     dt = datetime.fromtimestamp(ts)
     time_text = f"结算时间: {dt.year}.{dt.month:02d}.{dt.day:02d}"
-    draw.text((info_x, info_y), time_text, font=_font(28), fill=TEXT_WHITE)
+    _draw_italic_text(canvas, (info_x, info_y), time_text, _font(28), TEXT_WHITE)
 
     return 480  # bgb.png高度
 
@@ -292,7 +323,6 @@ async def draw_abyss(
     user_avatar: Image.Image | None = None,
 ) -> Image.Image:
     """绘制深渊战报图片"""
-    from .draw_note import W
 
     reports = data.get("reports", [])
     if not reports:
@@ -324,14 +354,8 @@ async def draw_abyss(
     rating = preference.get("comprehensive_rating", "C")
     cumulative_score = preference.get("comprehensive_score", 0)
 
-    # 计算画布高度
-    # 玩家信息条: 192px
-    # 折线图: 480px
-    # 挑战记录: 480px * 4 = 1920px
-    # 间隔: 30px * 4 = 120px
-    # footer: 62px
-    # 底部留白: 40px
-    canvas_h = 40 + 192 + 30 + 480 + 30 + (480 + 20) * 4 + 30 + 62 + 40
+    # 计算画布高度 (匹配plan布局: y=40 info, y=250 chart, y=750/1250/1750/2250 cards, y=2750 footer)
+    canvas_h = 40 + 192 + 18 + 480 + 20 + (480 + 20) * 4 + 20 + 62 + 20  # 2812
 
     # 创建画布
     canvas = Image.new("RGBA", (W, canvas_h), (0, 0, 0, 255))
@@ -347,11 +371,11 @@ async def draw_abyss(
         canvas, y_pos, nickname, uid, level, active_days, rating,
         user_avatar, cumulative_score
     )
-    y_pos += bar_h + 30
+    y_pos += bar_h + 18  # plan: y=250, info bottom=40+192=232, gap=18
 
     # 3. 绘制折线图
     chart_h = _draw_line_chart(canvas, all_reports, y_pos)
-    y_pos += chart_h + 30
+    y_pos += chart_h + 20  # plan: y=750, chart bottom=250+480=730, gap=20
 
     # 4. 绘制挑战记录卡片
     for report in display_reports:
@@ -359,13 +383,13 @@ async def draw_abyss(
         y_pos += record_h + 20
 
     # 5. 绘制footer
-    y_pos += 10
+    y_pos += 20  # gap before footer
     footer = Image.open(Path(__file__).parent / "footer.png").convert("RGBA")
     footer_x = (W - footer.width) // 2
     canvas.paste(footer, (footer_x, y_pos), footer)
 
     # 6. 裁剪空白区域
-    final_h = y_pos + footer.height + 40
+    final_h = y_pos + footer.height + 20
     canvas = canvas.crop((0, 0, W, final_h))
 
     return await convert_img(canvas)
