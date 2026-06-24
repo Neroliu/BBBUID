@@ -9,7 +9,7 @@ from gsuid_core.utils.fonts.fonts import core_font
 from gsuid_core.utils.image.convert import convert_img
 
 from .avatar_utils import get_cached_avatar, draw_decorated_avatar
-from .draw_character import draw_character_card
+from .draw_character import draw_character_card, _get_cached_star_icon, _add_rounded_corners, CHAR_RES_DIR
 from .draw_note import W, _draw_player_info
 from ..utils.char_data_cache import load_char_data
 
@@ -132,6 +132,81 @@ def _draw_italic_text(
     canvas.alpha_composite(skewed, (bbox[0] - PAD, bbox[1] - PAD))
 
 
+async def _draw_elf_card(
+    canvas: Image.Image,
+    x: int,
+    y: int,
+    elf: Dict,
+    scale: float = 0.65,
+) -> None:
+    """绘制协同者卡片 (65%角色卡片大小，同样式)"""
+    from io import BytesIO
+    import httpx
+
+    card_w = int(182 * scale)
+    card_h = int(276 * scale)
+
+    # 卡片背景
+    bg_path = CHAR_RES_DIR / "avatar_bg.png"
+    if bg_path.exists():
+        card = Image.open(bg_path).convert("RGBA")
+        card = card.resize((card_w, card_h), Image.Resampling.LANCZOS)
+    else:
+        card = Image.new("RGBA", (card_w, card_h), (28, 28, 38, 255))
+    draw = ImageDraw.Draw(card)
+
+    # 获取协同者头像 (URL → 本地缓存)
+    avatar_url = elf.get("avatar", "")
+    elf_icon = None
+    if avatar_url:
+        cache_dir = WIKI_PATH / "ELF" / "icons"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        elf_id = elf.get("id", "")
+        cache_path = cache_dir / f"{elf_id}.png" if elf_id else None
+
+        if cache_path and cache_path.exists():
+            try:
+                elf_icon = Image.open(cache_path).convert("RGBA")
+            except Exception:
+                pass
+
+        if elf_icon is None:
+            try:
+                async with httpx.AsyncClient(follow_redirects=True) as client:
+                    resp = await client.get(avatar_url, timeout=15)
+                    if resp.status_code == 200:
+                        elf_icon = Image.open(BytesIO(resp.content)).convert("RGBA")
+                        if cache_path:
+                            elf_icon.save(str(cache_path), "PNG")
+            except Exception:
+                pass
+
+    if elf_icon is None:
+        elf_icon = Image.new("RGBA", (100, 100), (100, 100, 100, 255))
+
+    # 缩放头像
+    icon_width = card_w - int(23 * scale)
+    icon_height = elf_icon.height * icon_width // elf_icon.width + int(4 * scale)
+    elf_icon = elf_icon.resize((icon_width, icon_height), Image.Resampling.LANCZOS)
+    elf_icon = _add_rounded_corners(elf_icon, 1)
+    icon_x = (card_w - icon_width) // 2 + 1
+    icon_y = int(17 * scale)
+    card.alpha_composite(elf_icon, (icon_x, icon_y))
+
+    # 星级图标居中
+    star = elf.get("star", 0)
+    star_icon = await _get_cached_star_icon(star)
+    star_render_h = int(32 * scale)
+    if star_icon:
+        orig_w, orig_h = star_icon.size
+        s = star_render_h / orig_h
+        star_icon = star_icon.resize((int(orig_w * s), star_render_h), Image.Resampling.LANCZOS)
+        star_x = (card_w - star_icon.width) // 2
+        card.alpha_composite(star_icon, (star_x, icon_y + icon_height + 2))
+
+    canvas.alpha_composite(card, (x, y))
+
+
 def _draw_line_chart(
     canvas: Image.Image,
     reports: List[Dict],
@@ -223,6 +298,8 @@ async def _draw_abyss_record(
         char_levels = {}
     char_x = 30
     char_y = y_offset + 100
+    char_gap = 10
+    card_w = 182  # draw_character_card default width
     for char in lineup[:4]:
         char_name = char.get("name", "")
         if char_name:
@@ -230,7 +307,16 @@ async def _draw_abyss_record(
             level = char_levels.get(char_name, 1)
             card = await draw_character_card(char_name, star, level, show_name=False)
             canvas.alpha_composite(card, (char_x, char_y))
-            char_x += card.width + 10
+            char_x += card.width + char_gap
+
+    # 6b. 绘制协同者 (ELF) — 角色右侧，间距扩大一倍，底部对齐，65%大小
+    elf = report.get("elf")
+    if elf:
+        elf_card_w = int(182 * 0.65)
+        elf_x = char_x + (card_w + char_gap)  # 间距扩大一倍
+        elf_card_h = int(276 * 0.65)
+        elf_y = y_offset + 100 + (276 - elf_card_h)  # 底部对齐
+        await _draw_elf_card(canvas, elf_x, elf_y, elf)
 
     # 7. 绘制右侧信息 (排名、段位、杯数、结算时间)
     info_x = 1400 - 200
