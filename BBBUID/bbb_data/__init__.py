@@ -148,18 +148,26 @@ async def send_abyss_info(bot: Bot, ev: Event):
     if not reports:
         return await bot.send("[崩坏3] 暂无深渊战报数据")
 
-    lines = ["[崩坏3] 深渊战报"]
-    for i, report in enumerate(reports):
-        score = report.get("score", "?")
-        boss = report.get("boss", {})
-        boss_name = boss.get("name", "未知")
-        lineup = report.get("lineup", [])
-        lineup_names = " ".join([c.get("name", "?") for c in lineup[:3]])
-        updated = _fmt_ts(report.get("updated_time_second", "0"))
-        lines.append(f"  #{i+1} {boss_name} | 分数:{score} | {lineup_names}")
-        lines.append(f"       更新于{updated}")
+    try:
+        from .avatar_utils import get_cached_avatar
+        from .draw_abyss import draw_abyss
 
-    await bot.send("\n".join(lines))
+        user_avatar = await get_cached_avatar(ev, ev.user_id)
+        img = await draw_abyss(ev, uid, data, user_avatar)
+        await bot.send(img)
+    except Exception as e:
+        logger.warning(f"[崩坏3] 深渊图片渲染失败，回退到文本: {e}")
+        lines = ["[崩坏3] 深渊战报"]
+        for i, report in enumerate(reports):
+            score = report.get("score", "?")
+            boss = report.get("boss", {})
+            boss_name = boss.get("name", "未知")
+            lineup = report.get("lineup", [])
+            lineup_names = " ".join([c.get("name", "?") for c in lineup[:3]])
+            updated = _fmt_ts(report.get("updated_time_second", "0"))
+            lines.append(f"  #{i+1} {boss_name} | 分数:{score} | {lineup_names}")
+            lines.append(f"       更新于{updated}")
+        await bot.send("\n".join(lines))
 
 
 # --- 战场 (Battlefield/Memorial Arena) ---
