@@ -11,6 +11,7 @@ from gsuid_core.utils.image.convert import convert_img
 from .avatar_utils import get_cached_avatar, draw_decorated_avatar
 from .draw_character import draw_character_card
 from .draw_note import W, _draw_player_info
+from ..utils.char_data_cache import load_char_data
 
 # --- 常量定义 ---
 
@@ -184,6 +185,7 @@ async def _draw_abyss_record(
     canvas: Image.Image,
     report: Dict,
     y_offset: int,
+    char_levels: Dict[str, int] | None = None,
 ) -> int:
     """绘制单个挑战记录卡片"""
     # 1. 贴卡片背景
@@ -217,13 +219,16 @@ async def _draw_abyss_record(
     _draw_italic_text(canvas, (1400 - 200 - score_w, y_offset + 40), score_text, _font(36), TEXT_WHITE)
 
     # 6. 绘制角色卡片 — 直接复用bbb查询的渲染代码，去掉名称
+    if char_levels is None:
+        char_levels = {}
     char_x = 30
     char_y = y_offset + 100
     for char in lineup[:4]:
         char_name = char.get("name", "")
         if char_name:
             star = char.get("star", 0)
-            card = await draw_character_card(char_name, star, 1, show_name=False)
+            level = char_levels.get(char_name, 1)
+            card = await draw_character_card(char_name, star, level, show_name=False)
             canvas.alpha_composite(card, (char_x, char_y))
             char_x += card.width + 10
 
@@ -289,6 +294,16 @@ async def draw_abyss(
     active_days = stats.get("active_day_number", 0)
     rating = preference.get("comprehensive_rating", "C")
 
+    # 从角色缓存查等级 (bbb查询路径)
+    char_levels: Dict[str, int] = {}
+    char_data = load_char_data(uid)
+    if char_data:
+        for item in char_data:
+            avatar = item.get("character", {}).get("avatar", {})
+            name = avatar.get("name")
+            if name:
+                char_levels[name] = avatar.get("level", 1)
+
     # 计算画布高度 — 基于实际内容，不额外加底部padding
     # y=40 info(192) + gap(18) + chart(480) + gap(20) + cards(4*500) + gap(20) + footer(62)
     canvas_h = 40 + 192 + 18 + 480 + 20 + (480 + 20) * 4 + 20 + 62  # 2792
@@ -319,7 +334,7 @@ async def draw_abyss(
 
     # 4. 绘制挑战记录卡片
     for report in display_reports:
-        record_h = await _draw_abyss_record(canvas, report, y_pos)
+        record_h = await _draw_abyss_record(canvas, report, y_pos, char_levels)
         y_pos += record_h + 20
 
     # 5. 绘制footer
