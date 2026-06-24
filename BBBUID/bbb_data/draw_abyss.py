@@ -163,16 +163,16 @@ def _draw_user_header(
     avatar_img: Image.Image | None = None,
     cumulative_score: int = 0,
 ) -> int:
-    """绘制玩家信息条 (从draw_note.py复用)"""
-    from .draw_note import _draw_player_info
+    """绘制玩家信息条 — 复用draw_note的_player_info，叠加累计积分"""
+    from .draw_note import _draw_player_info, _load_res as _load_note_res
 
     _draw_player_info(
         canvas, y, None, nickname, uid, level, active_days, rating, avatar_img
     )
 
-    # 累计积分显示 — 叠加在信息条右侧
+    # 叠加累计积分 (定位到信息条右侧)
     draw = ImageDraw.Draw(canvas)
-    info_bar = _load_res("player_info_bar_long.png")
+    info_bar = _load_note_res("player_info_bar_long.png")
     if info_bar:
         bar_w, bar_h = info_bar.size
         bar_x = (W - bar_w) // 2
@@ -181,7 +181,7 @@ def _draw_user_header(
         bar_w = 1300
         bar_h = 192
 
-    score_x = bar_x + bar_w - 340 - 180
+    score_x = bar_x + bar_w - 520
     score_y = y + bar_h // 2 - 20
     draw.text((score_x, score_y), str(cumulative_score), font=_font(36), fill=TEXT_WHITE)
     draw.text((score_x, score_y + 45), "累计积分", font=_font(20), fill=TEXT_DIM)
@@ -198,7 +198,7 @@ def _draw_line_chart(
     # 1. 贴折线图背景 (已包含横纹)
     line_bg = _load_res("line_bg.png")
     if line_bg:
-        canvas.paste(line_bg, (0, y_offset))
+        canvas.paste(line_bg, (0, y_offset), line_bg)
 
     # 2. 获取8个数据点的坐标
     points = []
@@ -247,7 +247,7 @@ async def _draw_abyss_record(
     # 1. 贴卡片背景
     bgb = _load_res("bgb.png")
     if bgb:
-        canvas.paste(bgb, (0, y_offset))
+        canvas.paste(bgb, (0, y_offset), bgb)
 
     # 2. 叠加蒙版
     monster_mask = _load_res("monster_mask.png")
