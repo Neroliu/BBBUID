@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from PIL import Image, ImageDraw, ImageFont
-from gsuid_core.utils.image import get_user_avatar
 
 from ..utils.RESOURCE_PATH import WIKI_PATH
 from .avatar_utils import draw_decorated_avatar, get_cached_avatar
