@@ -10,7 +10,7 @@ from gsuid_core.utils.image.convert import convert_img
 
 from ..utils.RESOURCE_PATH import WIKI_PATH
 from .avatar_utils import get_cached_avatar, draw_decorated_avatar
-from .draw_character import draw_character_card, _get_cached_star_icon, _add_rounded_corners, CHAR_RES_DIR
+from .draw_character import draw_character_card, _add_rounded_corners, CHAR_RES_DIR, STAR_ICON_RES_DIR
 from .draw_note import W, _draw_player_info
 from ..utils.char_data_cache import load_char_data
 
@@ -65,6 +65,12 @@ CHART_X_SPACING = 151
 TEXT_WHITE = (255, 255, 255, 255)
 TEXT_DIM = (180, 180, 180, 255)
 ACCENT_BLUE = (100, 150, 255, 255)
+
+ELF_STAR_TO_ICON = {
+    1: "StarElf_S.png",
+    2: "StarElf_SS.png",
+    3: "StarElf_SSS.png",
+}
 
 _font_cache: dict[int, ImageFont.FreeTypeFont] = {}
 _italic_font_cache: dict[int, ImageFont.FreeTypeFont] = {}
@@ -194,16 +200,21 @@ async def _draw_elf_card(
     icon_y = int(17 * scale)
     card.alpha_composite(elf_icon, (icon_x, icon_y))
 
-    # 星级图标居中
+    # 星级图标居中 (ELF映射: 1=S, 2=SS, 3=SSS)
     star = elf.get("star", 0)
-    star_icon = await _get_cached_star_icon(star)
+    star_icon_name = ELF_STAR_TO_ICON.get(star, "StarElf_S.png")
+    star_path = STAR_ICON_RES_DIR / star_icon_name
     star_render_h = int(32 * scale)
-    if star_icon:
-        orig_w, orig_h = star_icon.size
-        s = star_render_h / orig_h
-        star_icon = star_icon.resize((int(orig_w * s), star_render_h), Image.Resampling.LANCZOS)
-        star_x = (card_w - star_icon.width) // 2
-        card.alpha_composite(star_icon, (star_x, icon_y + icon_height + 2))
+    if star_path.exists():
+        try:
+            star_icon = Image.open(star_path).convert("RGBA")
+            orig_w, orig_h = star_icon.size
+            s = star_render_h / orig_h
+            star_icon = star_icon.resize((int(orig_w * s), star_render_h), Image.Resampling.LANCZOS)
+            star_x = (card_w - star_icon.width) // 2
+            card.alpha_composite(star_icon, (star_x, icon_y + icon_height + 2))
+        except Exception:
+            pass
 
     canvas.alpha_composite(card, (x, y))
 
