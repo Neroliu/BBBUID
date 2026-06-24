@@ -10,7 +10,7 @@ from gsuid_core.utils.image.convert import convert_img
 
 from ..utils.RESOURCE_PATH import WIKI_PATH
 from .avatar_utils import get_cached_avatar
-from .draw_note import W
+from .draw_note import W, _draw_player_info
 
 # --- 常量定义 ---
 
@@ -64,9 +64,8 @@ TEXT_WHITE = (255, 255, 255, 255)
 TEXT_DIM = (180, 180, 180, 255)
 ACCENT_BLUE = (100, 150, 255, 255)
 
-# 角色头像缓存目录
+# 角色头像缓存目录 (from draw_character.py)
 CHAR_ICON_CACHE_DIR = WIKI_PATH / "角色" / "icons"
-
 
 _font_cache: dict[int, ImageFont.FreeTypeFont] = {}
 _italic_font_cache: dict[int, ImageFont.FreeTypeFont] = {}
@@ -135,58 +134,40 @@ def _draw_italic_text(
     canvas.alpha_composite(skewed, (bbox[0] - PAD, bbox[1] - PAD))
 
 
-async def _get_char_icon(char_name: str) -> Image.Image:
-    """从wiki缓存获取角色头像"""
+def _add_rounded_corners(img: Image.Image, radius: int) -> Image.Image:
+    """Add rounded corners to an image."""
+    w, h = img.size
+    mask = Image.new("L", (w, h), 0)
+    draw = ImageDraw.Draw(mask)
+    draw.rounded_rectangle((0, 0, w - 1, h - 1), radius=radius, fill=255)
+    result = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    result.paste(img, (0, 0), mask)
+    return result
+
+
+async def _get_char_icon(char_name: str, size: int = 120) -> Image.Image:
+    """从wiki缓存获取角色头像 (from draw_character.py)"""
     from ..bbb_alias.name_convert import alias_to_char_name, char_name_to_content_id
 
-    try:
-        standard_name = alias_to_char_name(char_name)
-        content_id = char_name_to_content_id(standard_name)
+    standard_name = alias_to_char_name(char_name)
+    if not standard_name:
+        standard_name = char_name
+
+    content_id = char_name_to_content_id(standard_name)
+    if content_id:
         cache_path = CHAR_ICON_CACHE_DIR / f"{content_id}.png"
         if cache_path.exists():
-            return Image.open(cache_path).convert("RGBA")
-    except Exception:
-        pass
+            try:
+                icon = Image.open(cache_path).convert("RGBA")
+                icon_w = size
+                icon_h = icon.height * icon_w // icon.width
+                icon = icon.resize((icon_w, icon_h), Image.Resampling.LANCZOS)
+                icon = _add_rounded_corners(icon, 1)
+                return icon
+            except Exception:
+                pass
 
-    # 返回灰色占位图
-    return Image.new("RGBA", (120, 120), (100, 100, 100, 255))
-
-
-def _draw_user_header(
-    canvas: Image.Image,
-    y: int,
-    nickname: str,
-    uid: str,
-    level: int,
-    active_days: int,
-    rating: str,
-    avatar_img: Image.Image | None = None,
-    cumulative_score: int = 0,
-) -> int:
-    """绘制玩家信息条 — 复用draw_note的_player_info，叠加累计积分"""
-    from .draw_note import _draw_player_info, _load_res as _load_note_res
-
-    _draw_player_info(
-        canvas, y, None, nickname, uid, level, active_days, rating, avatar_img
-    )
-
-    # 叠加累计积分 (定位到信息条右侧)
-    draw = ImageDraw.Draw(canvas)
-    info_bar = _load_note_res("player_info_bar_long.png")
-    if info_bar:
-        bar_w, bar_h = info_bar.size
-        bar_x = (W - bar_w) // 2
-    else:
-        bar_x = 50
-        bar_w = 1300
-        bar_h = 192
-
-    score_x = bar_x + bar_w - 520
-    score_y = y + bar_h // 2 - 20
-    draw.text((score_x, score_y), str(cumulative_score), font=_font(36), fill=TEXT_WHITE)
-    draw.text((score_x, score_y + 45), "累计积分", font=_font(20), fill=TEXT_DIM)
-
-    return bar_h
+    return Image.new("RGBA", (size, size), (100, 100, 100, 255))
 
 
 def _draw_line_chart(
@@ -263,8 +244,6 @@ async def _draw_abyss_record(
     rank = report.get("rank", 0)
     cup_number = report.get("cup_number", 0)
     settled_cup = report.get("settled_cup_number", 0)
-    boss = report.get("boss", {})
-    boss_name = boss.get("name", "未知")
     lineup = report.get("lineup", [])
 
     # 4. 绘制段位名称 (左上角)
@@ -276,30 +255,26 @@ async def _draw_abyss_record(
     score_w = score_bbox[2] - score_bbox[0]
     _draw_italic_text(canvas, (1400 - 200 - score_w, y_offset + 40), score_text, _font(36), TEXT_WHITE)
 
-    # 6. 绘制角色头像 (从wiki缓存加载)
+    # 6. 绘制角色头像 (from draw_character.py, without name)
     char_x = 30
     char_y = y_offset + 130
-    for char in lineup[:4]:  # 最多4个
+    for char in lineup[:4]:
         char_name = char.get("name", "")
         if char_name:
-            icon = await _get_char_icon(char_name)
-            icon = icon.resize((120, 120), Image.Resampling.LANCZOS)
-            canvas.paste(icon, (char_x, char_y), icon)
+            icon = await _get_char_icon(char_name, 120)
+            canvas.alpha_composite(icon, (char_x, char_y))
             char_x += 140
 
     # 7. 绘制右侧信息 (排名、段位、杯数、结算时间)
     info_x = 1400 - 200
     info_y = y_offset + 100
 
-    # 排名
     _draw_italic_text(canvas, (info_x, info_y), f"排名: {rank}", _font(28), TEXT_WHITE)
     info_y += 45
 
-    # 段位
     _draw_italic_text(canvas, (info_x, info_y), f"段位: {level_name}", _font(28), TEXT_WHITE)
     info_y += 45
 
-    # 杯数
     cup_text = f"杯数: {cup_number}"
     if settled_cup != 0:
         cup_change = f"({settled_cup:+d})"
@@ -307,7 +282,6 @@ async def _draw_abyss_record(
     _draw_italic_text(canvas, (info_x, info_y), cup_text, _font(28), TEXT_WHITE)
     info_y += 45
 
-    # 结算时间
     ts = int(report.get("updated_time_second", 0))
     dt = datetime.fromtimestamp(ts)
     time_text = f"结算时间: {dt.year}.{dt.month:02d}.{dt.day:02d}"
@@ -352,12 +326,11 @@ async def draw_abyss(
     level = role.get("level", 0)
     active_days = stats.get("active_day_number", 0)
     rating = preference.get("comprehensive_rating", "C")
-    cumulative_score = preference.get("comprehensive_score", 0)
 
-    # 计算画布高度 (匹配plan布局: y=40 info, y=250 chart, y=750/1250/1750/2250 cards, y=2750 footer)
-    canvas_h = 40 + 192 + 18 + 480 + 20 + (480 + 20) * 4 + 20 + 62 + 20  # 2812
+    # 计算画布高度 — 基于实际内容，不额外加底部padding
+    # y=40 info(192) + gap(18) + chart(480) + gap(20) + cards(4*500) + gap(20) + footer(62)
+    canvas_h = 40 + 192 + 18 + 480 + 20 + (480 + 20) * 4 + 20 + 62  # 2792
 
-    # 创建画布
     canvas = Image.new("RGBA", (W, canvas_h), (0, 0, 0, 255))
 
     # 1. 贴画布背景
@@ -365,17 +338,16 @@ async def draw_abyss(
     if bg:
         canvas.paste(bg, (0, 0))
 
-    # 2. 绘制玩家信息条
+    # 2. 绘制玩家信息条 — 直接复用draw_note的代码
     y_pos = 40
-    bar_h = _draw_user_header(
-        canvas, y_pos, nickname, uid, level, active_days, rating,
-        user_avatar, cumulative_score
+    _draw_player_info(
+        canvas, y_pos, None, nickname, uid, level, active_days, rating, user_avatar
     )
-    y_pos += bar_h + 18  # plan: y=250, info bottom=40+192=232, gap=18
+    y_pos += 192 + 18  # info bar height + gap to chart
 
     # 3. 绘制折线图
     chart_h = _draw_line_chart(canvas, all_reports, y_pos)
-    y_pos += chart_h + 20  # plan: y=750, chart bottom=250+480=730, gap=20
+    y_pos += chart_h + 20
 
     # 4. 绘制挑战记录卡片
     for report in display_reports:
@@ -383,13 +355,13 @@ async def draw_abyss(
         y_pos += record_h + 20
 
     # 5. 绘制footer
-    y_pos += 20  # gap before footer
+    y_pos += 20
     footer = Image.open(Path(__file__).parent / "footer.png").convert("RGBA")
     footer_x = (W - footer.width) // 2
     canvas.paste(footer, (footer_x, y_pos), footer)
 
-    # 6. 裁剪空白区域
-    final_h = y_pos + footer.height + 20
+    # 6. 裁剪到footer底部 — 不加额外padding，避免黑边
+    final_h = y_pos + footer.height
     canvas = canvas.crop((0, 0, W, final_h))
 
     return await convert_img(canvas)
