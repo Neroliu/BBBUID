@@ -224,7 +224,7 @@ async def _draw_elf_card(
             s = star_render_h / orig_h
             star_icon = star_icon.resize((int(orig_w * s), star_render_h), Image.Resampling.LANCZOS)
             star_x = (card_w - star_icon.width) // 2
-            card.alpha_composite(star_icon, (star_x, icon_y + icon_height + 7))
+            card.alpha_composite(star_icon, (star_x, icon_y + icon_height + 12))
         except Exception:
             pass
 
