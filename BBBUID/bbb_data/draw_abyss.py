@@ -274,7 +274,7 @@ def _draw_line_chart(
         text_bbox = draw.textbbox((0, 0), date, font=date_font)
         text_w = text_bbox[2] - text_bbox[0]
         text_x = x - text_w // 2
-        draw.text((text_x, y_offset + 398), date, fill="white", font=date_font)
+        draw.text((text_x, y_offset + 403), date, fill="white", font=date_font)
 
     return LINE_BG_H
 
@@ -414,8 +414,8 @@ async def draw_abyss(
                 char_levels[name] = avatar.get("level", 1)
 
     # 计算画布高度 — 基于实际内容，不额外加底部padding
-    # y=40 info(192) + gap(18) + chart(480) + gap(20) + cards(4*500) + gap(20) + footer(62)
-    canvas_h = 40 + 192 + 18 + 480 + 20 + (480 + 20) * 4 + 20 + 62  # 2792
+    # y=80 info(192) + gap(18) + chart(480) + gap(20) + cards(4*500) + gap(20) + footer(62)
+    canvas_h = 80 + 192 + 18 + 480 + 20 + (480 + 20) * 4 + 20 + 62  # 2832
 
     canvas = Image.new("RGBA", (W, canvas_h), (0, 0, 0, 255))
 
@@ -425,7 +425,7 @@ async def draw_abyss(
         canvas.paste(bg, (0, 0))
 
     # 2. 绘制玩家信息条 — 直接复用draw_note的代码
-    y_pos = 40
+    y_pos = 80
     avatar_img = None
     if user_avatar is not None:
         try:
