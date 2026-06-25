@@ -247,7 +247,7 @@ def _draw_line_chart(
     # 3. 绘制连线 (白色线条)
     draw = ImageDraw.Draw(canvas)
     if len(points) > 1:
-        draw.line(points, fill="#1AC5FF", width=3)
+        draw.line(points, fill="#1AC5FF", width=5)
 
     # 4. 贴数据点 (dot.png 14x14)
     dot = _load_res("dot.png")
@@ -414,8 +414,8 @@ async def draw_abyss(
                 char_levels[name] = avatar.get("level", 1)
 
     # 计算画布高度 — 基于实际内容，不额外加底部padding
-    # y=65 info(192) + gap(33) + chart(480) + gap(20) + cards(4*500) + gap(20) + footer(62)
-    canvas_h = 65 + 192 + 33 + 480 + 20 + (480 + 20) * 4 + 20 + 62  # 2832
+    # y=75 info(192) + gap(38) + chart(480) + gap(20) + cards(4*500) + gap(20) + footer(62)
+    canvas_h = 75 + 192 + 38 + 480 + 20 + (480 + 20) * 4 + 20 + 62  # 2847
 
     canvas = Image.new("RGBA", (W, canvas_h), (0, 0, 0, 255))
 
@@ -425,7 +425,7 @@ async def draw_abyss(
         canvas.paste(bg, (0, 0))
 
     # 2. 绘制玩家信息条 — 直接复用draw_note的代码
-    y_pos = 65
+    y_pos = 75
     avatar_img = None
     if user_avatar is not None:
         try:
@@ -435,7 +435,7 @@ async def draw_abyss(
     _draw_player_info(
         canvas, y_pos, None, nickname, uid, level, active_days, rating, avatar_img
     )
-    y_pos += 192 + 33  # info bar height + gap to chart
+    y_pos += 192 + 38  # info bar height + gap to chart
 
     # 3. 绘制折线图
     chart_h = _draw_line_chart(canvas, all_reports, y_pos)
