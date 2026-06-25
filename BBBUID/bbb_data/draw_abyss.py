@@ -387,14 +387,15 @@ async def _draw_abyss_record(
     total_h = line_h * 4 + line_gap * 3  # 150px
     info_y = char_y + _CHAR_VIS_BOTTOM - total_h
 
-    # 排名 (斜体数字36px #FEE772, 底部对齐)
+    # 排名 (斜体数字36px #FEE772, 斜体后底部对齐)
     rank_label = "排名: "
     draw.text((info_x, info_y), rank_label, font=info_font, fill=TEXT_WHITE)
     rank_label_w = draw.textlength(rank_label, font=info_font)
     rank_num = str(rank)
-    label_bbox = draw.textbbox((0, 0), rank_label, font=info_font)
-    num_bbox = draw.textbbox((0, 0), rank_num, font=rank_num_font)
-    num_y = info_y + (label_bbox[3] - label_bbox[1]) - (num_bbox[3] - num_bbox[1])
+    # 用同样y绘制，通过textbbox找视觉底部差值来对齐
+    label_th = draw.textbbox((0, 0), rank_label, font=info_font)[3]
+    num_th = draw.textbbox((0, 0), rank_num, font=rank_num_font)[3]
+    num_y = info_y + label_th - num_th - int(num_th * SKEW) + int(label_th * SKEW)
     _draw_italic_text(canvas, (int(info_x + rank_label_w), num_y), rank_num, rank_num_font, (254, 231, 114, 255))
     info_y += line_h + line_gap
 
