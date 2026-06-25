@@ -309,19 +309,22 @@ async def _draw_abyss_record(
     boss = report.get("boss", {})
     boss_name = boss.get("name", "")
 
-    # 4. 绘制标题 (段位名称, 斜体, #FEE772, 55px)
-    _draw_italic_text(canvas, (134, y_offset + 111), level_name, _ifont(55), (254, 231, 114, 255))
+    # 4. 绘制标题 (段位名称, 斜体, #FEE772, 55px, 视觉位置x=134,y=111)
+    title_font = _ifont(55)
+    title_bbox = draw.textbbox((0, 0), level_name, font=title_font)
+    title_gh = title_bbox[3] - title_bbox[1]
+    title_skew = int(title_gh * SKEW)
+    _draw_italic_text(canvas, (134 - title_skew, y_offset + 111), level_name, title_font, (254, 231, 114, 255))
 
-    # 4b. 绘制boss名字 (标题右侧, 底部对齐, 非斜体, 30px)
+    # 4b. 绘制boss名字 (标题右侧+25px, 底部对齐, 非斜体, 30px, #DEDEDE)
     if boss_name:
-        title_bbox = draw.textbbox((0, 0), level_name, font=_ifont(55))
-        title_bottom = y_offset + 111 + (title_bbox[3] - title_bbox[1])
-        title_right = 134 + (title_bbox[2] - title_bbox[0])
+        title_bottom = y_offset + 111 + title_gh
+        title_right = 134 + (title_bbox[2] - title_bbox[0]) + title_skew
         boss_font = _font(30)
         boss_bbox = draw.textbbox((0, 0), boss_name, font=boss_font)
         boss_bottom = boss_bbox[3] - boss_bbox[1]
         boss_y = title_bottom - boss_bottom
-        draw.text((title_right + 10, boss_y), boss_name, font=boss_font, fill=TEXT_WHITE)
+        draw.text((title_right + 25, boss_y), boss_name, font=boss_font, fill=(222, 222, 221, 255))
 
     # 5. 绘制积分 (背景badge + 分数, 非斜体)
     score_badge = _load_res("score_badge.png")
