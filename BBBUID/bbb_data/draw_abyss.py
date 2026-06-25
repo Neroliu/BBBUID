@@ -339,13 +339,12 @@ async def _draw_abyss_record(
         score_y = y_offset + 75 + badge_h // 2 - (score_top + score_bottom) // 2
         draw.text((1018 + 95, score_y), score_text, font=score_font, fill=TEXT_WHITE)
 
-    # 6. 绘制角色卡片 — 标题下方40px, 与标题左对齐
+    # 6. 绘制角色卡片 — 标题下方20px, 与标题左对齐, 间距5px
     if char_levels is None:
         char_levels = {}
-    title_bbox = draw.textbbox((0, 0), level_name, font=_ifont(55))
     char_x = 134
-    char_y = y_offset + 111 + (title_bbox[3] - title_bbox[1]) + 40
-    char_gap = 10
+    char_y = title_draw_y + title_th + 20
+    char_gap = 5
     card_w = 182  # draw_character_card default width
     for char in lineup[:4]:
         char_name = char.get("name", "")
@@ -356,12 +355,13 @@ async def _draw_abyss_record(
             canvas.alpha_composite(card, (char_x, char_y))
             char_x += card.width + char_gap
 
-    # 6b. 绘制协同者 (ELF) — 角色右侧，间距扩大一倍，底部对齐，65%大小
+    # 6b. 绘制协同者 (ELF) — 头像区域右侧15px, 底部对齐, 65%大小
     elf = report.get("elf")
     if elf:
-        elf_x = char_x + (card_w + char_gap)  # 间距扩大一倍
+        chars_right = 134 + card_w * 4 + char_gap * 3  # 头像区域右边缘
+        elf_x = chars_right + 15
         elf_card_h = int(276 * 0.65)
-        elf_y = y_offset + 100 + (276 - elf_card_h)  # 底部对齐
+        elf_y = char_y + 276 - elf_card_h  # 底部对齐
         await _draw_elf_card(canvas, elf_x, elf_y, elf)
 
     # 7. 绘制右侧信息 (排名、段位、杯数、结算时间, x=1018)
