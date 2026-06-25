@@ -72,6 +72,18 @@ ELF_STAR_TO_ICON = {
     3: "StarElf_SSS.png",
 }
 
+# 预计算avatar_bg.png可见内容底部 (底部有透明区域)
+_CHAR_BG = Image.open(CHAR_RES_DIR / "avatar_bg.png").convert("RGBA")
+_CHAR_VIS_BOTTOM = next(
+    r for r in range(_CHAR_BG.height - 1, -1, -1)
+    if any(_CHAR_BG.getpixel((c, r))[3] > 0 for c in range(0, _CHAR_BG.width, 10))
+)
+_ELF_BG = _CHAR_BG.resize((round(182 * 0.65), round(276 * 0.65)), Image.Resampling.LANCZOS)
+_ELF_VIS_BOTTOM = next(
+    r for r in range(_ELF_BG.height - 1, -1, -1)
+    if any(_ELF_BG.getpixel((c, r))[3] > 0 for c in range(0, _ELF_BG.width, 10))
+)
+
 _font_cache: dict[int, ImageFont.FreeTypeFont] = {}
 _italic_font_cache: dict[int, ImageFont.FreeTypeFont] = {}
 
@@ -355,13 +367,12 @@ async def _draw_abyss_record(
             canvas.alpha_composite(card, (char_x, char_y))
             char_x += card.width + char_gap
 
-    # 6b. 绘制协同者 (ELF) — 最后一个头像右侧15px, 底部对齐, 65%大小
+    # 6b. 绘制协同者 (ELF) — 最后一个头像右侧15px, 可见内容底部对齐, 65%大小
     elf = report.get("elf")
     if elf:
         last_card_right = char_x - char_gap  # 最后一个头像右边缘
         elf_x = last_card_right + 15
-        elf_card_h = round(276 * 0.65)
-        elf_y = char_y + 276 - elf_card_h - 15  # 底部对齐 (补偿偏移)
+        elf_y = char_y + _CHAR_VIS_BOTTOM - _ELF_VIS_BOTTOM  # 可见内容底部对齐
         await _draw_elf_card(canvas, elf_x, elf_y, elf)
 
     # 7. 绘制右侧信息 (排名、段位、杯数、结算时间, x=1018)
