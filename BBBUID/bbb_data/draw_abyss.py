@@ -236,7 +236,7 @@ def _draw_line_chart(
     for i, report in enumerate(reports):
         x = CHART_X_START + i * CHART_X_SPACING
         level = LEVEL_TO_CHART_Y.get(report.get("settled_level", 7), 3)
-        y = y_offset + CHART_Y_POSITIONS[level] - 40
+        y = y_offset + CHART_Y_POSITIONS[level] - 34
         points.append((x, y))
 
         # 日期格式 mm.dd
@@ -263,8 +263,8 @@ def _draw_line_chart(
         bbox = draw.textbbox((0, 0), label, font=label_font)
         tw = bbox[2] - bbox[0]
         top, bottom = bbox[1], bbox[3]
-        lx = 125 - tw
-        ly = y_offset + y_val - 60 - (top + bottom) // 2
+        lx = 137 - tw
+        ly = y_offset + y_val - 35 - (top + bottom) // 2
         draw.text((lx, ly), label, fill="white", font=label_font)
 
     # 6. 绘制日期文字 (点下方居中, 上移10px)
