@@ -306,15 +306,34 @@ async def _draw_abyss_record(
     cup_number = report.get("cup_number", 0)
     settled_cup = report.get("settled_cup_number", 0)
     lineup = report.get("lineup", [])
+    boss = report.get("boss", {})
+    boss_name = boss.get("name", "")
 
-    # 4. 绘制段位名称 (左上角)
-    _draw_italic_text(canvas, (30, y_offset + 40), level_name, _ifont(40), TEXT_WHITE)
+    # 4. 绘制标题 (段位名称, 斜体, #FEE772, 55px)
+    _draw_italic_text(canvas, (134, y_offset + 111), level_name, _ifont(55), (254, 231, 114, 255))
 
-    # 5. 绘制积分 (右上角)
-    score_text = f"积分: {score}"
-    score_bbox = draw.textbbox((0, 0), score_text, font=_font(36))
-    score_w = score_bbox[2] - score_bbox[0]
-    _draw_italic_text(canvas, (1400 - 200 - score_w, y_offset + 40), score_text, _font(36), TEXT_WHITE)
+    # 4b. 绘制boss名字 (标题右侧, 底部对齐, 非斜体, 30px)
+    if boss_name:
+        title_bbox = draw.textbbox((0, 0), level_name, font=_ifont(55))
+        title_bottom = y_offset + 111 + (title_bbox[3] - title_bbox[1])
+        title_right = 134 + (title_bbox[2] - title_bbox[0])
+        boss_font = _font(30)
+        boss_bbox = draw.textbbox((0, 0), boss_name, font=boss_font)
+        boss_bottom = boss_bbox[3] - boss_bbox[1]
+        boss_y = title_bottom - boss_bottom
+        draw.text((title_right + 10, boss_y), boss_name, font=boss_font, fill=TEXT_WHITE)
+
+    # 5. 绘制积分 (背景badge + 分数, 非斜体)
+    score_badge = _load_res("score_badge.png")
+    if score_badge:
+        canvas.paste(score_badge, (1018, y_offset + 75), score_badge)
+        badge_w, badge_h = score_badge.size
+        score_text = str(score)
+        score_font = _font(30)
+        score_bbox = draw.textbbox((0, 0), score_text, font=score_font)
+        score_th = score_bbox[3] - score_bbox[1]
+        score_y = y_offset + 75 + (badge_h - score_th) // 2
+        draw.text((1018 + 80, score_y), score_text, font=score_font, fill=TEXT_WHITE)
 
     # 6. 绘制角色卡片 — 直接复用bbb查询的渲染代码，去掉名称
     if char_levels is None:
@@ -327,41 +346,40 @@ async def _draw_abyss_record(
         char_name = char.get("name", "")
         if char_name:
             star = char.get("star", 0)
-            level = char_levels.get(char_name, 1)
-            card = await draw_character_card(char_name, star, level, show_name=False)
+            lvl = char_levels.get(char_name, 1)
+            card = await draw_character_card(char_name, star, lvl, show_name=False)
             canvas.alpha_composite(card, (char_x, char_y))
             char_x += card.width + char_gap
 
     # 6b. 绘制协同者 (ELF) — 角色右侧，间距扩大一倍，底部对齐，65%大小
     elf = report.get("elf")
     if elf:
-        elf_card_w = int(182 * 0.65)
         elf_x = char_x + (card_w + char_gap)  # 间距扩大一倍
         elf_card_h = int(276 * 0.65)
         elf_y = y_offset + 100 + (276 - elf_card_h)  # 底部对齐
         await _draw_elf_card(canvas, elf_x, elf_y, elf)
 
-    # 7. 绘制右侧信息 (排名、段位、杯数、结算时间)
-    info_x = 1400 - 200
-    info_y = y_offset + 100
+    # 7. 绘制右侧信息 (排名、段位、杯数、结算时间, x=1018)
+    info_x = 1018
+    info_y = y_offset + 200
 
-    _draw_italic_text(canvas, (info_x, info_y), f"排名: {rank}", _font(28), TEXT_WHITE)
+    draw.text((info_x, info_y), f"排名: {rank}", font=_font(28), fill=TEXT_WHITE)
     info_y += 45
 
-    _draw_italic_text(canvas, (info_x, info_y), f"段位: {level_name}", _font(28), TEXT_WHITE)
+    draw.text((info_x, info_y), f"段位: {level_name}", font=_font(28), fill=TEXT_WHITE)
     info_y += 45
 
     cup_text = f"杯数: {cup_number}"
     if settled_cup != 0:
         cup_change = f"({settled_cup:+d})"
         cup_text += cup_change
-    _draw_italic_text(canvas, (info_x, info_y), cup_text, _font(28), TEXT_WHITE)
+    draw.text((info_x, info_y), cup_text, font=_font(28), fill=TEXT_WHITE)
     info_y += 45
 
     ts = int(report.get("updated_time_second", 0))
     dt = datetime.fromtimestamp(ts)
     time_text = f"结算时间: {dt.year}.{dt.month:02d}.{dt.day:02d}"
-    _draw_italic_text(canvas, (info_x, info_y), time_text, _font(28), TEXT_WHITE)
+    draw.text((info_x, info_y), time_text, font=_font(28), fill=TEXT_WHITE)
 
     return 480  # bgb.png高度
 
