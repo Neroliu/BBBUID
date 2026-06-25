@@ -331,15 +331,16 @@ async def _draw_abyss_record(
         score_text = str(score)
         score_font = _font(30)
         score_bbox = draw.textbbox((0, 0), score_text, font=score_font)
-        score_th = score_bbox[3] - score_bbox[1]
-        score_y = y_offset + 75 + (badge_h - score_th) // 2
-        draw.text((1018 + 80, score_y), score_text, font=score_font, fill=TEXT_WHITE)
+        score_top, score_bottom = score_bbox[1], score_bbox[3]
+        score_y = y_offset + 75 + badge_h // 2 - (score_top + score_bottom) // 2
+        draw.text((1018 + 95, score_y), score_text, font=score_font, fill=TEXT_WHITE)
 
-    # 6. 绘制角色卡片 — 直接复用bbb查询的渲染代码，去掉名称
+    # 6. 绘制角色卡片 — 标题下方40px, 与标题左对齐
     if char_levels is None:
         char_levels = {}
-    char_x = 30
-    char_y = y_offset + 100
+    title_bbox = draw.textbbox((0, 0), level_name, font=_ifont(55))
+    char_x = 134
+    char_y = y_offset + 111 + (title_bbox[3] - title_bbox[1]) + 40
     char_gap = 10
     card_w = 182  # draw_character_card default width
     for char in lineup[:4]:
