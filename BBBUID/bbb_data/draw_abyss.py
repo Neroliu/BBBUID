@@ -414,8 +414,8 @@ async def draw_abyss(
                 char_levels[name] = avatar.get("level", 1)
 
     # 计算画布高度 — 基于实际内容，不额外加底部padding
-    # y=104 info(192) + gap(44) + chart(480) + gap(10) + cards(4*480+3*5) + footer_gap(10) + footer(62)
-    canvas_h = 104 + 192 + 44 + 480 + 10 + 480 * 4 + 5 * 3 + 10 + 62  # 2837
+    # y=104 info(192) + gap(44) + chart(480) + gap(10) + cards(4*480+3*3) + footer(62)
+    canvas_h = 104 + 192 + 44 + 480 + 10 + 480 * 4 + 3 * 3 + 62  # 2821
 
     canvas = Image.new("RGBA", (W, canvas_h), (0, 0, 0, 255))
 
@@ -446,12 +446,11 @@ async def draw_abyss(
     # 4. 绘制挑战记录卡片 (间距5px，仅卡片之间)
     for i, report in enumerate(display_reports):
         if i > 0:
-            y_pos += 5
+            y_pos += 3
         record_h = await _draw_abyss_record(canvas, report, y_pos, char_levels)
         y_pos += record_h
 
-    # 5. 绘制footer (与最后卡片间距10px)
-    y_pos += 10
+    # 5. 绘制footer
     footer = Image.open(Path(__file__).parent / "footer.png").convert("RGBA")
     footer_x = (W - footer.width) // 2
     canvas.paste(footer, (footer_x, y_pos), footer)
