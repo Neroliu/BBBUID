@@ -150,8 +150,8 @@ async def _draw_elf_card(
     from io import BytesIO
     import httpx
 
-    card_w = int(182 * scale)
-    card_h = int(276 * scale)
+    card_w = round(182 * scale)
+    card_h = round(276 * scale)
 
     # 卡片背景
     bg_path = CHAR_RES_DIR / "avatar_bg.png"
@@ -360,7 +360,7 @@ async def _draw_abyss_record(
     if elf:
         last_card_right = char_x - char_gap  # 最后一个头像右边缘
         elf_x = last_card_right + 15
-        elf_card_h = int(276 * 0.65)
+        elf_card_h = round(276 * 0.65)
         elf_y = char_y + 276 - elf_card_h  # 底部对齐
         await _draw_elf_card(canvas, elf_x, elf_y, elf)
 
