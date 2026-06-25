@@ -414,8 +414,8 @@ async def draw_abyss(
                 char_levels[name] = avatar.get("level", 1)
 
     # 计算画布高度 — 基于实际内容，不额外加底部padding
-    # y=90 info(192) + gap(43) + chart(480) + gap(20) + cards(4*500) + gap(20) + footer(62)
-    canvas_h = 90 + 192 + 43 + 480 + 20 + (480 + 20) * 4 + 20 + 62  # 2867
+    # y=93 info(192) + gap(43) + chart(480) + gap(20) + cards(4*500) + gap(20) + footer(62)
+    canvas_h = 93 + 192 + 43 + 480 + 20 + (480 + 20) * 4 + 20 + 62  # 2870
 
     canvas = Image.new("RGBA", (W, canvas_h), (0, 0, 0, 255))
 
@@ -425,7 +425,7 @@ async def draw_abyss(
         canvas.paste(bg, (0, 0))
 
     # 2. 绘制玩家信息条 — 直接复用draw_note的代码
-    y_pos = 90
+    y_pos = 93
     avatar_img = None
     if user_avatar is not None:
         try:
