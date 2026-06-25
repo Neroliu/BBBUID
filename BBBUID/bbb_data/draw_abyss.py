@@ -263,7 +263,7 @@ def _draw_line_chart(
         bbox = draw.textbbox((0, 0), label, font=label_font)
         tw = bbox[2] - bbox[0]
         top, bottom = bbox[1], bbox[3]
-        lx = 137 - tw
+        lx = 142 - tw
         ly = y_offset + y_val - 35 - (top + bottom) // 2
         draw.text((lx, ly), label, fill="white", font=label_font)
 
