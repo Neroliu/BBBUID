@@ -230,13 +230,13 @@ def _draw_line_chart(
     if line_bg:
         canvas.paste(line_bg, (0, y_offset), line_bg)
 
-    # 2. 获取8个数据点的坐标
+    # 2. 获取8个数据点的坐标 (整体上移10px)
     points = []
     dates = []
     for i, report in enumerate(reports):
         x = CHART_X_START + i * CHART_X_SPACING
         level = LEVEL_TO_CHART_Y.get(report.get("settled_level", 7), 3)
-        y = y_offset + CHART_Y_POSITIONS[level]
+        y = y_offset + CHART_Y_POSITIONS[level] - 10
         points.append((x, y))
 
         # 日期格式 mm.dd
@@ -255,7 +255,7 @@ def _draw_line_chart(
         for x, y in points:
             canvas.paste(dot, (x - 7, y - 7), dot)
 
-    # 5. 绘制纵轴段位标签 (x=125-文字宽度, 纵向中心=428, 往上递减81)
+    # 5. 绘制纵轴段位标签 (x=125-文字宽度, 整体上移10px)
     label_font = _font(30)
     tier_order = [(5, "禁忌"), (4, "原罪"), (3, "苦痛"), (2, "红莲"), (1, "寂灭")]
     for tier, label in tier_order:
@@ -264,17 +264,17 @@ def _draw_line_chart(
         tw = bbox[2] - bbox[0]
         top, bottom = bbox[1], bbox[3]
         lx = 125 - tw
-        ly = y_offset + y_val - (top + bottom) // 2
+        ly = y_offset + y_val - 10 - (top + bottom) // 2
         draw.text((lx, ly), label, fill="white", font=label_font)
 
-    # 6. 绘制日期文字 (点下方居中, y=418)
+    # 6. 绘制日期文字 (点下方居中, 上移10px)
     date_font = _font(30)
     x_positions = [CHART_X_START + i * CHART_X_SPACING for i in range(8)]
     for x, date in zip(x_positions, dates):
         text_bbox = draw.textbbox((0, 0), date, font=date_font)
         text_w = text_bbox[2] - text_bbox[0]
         text_x = x - text_w // 2
-        draw.text((text_x, y_offset + 418), date, fill="white", font=date_font)
+        draw.text((text_x, y_offset + 408), date, fill="white", font=date_font)
 
     return LINE_BG_H
 
