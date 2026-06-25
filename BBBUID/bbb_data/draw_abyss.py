@@ -260,9 +260,7 @@ def _draw_line_chart(
     tier_order = [(5, "禁忌"), (4, "原罪"), (3, "苦痛"), (2, "红莲"), (1, "寂灭")]
     for tier, label in tier_order:
         y_val = CHART_Y_POSITIONS[tier]
-        bbox = draw.textbbox((0, 0), label, font=label_font)
-        th = bbox[3] - bbox[1]
-        draw.text((165, y_offset + y_val - th // 2), label, fill="white", font=label_font)
+        draw.text((165, y_offset + y_val), label, fill="white", font=label_font, anchor="lm")
 
     # 6. 绘制日期文字 (点下方居中, y=418)
     date_font = _font(30)
