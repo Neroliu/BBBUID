@@ -333,7 +333,7 @@ async def _draw_abyss_record(
         canvas.paste(score_badge, (1018, y_offset + 75), score_badge)
         badge_w, badge_h = score_badge.size
         score_text = str(score)
-        score_font = _font(30)
+        score_font = _font(48)
         score_bbox = draw.textbbox((0, 0), score_text, font=score_font)
         score_top, score_bottom = score_bbox[1], score_bbox[3]
         score_y = y_offset + 75 + badge_h // 2 - (score_top + score_bottom) // 2
@@ -355,11 +355,11 @@ async def _draw_abyss_record(
             canvas.alpha_composite(card, (char_x, char_y))
             char_x += card.width + char_gap
 
-    # 6b. 绘制协同者 (ELF) — 头像区域右侧15px, 底部对齐, 65%大小
+    # 6b. 绘制协同者 (ELF) — 最后一个头像右侧15px, 底部对齐, 65%大小
     elf = report.get("elf")
     if elf:
-        chars_right = 134 + card_w * 4 + char_gap * 3  # 头像区域右边缘
-        elf_x = chars_right + 15
+        last_card_right = char_x - char_gap  # 最后一个头像右边缘
+        elf_x = last_card_right + 15
         elf_card_h = int(276 * 0.65)
         elf_y = char_y + 276 - elf_card_h  # 底部对齐
         await _draw_elf_card(canvas, elf_x, elf_y, elf)
