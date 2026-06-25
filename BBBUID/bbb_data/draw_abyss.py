@@ -255,15 +255,22 @@ def _draw_line_chart(
         for x, y in points:
             canvas.paste(dot, (x - 7, y - 7), dot)
 
-    # 5. 绘制日期文字 (点下方居中)
-    font = _font(20)
+    # 5. 绘制纵轴段位标签 (左侧)
+    label_font = _font(30)
+    for tier, y_val in CHART_Y_POSITIONS.items():
+        label = ABYSS_LEVEL_MAP.get(tier, "")
+        label_y = y_offset + y_val - 15  # 居中于横纹
+        draw.text((20, label_y), label, fill="white", font=label_font)
+
+    # 6. 绘制日期文字 (点下方居中)
+    date_font = _font(30)
     x_positions = [CHART_X_START + i * CHART_X_SPACING for i in range(8)]
     for x, date in zip(x_positions, dates):
-        text_bbox = draw.textbbox((0, 0), date, font=font)
+        text_bbox = draw.textbbox((0, 0), date, font=date_font)
         text_w = text_bbox[2] - text_bbox[0]
         text_x = x - text_w // 2
         text_y = y_offset + CHART_Y_POSITIONS[5] + 7 + 12
-        draw.text((text_x, text_y), date, fill="white", font=font)
+        draw.text((text_x, text_y), date, fill="white", font=date_font)
 
     return LINE_BG_H
 
