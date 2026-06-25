@@ -414,18 +414,20 @@ async def draw_abyss(
                 char_levels[name] = avatar.get("level", 1)
 
     # 计算画布高度 — 基于实际内容，不额外加底部padding
-    # y=96 info(192) + gap(44) + chart(480) + gap(20) + cards(4*500) + gap(20) + footer(62)
-    canvas_h = 96 + 192 + 44 + 480 + 20 + (480 + 20) * 4 + 20 + 62  # 2874
+    # y=99 info(192) + gap(44) + chart(480) + gap(5) + cards(4*(480+15)) + footer(62)
+    canvas_h = 99 + 192 + 44 + 480 + 5 + (480 + 15) * 4 + 62  # 2862
 
     canvas = Image.new("RGBA", (W, canvas_h), (0, 0, 0, 255))
 
-    # 1. 贴画布背景
+    # 1. 贴画布背景 (平铺覆盖全画布)
     bg = _load_res("bg.jpg")
     if bg:
-        canvas.paste(bg, (0, 0))
+        bg_w, bg_h = bg.size
+        for ty in range(0, canvas_h, bg_h):
+            canvas.paste(bg, (0, ty))
 
     # 2. 绘制玩家信息条 — 直接复用draw_note的代码
-    y_pos = 96
+    y_pos = 99
     avatar_img = None
     if user_avatar is not None:
         try:
@@ -439,15 +441,14 @@ async def draw_abyss(
 
     # 3. 绘制折线图
     chart_h = _draw_line_chart(canvas, all_reports, y_pos)
-    y_pos += chart_h + 20
+    y_pos += chart_h + 5
 
     # 4. 绘制挑战记录卡片
     for report in display_reports:
         record_h = await _draw_abyss_record(canvas, report, y_pos, char_levels)
-        y_pos += record_h + 20
+        y_pos += record_h + 15
 
     # 5. 绘制footer
-    y_pos += 20
     footer = Image.open(Path(__file__).parent / "footer.png").convert("RGBA")
     footer_x = (W - footer.width) // 2
     canvas.paste(footer, (footer_x, y_pos), footer)
