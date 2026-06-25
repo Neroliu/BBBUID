@@ -361,7 +361,7 @@ async def _draw_abyss_record(
         last_card_right = char_x - char_gap  # 最后一个头像右边缘
         elf_x = last_card_right + 15
         elf_card_h = round(276 * 0.65)
-        elf_y = char_y + 276 - elf_card_h  # 底部对齐
+        elf_y = char_y + 276 - elf_card_h - 15  # 底部对齐 (补偿偏移)
         await _draw_elf_card(canvas, elf_x, elf_y, elf)
 
     # 7. 绘制右侧信息 (排名、段位、杯数、结算时间, x=1018)
