@@ -395,7 +395,7 @@ async def _draw_abyss_record(
     label_bbox = draw.textbbox((0, 0), rank_label, font=info_font)
     num_bbox = draw.textbbox((0, 0), rank_num, font=rank_num_font)
     num_y = info_y + (label_bbox[3] - label_bbox[1]) - (num_bbox[3] - num_bbox[1])
-    _draw_italic_text(canvas, (info_x + rank_label_w, num_y), rank_num, rank_num_font, (254, 231, 114, 255))
+    _draw_italic_text(canvas, (int(info_x + rank_label_w), num_y), rank_num, rank_num_font, (254, 231, 114, 255))
     info_y += line_h + line_gap
 
     # 段位
