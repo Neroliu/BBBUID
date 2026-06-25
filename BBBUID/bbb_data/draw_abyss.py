@@ -255,12 +255,17 @@ def _draw_line_chart(
         for x, y in points:
             canvas.paste(dot, (x - 7, y - 7), dot)
 
-    # 5. 绘制纵轴段位标签 (x=165, 纵向中心对齐横纹, 禁忌在最下428往上递减81)
+    # 5. 绘制纵轴段位标签 (x=125-文字宽度, 纵向中心=428, 往上递减81)
     label_font = _font(30)
     tier_order = [(5, "禁忌"), (4, "原罪"), (3, "苦痛"), (2, "红莲"), (1, "寂灭")]
     for tier, label in tier_order:
         y_val = CHART_Y_POSITIONS[tier]
-        draw.text((165, y_offset + y_val), label, fill="white", font=label_font, anchor="lm")
+        bbox = draw.textbbox((0, 0), label, font=label_font)
+        tw = bbox[2] - bbox[0]
+        top, bottom = bbox[1], bbox[3]
+        lx = 125 - tw
+        ly = y_offset + y_val - (top + bottom) // 2
+        draw.text((lx, ly), label, fill="white", font=label_font)
 
     # 6. 绘制日期文字 (点下方居中, y=418)
     date_font = _font(30)
