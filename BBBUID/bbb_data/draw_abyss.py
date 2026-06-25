@@ -312,8 +312,10 @@ async def _draw_abyss_record(
 
     # 3. 获取数据
     score = report.get("score", 0)
-    level = report.get("settled_level", 7)
+    level = report.get("level", 7)
     level_name = ABYSS_LEVEL_FULL_MAP.get(level, f"未知({level})")
+    settled_level = report.get("settled_level", 7)
+    settled_level_name = ABYSS_LEVEL_FULL_MAP.get(settled_level, f"未知({settled_level})")
     rank = report.get("rank", 0)
     cup_number = report.get("cup_number", 0)
     settled_cup = report.get("settled_cup_number", 0)
@@ -382,7 +384,7 @@ async def _draw_abyss_record(
     draw.text((info_x, info_y), f"排名: {rank}", font=_font(28), fill=TEXT_WHITE)
     info_y += 45
 
-    draw.text((info_x, info_y), f"段位: {level_name}", font=_font(28), fill=TEXT_WHITE)
+    draw.text((info_x, info_y), f"段位: {settled_level_name}", font=_font(28), fill=TEXT_WHITE)
     info_y += 45
 
     cup_text = f"杯数: {cup_number}"
