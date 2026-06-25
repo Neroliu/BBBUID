@@ -377,27 +377,40 @@ async def _draw_abyss_record(
         elf_y = char_y + _CHAR_VIS_BOTTOM - _ELF_VIS_BOTTOM  # 可见内容底部对齐
         await _draw_elf_card(canvas, elf_x, elf_y, elf)
 
-    # 7. 绘制右侧信息 (排名、段位、杯数、结算时间, x=1018)
+    # 7. 绘制右侧信息 (排名、段位、杯数、结算时间, x=1018, 底部对齐角色卡片可见区域)
     info_x = 1018
-    info_y = y_offset + 200
+    info_font = _font(30)
+    rank_num_font = _font(36)
+    time_font = _font(24)
+    line_h = 30  # 每行文字高度
+    line_gap = 5  # 行间距
+    total_h = line_h * 4 + line_gap * 3  # 135px
+    info_y = char_y + _CHAR_VIS_BOTTOM - total_h
 
-    draw.text((info_x, info_y), f"排名: {rank}", font=_font(28), fill=TEXT_WHITE)
-    info_y += 45
+    # 排名 (数字36px #FEE772)
+    rank_label = "排名: "
+    draw.text((info_x, info_y), rank_label, font=info_font, fill=TEXT_WHITE)
+    rank_label_w = draw.textlength(rank_label, font=info_font)
+    draw.text((info_x + rank_label_w, info_y), str(rank), font=rank_num_font, fill=(254, 231, 114, 255))
+    info_y += line_h + line_gap
 
-    draw.text((info_x, info_y), f"段位: {settled_level_name}", font=_font(28), fill=TEXT_WHITE)
-    info_y += 45
+    # 段位
+    draw.text((info_x, info_y), f"段位: {settled_level_name}", font=info_font, fill=TEXT_WHITE)
+    info_y += line_h + line_gap
 
+    # 杯数
     cup_text = f"杯数: {cup_number}"
     if settled_cup != 0:
         cup_change = f"({settled_cup:+d})"
         cup_text += cup_change
-    draw.text((info_x, info_y), cup_text, font=_font(28), fill=TEXT_WHITE)
-    info_y += 45
+    draw.text((info_x, info_y), cup_text, font=info_font, fill=TEXT_WHITE)
+    info_y += line_h + line_gap
 
+    # 结算时间 (24px #DEDEDE)
     ts = int(report.get("updated_time_second", 0))
     dt = datetime.fromtimestamp(ts)
     time_text = f"结算时间: {dt.year}.{dt.month:02d}.{dt.day:02d}"
-    draw.text((info_x, info_y), time_text, font=_font(28), fill=TEXT_WHITE)
+    draw.text((info_x, info_y), time_text, font=time_font, fill=(222, 222, 221, 255))
 
     return 480  # bgb.png高度
 
