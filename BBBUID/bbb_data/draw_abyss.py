@@ -344,7 +344,7 @@ async def _draw_abyss_record(
         char_levels = {}
     char_x = 134
     char_y = title_draw_y + title_th + 20
-    char_gap = 5
+    char_gap = 0
     card_w = 182  # draw_character_card default width
     for char in lineup[:4]:
         char_name = char.get("name", "")
