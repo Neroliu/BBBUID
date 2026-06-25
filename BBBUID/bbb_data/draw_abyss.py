@@ -380,18 +380,22 @@ async def _draw_abyss_record(
     # 7. 绘制右侧信息 (排名、段位、杯数、结算时间, x=1018, 底部对齐角色卡片可见区域)
     info_x = 1018
     info_font = _font(30)
-    rank_num_font = _font(36)
+    rank_num_font = _ifont(36)
     time_font = _font(24)
     line_h = 30  # 每行文字高度
-    line_gap = 5  # 行间距
-    total_h = line_h * 4 + line_gap * 3  # 135px
+    line_gap = 10  # 行间距
+    total_h = line_h * 4 + line_gap * 3  # 150px
     info_y = char_y + _CHAR_VIS_BOTTOM - total_h
 
-    # 排名 (数字36px #FEE772)
+    # 排名 (斜体数字36px #FEE772, 底部对齐)
     rank_label = "排名: "
     draw.text((info_x, info_y), rank_label, font=info_font, fill=TEXT_WHITE)
     rank_label_w = draw.textlength(rank_label, font=info_font)
-    draw.text((info_x + rank_label_w, info_y), str(rank), font=rank_num_font, fill=(254, 231, 114, 255))
+    rank_num = str(rank)
+    label_bbox = draw.textbbox((0, 0), rank_label, font=info_font)
+    num_bbox = draw.textbbox((0, 0), rank_num, font=rank_num_font)
+    num_y = info_y + (label_bbox[3] - label_bbox[1]) - (num_bbox[3] - num_bbox[1])
+    _draw_italic_text(canvas, (info_x + rank_label_w, num_y), rank_num, rank_num_font, (254, 231, 114, 255))
     info_y += line_h + line_gap
 
     # 段位
