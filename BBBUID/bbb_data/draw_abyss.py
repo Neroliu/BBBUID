@@ -414,8 +414,8 @@ async def draw_abyss(
                 char_levels[name] = avatar.get("level", 1)
 
     # 计算画布高度 — 基于实际内容，不额外加底部padding
-    # y=104 info(192) + gap(44) + chart(480) + gap(10) + cards(4*480) + footer(62)
-    canvas_h = 104 + 192 + 44 + 480 + 10 + 480 * 4 + 62  # 2812
+    # y=104 info(192) + gap(44) + chart(480) + gap(10) + cards(4*480) + footer(62) - 12
+    canvas_h = 104 + 192 + 44 + 480 + 10 + 480 * 4 + 62 - 12  # 2800
 
     canvas = Image.new("RGBA", (W, canvas_h), (0, 0, 0, 255))
 
@@ -448,13 +448,13 @@ async def draw_abyss(
         record_h = await _draw_abyss_record(canvas, report, y_pos, char_levels)
         y_pos += record_h
 
-    # 5. 绘制footer
+    # 5. 绘制footer (上移12px)
     footer = Image.open(Path(__file__).parent / "footer.png").convert("RGBA")
     footer_x = (W - footer.width) // 2
-    canvas.paste(footer, (footer_x, y_pos), footer)
+    canvas.paste(footer, (footer_x, y_pos - 12), footer)
 
     # 6. 裁剪到footer底部 — 不加额外padding，避免黑边
-    final_h = y_pos + footer.height
+    final_h = y_pos - 12 + footer.height
     canvas = canvas.crop((0, 0, W, final_h))
 
     return await convert_img(canvas)
