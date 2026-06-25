@@ -216,7 +216,7 @@ async def _draw_elf_card(
     star = elf.get("star", 0)
     star_icon_name = ELF_STAR_TO_ICON.get(star, "StarElf_S.png")
     star_path = STAR_ICON_RES_DIR / star_icon_name
-    star_render_h = int(32 * scale)
+    star_render_h = int(40 * scale)
     if star_path.exists():
         try:
             star_icon = Image.open(star_path).convert("RGBA")
@@ -224,7 +224,7 @@ async def _draw_elf_card(
             s = star_render_h / orig_h
             star_icon = star_icon.resize((int(orig_w * s), star_render_h), Image.Resampling.LANCZOS)
             star_x = (card_w - star_icon.width) // 2
-            card.alpha_composite(star_icon, (star_x, icon_y + icon_height + 2))
+            card.alpha_composite(star_icon, (star_x, icon_y + icon_height + 7))
         except Exception:
             pass
 

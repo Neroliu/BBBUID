@@ -116,7 +116,7 @@ async def draw_character_card(
 
     # Draw star icon centered horizontally
     star_icon = await _get_cached_star_icon(star)
-    star_render_height = 32
+    star_render_height = 40
     if star_icon:
         orig_w, orig_h = star_icon.size
         scale = star_render_height / orig_h
