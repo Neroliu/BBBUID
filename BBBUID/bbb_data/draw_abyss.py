@@ -298,15 +298,45 @@ async def _draw_abyss_record(
     char_levels: Dict[str, int] | None = None,
 ) -> int:
     """绘制单个挑战记录卡片"""
+    from io import BytesIO
+    import httpx
+
     # 1. 贴卡片背景
     bgb = _load_res("bgb.png")
     if bgb:
         canvas.paste(bgb, (0, y_offset), bgb)
 
-    # 2. 叠加蒙版
-    monster_mask = _load_res("monster_mask.png")
-    if monster_mask:
-        canvas.paste(monster_mask, (0, y_offset), monster_mask)
+    # 2. 叠加boss头像 (372%, 43%透明度)
+    boss = report.get("boss", {})
+    boss_avatar_url = boss.get("avatar", "")
+    boss_id = boss.get("id", "")
+    if boss_avatar_url and boss_id:
+        boss_cache_dir = WIKI_PATH / "Boss" / "icons"
+        boss_cache_dir.mkdir(parents=True, exist_ok=True)
+        boss_cache_path = boss_cache_dir / f"{boss_id}.png"
+        boss_icon = None
+        if boss_cache_path.exists():
+            try:
+                boss_icon = Image.open(boss_cache_path).convert("RGBA")
+            except Exception:
+                pass
+        if boss_icon is None:
+            try:
+                async with httpx.AsyncClient(follow_redirects=True) as client:
+                    resp = await client.get(boss_avatar_url, timeout=15)
+                    if resp.status_code == 200:
+                        boss_icon = Image.open(BytesIO(resp.content)).convert("RGBA")
+                        boss_icon.save(str(boss_cache_path), "PNG")
+            except Exception:
+                pass
+        if boss_icon is not None:
+            new_w = round(boss_icon.width * 3.72)
+            new_h = round(boss_icon.height * 3.72)
+            boss_icon = boss_icon.resize((new_w, new_h), Image.Resampling.LANCZOS)
+            r, g, b, a = boss_icon.split()
+            a = a.point(lambda x: int(x * 0.43))
+            boss_icon.putalpha(a)
+            canvas.paste(boss_icon, (390, y_offset + 43), boss_icon)
 
     draw = ImageDraw.Draw(canvas)
 
@@ -320,7 +350,6 @@ async def _draw_abyss_record(
     cup_number = report.get("cup_number", 0)
     settled_cup = report.get("settled_cup_number", 0)
     lineup = report.get("lineup", [])
-    boss = report.get("boss", {})
     boss_name = boss.get("name", "")
 
     # 4. 绘制标题 (段位名称, 斜体, #FEE772, 55px, x=134, 文字中心y=111)
