@@ -212,21 +212,41 @@ async def _draw_elf_card(
     icon_y = int(17 * scale)
     card.alpha_composite(elf_icon, (icon_x, icon_y))
 
-    # 星级图标居中 (ELF映射: 1=S, 2=SS, 3=SSS)
+    # 星级渲染
     star = elf.get("star", 0)
-    star_icon_name = ELF_STAR_TO_ICON.get(star, "StarElf_S.png")
-    star_path = STAR_ICON_RES_DIR / star_icon_name
-    star_render_h = int(40 * scale)
-    if star_path.exists():
-        try:
-            star_icon = Image.open(star_path).convert("RGBA")
-            orig_w, orig_h = star_icon.size
-            s = star_render_h / orig_h
-            star_icon = star_icon.resize((int(orig_w * s), star_render_h), Image.Resampling.LANCZOS)
-            star_x = (card_w - star_icon.width) // 2
-            card.alpha_composite(star_icon, (star_x, icon_y + icon_height + 12))
-        except Exception:
-            pass
+    is_collaborator = elf.get("is_collaborator", False)
+    star_y = icon_y + icon_height + 12
+
+    if is_collaborator:
+        # 协同者: 使用ELF星级图标 (1=S, 2=SS, 3=SSS)
+        star_icon_name = ELF_STAR_TO_ICON.get(star, "StarElf_S.png")
+        star_path = STAR_ICON_RES_DIR / star_icon_name
+        star_render_h = int(40 * scale)
+        if star_path.exists():
+            try:
+                star_icon = Image.open(star_path).convert("RGBA")
+                orig_w, orig_h = star_icon.size
+                s = star_render_h / orig_h
+                star_icon = star_icon.resize((int(orig_w * s), star_render_h), Image.Resampling.LANCZOS)
+                star_x = (card_w - star_icon.width) // 2
+                card.alpha_composite(star_icon, (star_x, star_y))
+            except Exception:
+                pass
+    else:
+        # 人偶: 星数映射后用★文字渲染 (wiki样式)
+        if star <= 1:
+            star_count = 1
+        elif star <= 3:
+            star_count = 2
+        elif star <= 6:
+            star_count = 3
+        else:
+            star_count = 4
+        star_text = "★" * star_count
+        star_font = _font(int(20 * scale))
+        star_text_w = draw.textlength(star_text, font=star_font)
+        star_x = (card_w - int(star_text_w)) // 2
+        draw.text((star_x, star_y), star_text, fill=(255, 200, 60, 255), font=star_font)
 
     canvas.alpha_composite(card, (x, y))
 
