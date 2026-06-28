@@ -189,23 +189,32 @@ async def send_battlefield_info(bot: Bot, ev: Event):
     if not reports:
         return await bot.send("[崩坏3] 暂无战场战报数据")
 
-    lines = ["[崩坏3] 战场战报"]
-    for i, report in enumerate(reports):
-        score = report.get("score", "?")
-        rank = report.get("rank", "?")
-        ranking_pct = report.get("ranking_percentage", "?")
-        area = report.get("area", "?")
-        lines.append(f"  #{i+1} 分数:{score} 段位:{rank} 区:{area} 排名:前{ranking_pct}%")
+    try:
+        from .avatar_utils import get_cached_avatar
+        from .draw_battle import draw_battle
 
-        for bi in report.get("battle_infos", []):
-            elf = bi.get("elf", {})
-            elf_name = elf.get("name", "")
-            lineup = bi.get("lineup", [])
-            names = " ".join([c.get("name", "?") for c in lineup[:3]])
-            elf_part = f" 人偶:{elf_name}" if elf_name else ""
-            lines.append(f"    {names}{elf_part}")
+        user_avatar = await get_cached_avatar(ev, ev.user_id)
+        img = await draw_battle(ev, uid, data, user_avatar)
+        await bot.send(img)
+    except Exception as e:
+        logger.warning(f"[崩坏3] 战场图片渲染失败，回退到文本: {e}")
+        lines = ["[崩坏3] 战场战报"]
+        for i, report in enumerate(reports):
+            score = report.get("score", "?")
+            rank = report.get("rank", "?")
+            ranking_pct = report.get("ranking_percentage", "?")
+            area = report.get("area", "?")
+            lines.append(f"  #{i+1} 分数:{score} 段位:{rank} 区:{area} 排名:前{ranking_pct}%")
 
-    await bot.send("\n".join(lines))
+            for bi in report.get("battle_infos", []):
+                elf = bi.get("elf", {})
+                elf_name = elf.get("name", "")
+                lineup = bi.get("lineup", [])
+                names = " ".join([c.get("name", "?") for c in lineup[:3]])
+                elf_part = f" 人偶:{elf_name}" if elf_name else ""
+                lines.append(f"    {names}{elf_part}")
+
+        await bot.send("\n".join(lines))
 
 
 # --- 往世乐土 (Elysian Realm / God War) ---
