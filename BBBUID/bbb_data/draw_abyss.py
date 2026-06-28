@@ -394,7 +394,7 @@ async def _draw_abyss_record(
         if char_name:
             star = char.get("star", 0)
             lvl = char_levels.get(char_name, 1)
-            card = await draw_character_card(char_name, star, lvl, show_name=False)
+            card = await draw_character_card(char_name, star, lvl, show_name=False, show_level=False)
             canvas.alpha_composite(card, (char_x, char_y))
             char_x += card.width + char_gap
 

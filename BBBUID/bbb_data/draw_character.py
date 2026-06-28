@@ -90,6 +90,7 @@ async def draw_character_card(
     star: int,
     level: int,
     show_name: bool = True,
+    show_level: bool = True,
 ) -> Image.Image:
     """Draw a character card with avatar background, character icon, star rating, and name."""
     bg_path = CHAR_RES_DIR / "avatar_bg.png"
@@ -125,6 +126,13 @@ async def draw_character_card(
         star_x = (W - star_render_w) // 2
         star_y = icon_y + icon_height + 2
         canvas.alpha_composite(star_icon, (star_x, star_y))
+
+    # Draw level text
+    if show_level:
+        level_text = f"Lv.{level}"
+        level_x = W - 30
+        level_y = icon_y + icon_height + 20
+        draw.text((level_x, level_y), level_text, font=_font(26), fill=TEXT_BLACK, anchor="rm")
 
     # Draw character name at bottom
     if show_name:
