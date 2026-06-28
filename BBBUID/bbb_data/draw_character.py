@@ -91,6 +91,7 @@ async def draw_character_card(
     level: int,
     show_name: bool = True,
     show_level: bool = True,
+    star_left: bool = False,
 ) -> Image.Image:
     """Draw a character card with avatar background, character icon, star rating, and name."""
     bg_path = CHAR_RES_DIR / "avatar_bg.png"
@@ -115,7 +116,7 @@ async def draw_character_card(
 
     canvas.alpha_composite(char_icon, (icon_x, icon_y))
 
-    # Draw star icon centered horizontally
+    # Draw star icon
     star_icon = await _get_cached_star_icon(star)
     star_render_height = 40
     if star_icon:
@@ -123,7 +124,7 @@ async def draw_character_card(
         scale = star_render_height / orig_h
         star_render_w = int(orig_w * scale)
         star_icon = star_icon.resize((star_render_w, star_render_height), Image.Resampling.LANCZOS)
-        star_x = (W - star_render_w) // 2
+        star_x = 5 if star_left else (W - star_render_w) // 2
         star_y = icon_y + icon_height + 2
         canvas.alpha_composite(star_icon, (star_x, star_y))
 

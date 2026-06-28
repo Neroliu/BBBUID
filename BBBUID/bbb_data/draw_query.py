@@ -106,7 +106,7 @@ async def draw_query_card(
         level = avatar.get("level", 1)
 
         # Draw character card (icon looked up from wiki cache by character name)
-        char_card = await draw_character_card(name, star, level)
+        char_card = await draw_character_card(name, star, level, star_left=True)
 
         # Calculate position
         row = i // CHARS_PER_ROW
