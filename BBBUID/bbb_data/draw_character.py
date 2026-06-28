@@ -124,7 +124,7 @@ async def draw_character_card(
         scale = star_render_height / orig_h
         star_render_w = int(orig_w * scale)
         star_icon = star_icon.resize((star_render_w, star_render_height), Image.Resampling.LANCZOS)
-        star_x = 5 if star_left else (W - star_render_w) // 2
+        star_x = 10 if star_left else (W - star_render_w) // 2
         star_y = icon_y + icon_height + 2
         canvas.alpha_composite(star_icon, (star_x, star_y))
 
