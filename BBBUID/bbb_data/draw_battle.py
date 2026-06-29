@@ -380,7 +380,7 @@ async def _draw_battle_record(
     # --- 角色卡片 ---
     lineup = battle_info.get("lineup", [])
     char_x = 134
-    char_y = y_offset + 165
+    char_y = y_offset + 185
     char_gap = 0
     for char in lineup[:3]:
         char_name = char.get("name", "")
