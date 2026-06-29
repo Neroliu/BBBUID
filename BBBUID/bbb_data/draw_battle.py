@@ -343,7 +343,8 @@ async def _draw_battle_record(
             r, g, b, a = boss_icon.split()
             a = a.point(lambda x: int(x * 0.43))
             boss_icon.putalpha(a)
-            canvas.paste(boss_icon, (390, y_offset + 43), boss_icon)
+            boss_y_off = 63 if is_first else 43
+            canvas.paste(boss_icon, (390, y_offset + boss_y_off), boss_icon)
 
     # --- 标题区 (仅第一张卡片) ---
     if is_first and area_name:
@@ -380,7 +381,7 @@ async def _draw_battle_record(
     # --- 角色卡片 ---
     lineup = battle_info.get("lineup", [])
     char_x = 134
-    char_y = y_offset + 185
+    char_y = y_offset + 165
     char_gap = 0
     for char in lineup[:3]:
         char_name = char.get("name", "")
