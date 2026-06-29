@@ -519,10 +519,10 @@ async def draw_battle(
     chart_h = _draw_line_chart(canvas, all_reports, y_pos)
     y_pos += chart_h
 
-    # 4. 贴bgc.png作为挑战记录区整体背景
+    # 4. 贴bgc.png作为挑战记录区整体背景 (上移10px与折线图重叠)
     bgc = _load_res("bgc.png")
     if bgc:
-        canvas.paste(bgc, (0, y_pos), bgc)
+        canvas.paste(bgc, (0, y_pos - 10), bgc)
 
     # 5. 绘制3个Boss挑战记录卡片 (与深渊对齐)
     for i, bi in enumerate(battle_infos[:3]):
