@@ -491,8 +491,8 @@ async def draw_battle(
             if name:
                 char_levels[name] = avatar.get("level", 1)
 
-    # 画布高度: info(104+192+44) + chart(480+10) + cards(3*480) + footer(62) - 12
-    canvas_h = 104 + 192 + 44 + 480 + 10 + 480 * 3 + 62 - 12
+    # 画布高度: info(104+192+44) + chart(480) + cards(3*480) + footer(62) - 12
+    canvas_h = 104 + 192 + 44 + 480 + 480 * 3 + 62 - 12
 
     canvas = Image.new("RGBA", (W, canvas_h), (0, 0, 0, 255))
 
@@ -517,7 +517,7 @@ async def draw_battle(
 
     # 3. 折线图
     chart_h = _draw_line_chart(canvas, all_reports, y_pos)
-    y_pos += chart_h + 10
+    y_pos += chart_h
 
     # 4. 贴bgc.png作为挑战记录区整体背景
     bgc = _load_res("bgc.png")
