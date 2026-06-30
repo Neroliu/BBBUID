@@ -15,7 +15,7 @@ from .notice_api import get_bbb_notice_list, get_article_url
 sv_bbb_notice = SV("崩坏3公告")
 sv_bbb_notice_sub = SV("订阅崩坏3公告", pm=3)
 
-ANN_CHECK_MIN: int = BBB_CONFIG.get_config("BBBAnnCheckMinutes").data
+ANN_CHECK_MIN: int = min(BBB_CONFIG.get_config("BBBAnnCheckMinutes").data, 60)
 
 
 @sv_bbb_notice.on_command("公告", block=True)
