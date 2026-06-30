@@ -74,4 +74,19 @@ CONFIG_DEFAULT: Dict[str, GSC] = {
         "发送攻略图时是否附带数据来源与更新时间",
         True,
     ),
+    "BBBAnnIds": GsListStrConfig(
+        "崩坏3已知公告ID",
+        "用于检测新公告的帖子ID列表",
+        [],
+    ),
+    "BBBAnnOpen": GsBoolConfig(
+        "崩坏3公告推送",
+        "开启后将自动推送崩坏3最新公告到订阅群",
+        True,
+    ),
+    "BBBAnnCheckMinutes": GsIntConfig(
+        "崩坏3公告检查间隔",
+        "自动检查公告的间隔（分钟，最大60）",
+        10,
+    ),
 }
