@@ -10,7 +10,8 @@ from gsuid_core.models import Event
 
 from ..bbb_config.bbb_config import BBB_CONFIG
 from .utils import Msg, TOPIC_NOTICE, subscribe_session, unsubscribe_session, list_subscribers, send_notify
-from .notice_api import get_bbb_notice_list, get_article_url
+from .notice_api import get_bbb_notice_list, get_bbb_notice_detail, get_article_url
+from .notice_card import render_notice_card
 
 sv_bbb_notice = SV("崩坏3公告")
 sv_bbb_notice_sub = SV("订阅崩坏3公告", pm=3)
@@ -28,7 +29,7 @@ async def send_bbb_notice(bot: Bot, ev: Event):
     lines = ["[崩坏3] 最新公告"]
     for n in notices:
         lines.append(f"• {n['subject']}")
-        lines.append(f"  {get_article_url(n['post_id'])}")
+    lines.append(f"\n{get_article_url(notices[0]['post_id'])}")
     await bot.send("\n".join(lines))
 
 
@@ -88,10 +89,22 @@ async def _check_and_push():
     BBB_CONFIG.set_config("BBBAnnIds", merged)
 
     for n in reversed(pending):
-        msg = f"[崩坏3] 新公告\n{n['subject']}\n{get_article_url(n['post_id'])}"
+        try:
+            detail = await get_bbb_notice_detail(n["post_id"])
+            if detail:
+                post_data = detail.get("post", {}).get("post", {})
+                title = post_data.get("subject", n["subject"])
+                content_html = post_data.get("content", "")
+                img = await render_notice_card(title, content_html)
+            else:
+                img = f"[崩坏3] 新公告\n{n['subject']}\n{get_article_url(n['post_id'])}"
+        except Exception as e:
+            logger.warning(f"[崩坏3公告] 渲染失败 post_id={n['post_id']}: {e}")
+            img = f"[崩坏3] 新公告\n{n['subject']}\n{get_article_url(n['post_id'])}"
+
         for sub in subs:
             try:
-                await sub.send(msg)
+                await sub.send(img)
             except Exception as e:
                 logger.warning(f"[崩坏3公告] 推送失败 post_id={n['post_id']} group={sub.group_id}: {e!r}")
             await asyncio.sleep(random.uniform(1, 3))
