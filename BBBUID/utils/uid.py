@@ -45,6 +45,16 @@ def _extract_explicit_uid(text: Optional[str]) -> Optional[str]:
     return match.group(0) if match else None
 
 
+def extract_at_user_id_from_text(text: Optional[str]) -> Optional[str]:
+    """从文本中提取 @目标QQ（仅数字ID形式，如 @123456）。
+    如果是 @全体 或 @昵称 等非数字形式，返回 None。
+    """
+    if not text:
+        return None
+    match = re.search(r"@(\d{5,20})", text)
+    return match.group(1) if match else None
+
+
 def _is_mention_self(ev: Event) -> bool:
     at = getattr(ev, "at", None)
     if not at:
@@ -59,7 +69,14 @@ async def _resolve_query_uid(bot: Bot, ev: Event) -> tuple[Optional[str], str, b
     if explicit_uid:
         return explicit_uid, ev.user_id, False
 
-    if _is_mention_self(ev):
+    at = getattr(ev, "at", None)
+    text_at = extract_at_user_id_from_text(getattr(ev, "text", None) or getattr(ev, "raw_text", None))
+
+    if at and at not in {ev.user_id, getattr(ev, "bot_id", None), getattr(ev, "real_bot_id", None)}:
+        target_user_id = str(at)
+    elif text_at and text_at not in {ev.user_id, getattr(ev, "bot_id", None), getattr(ev, "real_bot_id", None)}:
+        target_user_id = text_at
+    else:
         uid = await GsBind.get_uid_by_game(ev.user_id, ev.bot_id, GAME_NAME)
         return uid, ev.user_id, False
 
@@ -67,6 +84,5 @@ async def _resolve_query_uid(bot: Bot, ev: Event) -> tuple[Optional[str], str, b
         await bot.send(AT_QUERY_DISABLED, at_sender=bool(ev.group_id))
         return None, ev.user_id, False
 
-    target_user_id = str(ev.at)
     uid = await GsBind.get_uid_by_game(target_user_id, ev.bot_id, GAME_NAME)
     return uid, target_user_id, True

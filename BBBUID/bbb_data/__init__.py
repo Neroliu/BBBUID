@@ -7,7 +7,7 @@ from gsuid_core.models import Event
 
 from ..bbb_api import bh3_api
 from ..bbb_config.bbb_config import BBB_CONFIG
-from ..utils.uid import get_uid, get_query_target
+from ..utils.uid import get_uid, get_query_target, extract_at_user_id_from_text
 from ..utils.hint import bbb_error_reply
 from ..utils.char_data_cache import load_char_data, save_char_data, clear_char_data
 
@@ -27,7 +27,7 @@ def _fmt_ts(ts: str) -> str:
 sv_bbb_query = SV("崩坏3查询")
 
 
-@sv_bbb_query.on_fullmatch(("查询", "我的女武神"), block=True)
+@sv_bbb_query.on_regex(r"^(?:查询|我的女武神)(?:\s*@[\w\-]+)?$", block=True)
 async def send_index_info(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
@@ -61,7 +61,7 @@ async def send_index_info(bot: Bot, ev: Event):
     await bot.send(img)
 
 
-@sv_bbb_query.on_fullmatch(("刷新面板", "更新面板"), block=True)
+@sv_bbb_query.on_regex(r"^(?:刷新面板|更新面板)(?:\s*@[\w\-]+)?$", block=True)
 async def send_refresh_panel(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
@@ -100,7 +100,7 @@ async def send_refresh_panel(bot: Bot, ev: Event):
 sv_bbb_note = SV("崩坏3便笺")
 
 
-@sv_bbb_note.on_fullmatch(("便笺", "便签", "实时便笺", "体力", "每日", "mr"), block=True)
+@sv_bbb_note.on_regex(r"^(?:便笺|便签|实时便笺|体力|每日|mr)(?:\s*@[\w\-]+)?$", block=True)
 async def send_note_info(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
@@ -132,7 +132,7 @@ async def send_note_info(bot: Bot, ev: Event):
 sv_bbb_abyss = SV("崩坏3深渊")
 
 
-@sv_bbb_abyss.on_fullmatch(("深渊", "超弦空间", "深渊战报"), block=True)
+@sv_bbb_abyss.on_regex(r"^(?:深渊|超弦空间|深渊战报)(?:\s*@[\w\-]+)?$", block=True)
 async def send_abyss_info(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
@@ -175,7 +175,7 @@ async def send_abyss_info(bot: Bot, ev: Event):
 sv_bbb_battlefield = SV("崩坏3战场")
 
 
-@sv_bbb_battlefield.on_fullmatch(("战场", "战场战报", "记忆战场"), block=True)
+@sv_bbb_battlefield.on_regex(r"^(?:战场|战场战报|记忆战场)(?:\s*@[\w\-]+)?$", block=True)
 async def send_battlefield_info(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
@@ -222,7 +222,7 @@ async def send_battlefield_info(bot: Bot, ev: Event):
 sv_bbb_godwar = SV("崩坏3往世乐土")
 
 
-@sv_bbb_godwar.on_fullmatch(("往世乐土", "乐土"), block=True)
+@sv_bbb_godwar.on_regex(r"^(?:往世乐土|乐土)(?:\s*@[\w\-]+)?$", block=True)
 async def send_godwar_info(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
@@ -256,7 +256,7 @@ async def send_godwar_info(bot: Bot, ev: Event):
 sv_bbb_handbook = SV("崩坏3手账")
 
 
-@sv_bbb_handbook.on_fullmatch(("手账", "手帐"), block=True)
+@sv_bbb_handbook.on_regex(r"^(?:手账|手帐)(?:\s*@[\w\-]+)?$", block=True)
 async def send_handbook(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
@@ -291,7 +291,7 @@ async def send_handbook(bot: Bot, ev: Event):
         await bot.send("\n".join(lines))
 
 
-@sv_bbb_handbook.on_fullmatch(("手账上个月", "手帐上个月"), block=True)
+@sv_bbb_handbook.on_regex(r"^(?:手账上个月|手帐上个月)(?:\s*@[\w\-]+)?$", block=True)
 async def send_handbook_last_month(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
