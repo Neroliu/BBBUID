@@ -2,6 +2,8 @@ from gsuid_core.sv import get_plugin_available_prefix
 
 prefix = get_plugin_available_prefix("BBBUID")
 BIND_UID_HINT = f"你还没有绑定UID哦, 请使用 {prefix}绑定uid 完成绑定！"
+OTHER_BIND_UID_HINT = "[崩坏3] TA还没有绑定UID哦~"
+AT_QUERY_DISABLED = "[崩坏3] 当前未开启@他人查询功能，无法查询他人的数据。"
 CK_HINT = "你还没有绑定Cookie哦！请先绑定Cookie后再查询~"
 
 BBB_ERROR_CODE = {

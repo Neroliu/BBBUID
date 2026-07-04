@@ -7,8 +7,8 @@ from gsuid_core.models import Event
 
 from ..bbb_api import bh3_api
 from ..bbb_config.bbb_config import BBB_CONFIG
-from ..utils.uid import get_uid
-from ..utils.hint import BIND_UID_HINT, bbb_error_reply
+from ..utils.uid import get_uid, get_query_target
+from ..utils.hint import bbb_error_reply
 from ..utils.char_data_cache import load_char_data, save_char_data, clear_char_data
 
 CST = timezone(timedelta(hours=8))
@@ -29,9 +29,9 @@ sv_bbb_query = SV("崩坏3查询")
 
 @sv_bbb_query.on_fullmatch(("查询", "我的女武神"), block=True)
 async def send_index_info(bot: Bot, ev: Event):
-    uid = await get_uid(bot, ev)
+    uid, _, _ = await get_query_target(bot, ev)
     if not uid:
-        return await bot.send(BIND_UID_HINT)
+        return
 
     index_data = await bh3_api.get_bbb_index(uid)
     if isinstance(index_data, int):
@@ -63,9 +63,9 @@ async def send_index_info(bot: Bot, ev: Event):
 
 @sv_bbb_query.on_fullmatch(("刷新面板", "更新面板"), block=True)
 async def send_refresh_panel(bot: Bot, ev: Event):
-    uid = await get_uid(bot, ev)
+    uid, _, _ = await get_query_target(bot, ev)
     if not uid:
-        return await bot.send(BIND_UID_HINT)
+        return
 
     # Clear cache and re-fetch
     clear_char_data(uid)
@@ -102,9 +102,9 @@ sv_bbb_note = SV("崩坏3便笺")
 
 @sv_bbb_note.on_fullmatch(("便笺", "便签", "实时便笺", "体力", "每日", "mr"), block=True)
 async def send_note_info(bot: Bot, ev: Event):
-    uid = await get_uid(bot, ev)
+    uid, _, _ = await get_query_target(bot, ev)
     if not uid:
-        return await bot.send(BIND_UID_HINT)
+        return
 
     index_data = await bh3_api.get_bbb_index(uid)
     if isinstance(index_data, int):
@@ -134,9 +134,9 @@ sv_bbb_abyss = SV("崩坏3深渊")
 
 @sv_bbb_abyss.on_fullmatch(("深渊", "超弦空间", "深渊战报"), block=True)
 async def send_abyss_info(bot: Bot, ev: Event):
-    uid = await get_uid(bot, ev)
+    uid, _, _ = await get_query_target(bot, ev)
     if not uid:
-        return await bot.send(BIND_UID_HINT)
+        return
 
     data = await bh3_api.get_bbb_new_abyss(uid)
     if isinstance(data, int):
@@ -177,9 +177,9 @@ sv_bbb_battlefield = SV("崩坏3战场")
 
 @sv_bbb_battlefield.on_fullmatch(("战场", "战场战报", "记忆战场"), block=True)
 async def send_battlefield_info(bot: Bot, ev: Event):
-    uid = await get_uid(bot, ev)
+    uid, _, _ = await get_query_target(bot, ev)
     if not uid:
-        return await bot.send(BIND_UID_HINT)
+        return
 
     data = await bh3_api.get_bbb_battle_field(uid)
     if isinstance(data, int):
@@ -224,9 +224,9 @@ sv_bbb_godwar = SV("崩坏3往世乐土")
 
 @sv_bbb_godwar.on_fullmatch(("往世乐土", "乐土"), block=True)
 async def send_godwar_info(bot: Bot, ev: Event):
-    uid = await get_uid(bot, ev)
+    uid, _, _ = await get_query_target(bot, ev)
     if not uid:
-        return await bot.send(BIND_UID_HINT)
+        return
 
     data = await bh3_api.get_bbb_god_war(uid)
     if isinstance(data, int):
@@ -258,9 +258,9 @@ sv_bbb_handbook = SV("崩坏3手账")
 
 @sv_bbb_handbook.on_fullmatch(("手账", "手帐"), block=True)
 async def send_handbook(bot: Bot, ev: Event):
-    uid = await get_uid(bot, ev)
+    uid, _, _ = await get_query_target(bot, ev)
     if not uid:
-        return await bot.send(BIND_UID_HINT)
+        return
     logger.info(f"[崩坏3] [手账] 查询: UID={uid}")
 
     import asyncio
@@ -293,9 +293,9 @@ async def send_handbook(bot: Bot, ev: Event):
 
 @sv_bbb_handbook.on_fullmatch(("手账上个月", "手帐上个月"), block=True)
 async def send_handbook_last_month(bot: Bot, ev: Event):
-    uid = await get_uid(bot, ev)
+    uid, _, _ = await get_query_target(bot, ev)
     if not uid:
-        return await bot.send(BIND_UID_HINT)
+        return
     logger.info(f"[崩坏3] [手账上个月] 查询: UID={uid}")
 
     import asyncio

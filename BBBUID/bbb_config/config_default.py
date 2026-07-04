@@ -54,6 +54,11 @@ CONFIG_DEFAULT: Dict[str, GSC] = {
         "裁剪压缩后的壁纸缓存最大占用空间",
         "200",
     ),
+    "BBBAllowAtQuery": GsBoolConfig(
+        "@他人查询",
+        "开启后可通过@他人查询对方崩坏3数据（需对方已绑定UID）",
+        False,
+    ),
     "ElysianStrategyEnabled": GsBoolConfig(
         "乐土攻略查询",
         "开启后允许查询往世乐土攻略图",
