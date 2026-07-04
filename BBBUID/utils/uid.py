@@ -33,9 +33,18 @@ async def get_uid(bot: Bot, ev: Event) -> Optional[str]:
 async def get_query_target(bot: Bot, ev: Event) -> tuple[Optional[str], str, bool]:
     """获取查询目标并返回 (uid, target_user_id, is_other)。
 
-    适用于需要区分是否查他人、或需要对“被@用户”做额外提示的场景。
+    - 当 uid 缺失时，会自动发送对应提示（他人未绑定 / 未开启@查询 / 自己未绑定）
+    - 适用于需要区分是否查他人、或需要对“被@用户”做额外提示的场景
     """
-    return await _resolve_query_uid(bot, ev)
+    uid, target_user_id, is_other = await _resolve_query_uid(bot, ev)
+    if uid:
+        return uid, target_user_id, is_other
+
+    if is_other:
+        await bot.send(OTHER_BIND_UID_HINT, at_sender=False)
+    else:
+        await bot.send(BIND_UID_HINT, at_sender=bool(ev.group_id))
+    return None, target_user_id, is_other
 
 
 def _extract_explicit_uid(text: Optional[str]) -> Optional[str]:

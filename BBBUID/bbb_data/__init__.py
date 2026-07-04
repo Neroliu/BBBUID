@@ -8,7 +8,7 @@ from gsuid_core.models import Event
 from ..bbb_api import bh3_api
 from ..bbb_config.bbb_config import BBB_CONFIG
 from ..utils.uid import get_uid, get_query_target, extract_at_user_id_from_text
-from ..utils.hint import bbb_error_reply
+from ..utils.hint import BIND_UID_HINT, bbb_error_reply
 from ..utils.char_data_cache import load_char_data, save_char_data, clear_char_data
 
 CST = timezone(timedelta(hours=8))
@@ -31,7 +31,7 @@ sv_bbb_query = SV("崩坏3查询")
 async def send_index_info(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
-        return
+        return  # 已在 get_query_target 内提示
 
     index_data = await bh3_api.get_bbb_index(uid)
     if isinstance(index_data, int):
@@ -65,7 +65,7 @@ async def send_index_info(bot: Bot, ev: Event):
 async def send_refresh_panel(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
-        return
+        return  # 已在 get_query_target 内提示
 
     # Clear cache and re-fetch
     clear_char_data(uid)
@@ -104,7 +104,7 @@ sv_bbb_note = SV("崩坏3便笺")
 async def send_note_info(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
-        return
+        return  # 已在 get_query_target 内提示
 
     index_data = await bh3_api.get_bbb_index(uid)
     if isinstance(index_data, int):
@@ -136,7 +136,7 @@ sv_bbb_abyss = SV("崩坏3深渊")
 async def send_abyss_info(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
-        return
+        return  # 已在 get_query_target 内提示
 
     data = await bh3_api.get_bbb_new_abyss(uid)
     if isinstance(data, int):
@@ -179,7 +179,7 @@ sv_bbb_battlefield = SV("崩坏3战场")
 async def send_battlefield_info(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
-        return
+        return  # 已在 get_query_target 内提示
 
     data = await bh3_api.get_bbb_battle_field(uid)
     if isinstance(data, int):
@@ -226,7 +226,7 @@ sv_bbb_godwar = SV("崩坏3往世乐土")
 async def send_godwar_info(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
-        return
+        return  # 已在 get_query_target 内提示
 
     data = await bh3_api.get_bbb_god_war(uid)
     if isinstance(data, int):
@@ -260,7 +260,7 @@ sv_bbb_handbook = SV("崩坏3手账")
 async def send_handbook(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
-        return
+        return  # 已在 get_query_target 内提示
     logger.info(f"[崩坏3] [手账] 查询: UID={uid}")
 
     import asyncio
@@ -295,7 +295,7 @@ async def send_handbook(bot: Bot, ev: Event):
 async def send_handbook_last_month(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
-        return
+        return  # 已在 get_query_target 内提示
     logger.info(f"[崩坏3] [手账上个月] 查询: UID={uid}")
 
     import asyncio
