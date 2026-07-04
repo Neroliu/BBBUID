@@ -78,16 +78,27 @@ async def _resolve_query_uid(bot: Bot, ev: Event) -> tuple[Optional[str], str, b
     if explicit_uid:
         return explicit_uid, ev.user_id, False
 
-    at = getattr(ev, "at", None)
-    text_at = extract_at_user_id_from_text(getattr(ev, "text", None) or getattr(ev, "raw_text", None))
+    exclude_ids = {ev.user_id, getattr(ev, "bot_id", None), getattr(ev, "real_bot_id", None)}
 
-    if at and at not in {ev.user_id, getattr(ev, "bot_id", None), getattr(ev, "real_bot_id", None)}:
+    # 1) ev.at（平台解析的最后一个 @目标）
+    at = getattr(ev, "at", None)
+    if at and str(at) not in exclude_ids:
         target_user_id = str(at)
-    elif text_at and text_at not in {ev.user_id, getattr(ev, "bot_id", None), getattr(ev, "real_bot_id", None)}:
-        target_user_id = text_at
     else:
-        uid = await GsBind.get_uid_by_game(ev.user_id, ev.bot_id, GAME_NAME)
-        return uid, ev.user_id, False
+        # 2) ev.at_list（平台解析的全部 @目标，取第一个非自身/非Bot）
+        at_list = getattr(ev, "at_list", None) or []
+        target_user_id = next(
+            (str(x) for x in at_list if str(x) not in exclude_ids),
+            "",
+        )
+        if not target_user_id:
+            # 3) 文本里的 @QQ（兼容平台只把 @人 放进文本的情况）
+            text_at = extract_at_user_id_from_text(getattr(ev, "raw_text", None) or getattr(ev, "text", None))
+            if text_at and text_at not in exclude_ids:
+                target_user_id = text_at
+            else:
+                uid = await GsBind.get_uid_by_game(ev.user_id, ev.bot_id, GAME_NAME)
+                return uid, ev.user_id, False
 
     if not BBB_CONFIG.get_config("BBBAllowAtQuery").data:
         await bot.send(AT_QUERY_DISABLED, at_sender=bool(ev.group_id))

@@ -27,7 +27,7 @@ def _fmt_ts(ts: str) -> str:
 sv_bbb_query = SV("崩坏3查询")
 
 
-@sv_bbb_query.on_regex(r"^(?:查询|我的女武神)(?:\s*@[\w\-]+)?$", block=True)
+@sv_bbb_query.on_command(("查询", "我的女武神"), block=True)
 async def send_index_info(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
@@ -61,7 +61,7 @@ async def send_index_info(bot: Bot, ev: Event):
     await bot.send(img)
 
 
-@sv_bbb_query.on_regex(r"^(?:刷新面板|更新面板)(?:\s*@[\w\-]+)?$", block=True)
+@sv_bbb_query.on_command(("刷新面板", "更新面板"), block=True)
 async def send_refresh_panel(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
@@ -100,7 +100,7 @@ async def send_refresh_panel(bot: Bot, ev: Event):
 sv_bbb_note = SV("崩坏3便笺")
 
 
-@sv_bbb_note.on_regex(r"^(?:便笺|便签|实时便笺|体力|每日|mr)(?:\s*@[\w\-]+)?$", block=True)
+@sv_bbb_note.on_command(("便笺", "便签", "实时便笺", "体力", "每日", "mr"), block=True)
 async def send_note_info(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
@@ -132,7 +132,7 @@ async def send_note_info(bot: Bot, ev: Event):
 sv_bbb_abyss = SV("崩坏3深渊")
 
 
-@sv_bbb_abyss.on_regex(r"^(?:深渊|超弦空间|深渊战报)(?:\s*@[\w\-]+)?$", block=True)
+@sv_bbb_abyss.on_command(("深渊", "超弦空间", "深渊战报"), block=True)
 async def send_abyss_info(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
@@ -175,7 +175,7 @@ async def send_abyss_info(bot: Bot, ev: Event):
 sv_bbb_battlefield = SV("崩坏3战场")
 
 
-@sv_bbb_battlefield.on_regex(r"^(?:战场|战场战报|记忆战场)(?:\s*@[\w\-]+)?$", block=True)
+@sv_bbb_battlefield.on_command(("战场", "战场战报", "记忆战场"), block=True)
 async def send_battlefield_info(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
@@ -222,7 +222,7 @@ async def send_battlefield_info(bot: Bot, ev: Event):
 sv_bbb_godwar = SV("崩坏3往世乐土")
 
 
-@sv_bbb_godwar.on_regex(r"^(?:往世乐土|乐土)(?:\s*@[\w\-]+)?$", block=True)
+@sv_bbb_godwar.on_command(("往世乐土", "乐土"), block=True)
 async def send_godwar_info(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
@@ -256,7 +256,7 @@ async def send_godwar_info(bot: Bot, ev: Event):
 sv_bbb_handbook = SV("崩坏3手账")
 
 
-@sv_bbb_handbook.on_regex(r"^(?:手账|手帐)(?:\s*@[\w\-]+)?$", block=True)
+@sv_bbb_handbook.on_command(("手账", "手帐"), block=True)
 async def send_handbook(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
@@ -291,7 +291,7 @@ async def send_handbook(bot: Bot, ev: Event):
         await bot.send("\n".join(lines))
 
 
-@sv_bbb_handbook.on_regex(r"^(?:手账上个月|手帐上个月)(?:\s*@[\w\-]+)?$", block=True)
+@sv_bbb_handbook.on_command(("手账上个月", "手帐上个月"), block=True)
 async def send_handbook_last_month(bot: Bot, ev: Event):
     uid, _, _ = await get_query_target(bot, ev)
     if not uid:
