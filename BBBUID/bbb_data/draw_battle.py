@@ -519,18 +519,17 @@ async def draw_battle(
     chart_h = _draw_line_chart(canvas, all_reports, y_pos)
     y_pos += chart_h
 
-    # 挑战记录底图背景起始位置调整为 790（卡片起始位置保持 820/1300/1780 不变）
-    y_pos = 790
-
-    # 4. 贴bgc.png作为挑战记录区整体背景
+    # 4. 挑战记录底图背景起始位置调整为 790（卡片起始位置保持 820/1300/1780 不变）
+    bg_y = 790
     bgc = _load_res("bgc.png")
     if bgc:
-        canvas.paste(bgc, (0, y_pos), bgc)
+        canvas.paste(bgc, (0, bg_y), bgc)
 
-    # 5. 绘制3个Boss挑战记录卡片 (与深渊对齐)
+    # 5. 绘制3个Boss挑战记录卡片（距 bgc 顶部 30px，即 820/1300/1780）
+    card_y = 820
     for i, bi in enumerate(battle_infos[:3]):
         await _draw_battle_record(
-            canvas, bi, y_pos, char_levels,
+            canvas, bi, card_y, char_levels,
             is_first=(i == 0),
             report_score=report_score,
             report_rank=report_rank,
@@ -538,7 +537,10 @@ async def draw_battle(
             ranking_pct=ranking_pct,
             time_second=time_second,
         )
-        y_pos += 480
+        card_y += 480
+
+    # 6. Footer 仍以最后一张卡片底部为基准
+    y_pos = card_y
 
     # 6. Footer (上移12px, 与深渊对齐)
     footer = Image.open(Path(__file__).parent / "footer.png").convert("RGBA")
