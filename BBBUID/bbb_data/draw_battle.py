@@ -529,8 +529,8 @@ async def draw_battle(
     if bgc:
         canvas.paste(bgc, (0, bg_y), bgc)
 
-    # 5. 绘制3个Boss挑战记录卡片（整体上移10px，即 810/1290/1770）
-    card_y = 810
+    # 5. 绘制3个Boss挑战记录卡片（起始 830，间距 460）
+    card_y = 830
     for i, bi in enumerate(battle_infos[:3]):
         await _draw_battle_record(
             canvas, bi, card_y, char_levels,
@@ -541,7 +541,7 @@ async def draw_battle(
             ranking_pct=ranking_pct,
             time_second=time_second,
         )
-        card_y += 480
+        card_y += 460
 
     # 6. Footer 仍以最后一张卡片底部为基准
     y_pos = card_y
