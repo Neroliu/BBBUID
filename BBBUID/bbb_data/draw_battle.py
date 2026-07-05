@@ -455,7 +455,11 @@ async def draw_battle(
         reports, key=lambda x: int(x.get("time_second", 0)), reverse=True
     )[0]
 
-    battle_infos = latest_report.get("battle_infos", [])
+    battle_infos = sorted(
+        latest_report.get("battle_infos", []),
+        key=lambda x: int(x.get("score", 0)),
+        reverse=True,
+    )
     if not battle_infos:
         raise ValueError("无战场挑战记录")
 
