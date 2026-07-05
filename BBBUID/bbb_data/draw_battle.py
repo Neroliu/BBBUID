@@ -529,8 +529,8 @@ async def draw_battle(
     if bgc:
         canvas.paste(bgc, (0, bg_y), bgc)
 
-    # 5. 绘制3个Boss挑战记录卡片（距 bgc 顶部 30px，即 820/1300/1780）
-    card_y = 820
+    # 5. 绘制3个Boss挑战记录卡片（整体上移10px，即 810/1290/1770）
+    card_y = 810
     for i, bi in enumerate(battle_infos[:3]):
         await _draw_battle_record(
             canvas, bi, card_y, char_levels,
