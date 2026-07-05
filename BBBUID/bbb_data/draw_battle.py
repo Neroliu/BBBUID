@@ -519,6 +519,9 @@ async def draw_battle(
     chart_h = _draw_line_chart(canvas, all_reports, y_pos)
     y_pos += chart_h
 
+    # 挑战记录底图背景起始位置调整为 790（卡片起始位置保持 820/1300/1780 不变）
+    y_pos = 790
+
     # 4. 贴bgc.png作为挑战记录区整体背景
     bgc = _load_res("bgc.png")
     if bgc:
