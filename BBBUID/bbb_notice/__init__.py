@@ -1,4 +1,5 @@
-"""崩坏3公告订阅模块"""
+"""崩坏3公告模块 (分类公告 + 订阅推送 + 6h 过期过滤)"""
+import time
 import random
 import asyncio
 
@@ -10,27 +11,64 @@ from gsuid_core.models import Event
 
 from ..bbb_config.bbb_config import BBB_CONFIG
 from .utils import Msg, TOPIC_NOTICE, subscribe_session, unsubscribe_session, list_subscribers, send_notify
-from .notice_api import get_bbb_notice_list, get_bbb_notice_detail, get_article_url
-from .notice_card import render_notice_card
+from .notice_api import (
+    BBBNoticeType,
+    NOTICE_TYPES,
+    get_news_list,
+    get_all_news_list,
+    get_post_detail,
+    get_article_url,
+)
+from .notice_card import render_notice_list_card, render_notice_detail
 
 sv_bbb_notice = SV("崩坏3公告")
 sv_bbb_notice_sub = SV("订阅崩坏3公告", pm=3)
 
 ANN_CHECK_MIN: int = min(BBB_CONFIG.get_config("BBBAnnCheckMinutes").data, 60)
 
+# 旧公告过滤窗口 (毫秒), 与 NTEUID 对齐
+_MAX_AGE_MS = 6 * 60 * 60 * 1000
+
+# 分类 type → 配置 key 映射
+_TYPE_CONFIG_MAP = {
+    BBBNoticeType.ANNOUNCE: "BBBAnnIdsAnnounce",
+    BBBNoticeType.ACTIVITY: "BBBAnnIdsActivity",
+    BBBNoticeType.INFO: "BBBAnnIdsInfo",
+}
+
+
+# ════════════════════════════════════════════
+#  命令: 公告 (支持 公告 / 活动公告 / 资讯公告)
+# ════════════════════════════════════════════
+
 
 @sv_bbb_notice.on_command("公告", block=True)
 async def send_bbb_notice(bot: Bot, ev: Event):
-    """查询最新崩坏3公告"""
-    notices = await get_bbb_notice_list(page_size=8)
-    if not notices:
-        return await bot.send("[崩坏3] 暂无公告数据")
+    """查询崩坏3公告。支持: 公告 / 活动公告 / 资讯公告"""
+    text = (ev.text or "").strip()
+    type_map = {
+        "活动": BBBNoticeType.ACTIVITY,
+        "资讯": BBBNoticeType.INFO,
+    }
+    ntype = type_map.get(text)
 
-    lines = ["[崩坏3] 最新公告"]
-    for n in notices:
-        lines.append(f"• {n['subject']}")
-    lines.append(f"\n{get_article_url(notices[0]['post_id'])}")
-    await bot.send("\n".join(lines))
+    if ntype:
+        posts = await get_news_list(ntype, page_size=8)
+        if not posts:
+            return await bot.send(f"[崩坏3] 暂无{ntype.label}数据")
+        columns = {ntype: posts}
+    else:
+        columns = await get_all_news_list(page_size=8)
+        if not any(columns.values()):
+            return await bot.send("[崩坏3] 暂无公告数据")
+
+    img = await render_notice_list_card(columns)
+    await bot.send(img)
+
+
+# ════════════════════════════════════════════
+#  订阅 / 取消订阅
+# ════════════════════════════════════════════
 
 
 @sv_bbb_notice_sub.on_fullmatch("订阅公告")
@@ -54,6 +92,33 @@ async def unsub_bbb_notice(bot: Bot, ev: Event):
     return await send_notify(bot, ev, Msg.NOT_SUBSCRIBED)
 
 
+# ════════════════════════════════════════════
+#  配置读写辅助
+# ════════════════════════════════════════════
+
+
+def _get_type_ids(ntype: BBBNoticeType) -> list[int]:
+    cfg_key = _TYPE_CONFIG_MAP[ntype]
+    raw = BBB_CONFIG.get_config(cfg_key).data
+    return list(raw) if raw else []
+
+
+def _set_type_ids(ntype: BBBNoticeType, ids: list[int]) -> None:
+    cfg_key = _TYPE_CONFIG_MAP[ntype]
+    BBB_CONFIG.set_config(cfg_key, ids)
+
+
+def _get_known_ids() -> list[str]:
+    """读取旧的扁平 ID 列表 (用于迁移)。"""
+    raw = BBB_CONFIG.get_config("BBBAnnIds").data
+    return list(raw) if raw else []
+
+
+# ════════════════════════════════════════════
+#  定时任务
+# ════════════════════════════════════════════
+
+
 @scheduler.scheduled_job("interval", minutes=ANN_CHECK_MIN)
 async def check_bbb_notice():
     if not BBB_CONFIG.get_config("BBBAnnOpen").data:
@@ -68,45 +133,70 @@ async def _check_and_push():
         logger.info("[崩坏3公告] 暂无群订阅")
         return
 
-    notices = await get_bbb_notice_list(page_size=20)
-    if not notices:
+    columns = await get_all_news_list(page_size=20)
+    flat = [post for posts in columns.values() for post in posts]
+    if not flat:
         return
 
-    known_ids: list[str] = BBB_CONFIG.get_config("BBBAnnIds").data
-    fresh_ids = [n["post_id"] for n in notices]
+    # 首次运行 / 旧配置迁移
+    any_has_ids = any(_get_type_ids(t) for t in NOTICE_TYPES)
+    if not any_has_ids:
+        old_ids = _get_known_ids()
+        if old_ids:
+            _set_type_ids(BBBNoticeType.ANNOUNCE, [int(i) for i in old_ids])
+            logger.info("[崩坏3公告] 已从旧配置迁移公告ID到分类存储")
+        else:
+            for ntype in NOTICE_TYPES:
+                posts = columns.get(ntype, [])
+                _set_type_ids(ntype, [p.post_id for p in posts])
+            logger.info("[崩坏3公告] 初始记录完成, 将在下次轮询中检测新公告.")
+            return
 
-    if not known_ids:
-        BBB_CONFIG.set_config("BBBAnnIds", fresh_ids)
-        logger.info("[崩坏3公告] 初始记录完成, 将在下次轮询中检测新公告.")
-        return
+    # 增量检测 (按分类)
+    now_ms = int(time.time() * 1000)
+    min_send_time = now_ms - _MAX_AGE_MS
+    pending_all = []
 
-    pending = [n for n in notices if n["post_id"] not in known_ids]
-    if not pending:
+    for ntype in NOTICE_TYPES:
+        known = set(_get_type_ids(ntype))
+        posts = columns.get(ntype, [])
+
+        fresh_ids = [p.post_id for p in posts]
+        pending = [
+            p for p in posts
+            if p.post_id not in known and p.created_at * 1000 >= min_send_time
+        ]
+        pending_all.extend((ntype, p) for p in pending)
+
+        merged = sorted(set(known) | set(fresh_ids), reverse=True)[:50]
+        _set_type_ids(ntype, merged)
+
+    if not pending_all:
         logger.info("[崩坏3公告] 没有新公告")
         return
 
-    merged = sorted(set(known_ids) | set(fresh_ids), reverse=True)[:50]
-    BBB_CONFIG.set_config("BBBAnnIds", merged)
+    # 按时间排序后推送 (从旧到新)
+    pending_all.sort(key=lambda x: x[1].created_at)
 
-    for n in reversed(pending):
+    for ntype, post in pending_all:
         try:
-            detail = await get_bbb_notice_detail(n["post_id"])
+            detail = await get_post_detail(post.post_id)
             if detail:
-                post_data = detail.get("post", {}).get("post", {})
-                title = post_data.get("subject", n["subject"])
-                content_html = post_data.get("content", "")
-                img = await render_notice_card(title, content_html)
+                img = await render_notice_detail(detail)
             else:
-                img = f"[崩坏3] 新公告\n{n['subject']}\n{get_article_url(n['post_id'])}"
+                img = f"[崩坏3] 新{ntype.label}\n{post.subject}\n{get_article_url(post.post_id)}"
         except Exception as e:
-            logger.warning(f"[崩坏3公告] 渲染失败 post_id={n['post_id']}: {e}")
-            img = f"[崩坏3] 新公告\n{n['subject']}\n{get_article_url(n['post_id'])}"
+            logger.warning(f"[崩坏3公告] 渲染失败 post_id={post.post_id}: {e}")
+            img = f"[崩坏3] 新{ntype.label}\n{post.subject}\n{get_article_url(post.post_id)}"
 
         for sub in subs:
             try:
                 await sub.send(img)
             except Exception as e:
-                logger.warning(f"[崩坏3公告] 推送失败 post_id={n['post_id']} group={sub.group_id}: {e!r}")
+                logger.warning(
+                    f"[崩坏3公告] 推送失败 post_id={post.post_id} "
+                    f"group={sub.group_id}: {e!r}"
+                )
             await asyncio.sleep(random.uniform(1, 3))
 
-    logger.info(f"[崩坏3公告] 推送完毕, 共 {len(pending)} 条新公告")
+    logger.info(f"[崩坏3公告] 推送完毕, 共 {len(pending_all)} 条新公告")

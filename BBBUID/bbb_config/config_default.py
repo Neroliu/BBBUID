@@ -6,6 +6,7 @@ from gsuid_core.utils.plugins_config.models import (
     GsIntConfig,
     GsBoolConfig,
     GsListStrConfig,
+    GsListConfig,
 )
 
 CONFIG_DEFAULT: Dict[str, GSC] = {
@@ -51,7 +52,7 @@ CONFIG_DEFAULT: Dict[str, GSC] = {
     ),
     "CompressedWallpaperCacheSizeMB": GsStrConfig(
         "压缩壁纸缓存大小上限(MB)",
-        "裁剪压缩后的壁纸缓存最大占用空间",
+        "裁剪压缩后的壁纸缓存的最大占用空间",
         "200",
     ),
     "BBBAllowAtQuery": GsBoolConfig(
@@ -79,9 +80,26 @@ CONFIG_DEFAULT: Dict[str, GSC] = {
         "发送攻略图时是否附带数据来源与更新时间",
         True,
     ),
+    # ── 公告 (旧, 保留用于迁移) ──
     "BBBAnnIds": GsListStrConfig(
-        "崩坏3已知公告ID",
-        "用于检测新公告的帖子ID列表",
+        "崩坏3已知公告ID (旧)",
+        "旧版扁平ID列表, 首次运行时自动迁移到分类存储",
+        [],
+    ),
+    # ── 公告 (新, 按分类存储) ──
+    "BBBAnnIdsAnnounce": GsListConfig(
+        "崩坏3已知公告ID-公告",
+        "公告类(type=1)已知帖子ID列表",
+        [],
+    ),
+    "BBBAnnIdsActivity": GsListConfig(
+        "崩坏3已知公告ID-活动",
+        "活动类(type=2)已知帖子ID列表",
+        [],
+    ),
+    "BBBAnnIdsInfo": GsListConfig(
+        "崩坏3已知公告ID-资讯",
+        "资讯类(type=3)已知帖子ID列表",
         [],
     ),
     "BBBAnnOpen": GsBoolConfig(
