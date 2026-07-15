@@ -38,14 +38,16 @@ _TYPE_CONFIG_MAP = {
 
 
 # ════════════════════════════════════════════
-#  命令: 公告 (支持 公告 / 活动公告 / 资讯公告)
+#  命令: 公告 (支持 公告 / 活动公告 / 资讯公告 / 公告+ID)
 # ════════════════════════════════════════════
 
 
 @sv_bbb_notice.on_command("公告", block=True)
 async def send_bbb_notice(bot: Bot, ev: Event):
-    """查询崩坏3公告。支持: 公告 / 活动公告 / 资讯公告"""
-    text = (ev.text or "").strip()
+    """查询崩坏3公告。支持: 公告 / 活动公告 / 资讯公告 / 公告+ID"""
+    text = (ev.text or "").strip().replace("#", "")
+
+    # 分类列表
     type_map = {
         "活动": BBBNoticeType.ACTIVITY,
         "资讯": BBBNoticeType.INFO,
@@ -57,14 +59,24 @@ async def send_bbb_notice(bot: Bot, ev: Event):
         if not posts:
             return await bot.send(f"[崩坏3] 暂无{ntype.label}数据")
         columns = {ntype: posts}
-    else:
-        columns = await get_all_news_list(page_size=8)
-        if not any(columns.values()):
-            return await bot.send("[崩坏3] 暂无公告数据")
+        img = await render_notice_list_card(columns)
+        return await bot.send(img)
 
+    # 按 ID 查详情
+    if text.isdigit():
+        post_id = int(text)
+        detail = await get_post_detail(post_id)
+        if not detail:
+            return await bot.send(f"[崩坏3] 未找到公告 ID: {post_id}")
+        img = await render_notice_detail(detail)
+        return await bot.send(img)
+
+    # 默认: 全分类列表
+    columns = await get_all_news_list(page_size=8)
+    if not any(columns.values()):
+        return await bot.send("[崩坏3] 暂无公告数据")
     img = await render_notice_list_card(columns)
     await bot.send(img)
-
 
 # ════════════════════════════════════════════
 #  订阅 / 取消订阅
