@@ -290,6 +290,14 @@ def _parse_structured_content(raw: str) -> List[tuple]:
             _flush()
             blocks.append(("image", insert["image"]))
             continue
+        if isinstance(insert, dict) and "vod" in insert:
+            vod = insert["vod"]
+            if isinstance(vod, dict):
+                cover = vod.get("cover", "")
+                if cover:
+                    _flush()
+                    blocks.append(("image", cover))
+            continue
         if isinstance(insert, str):
             text_buf.append(insert)
             continue
