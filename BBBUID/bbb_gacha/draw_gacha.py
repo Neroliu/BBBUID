@@ -30,6 +30,7 @@ TEXT_GRAY = (200, 200, 210)
 TEXT_DIM = (160, 160, 175)
 GOLD_YELLOW = (254, 231, 114)  # #FEE772
 PITY_RED = (255, 80, 80)
+PULL_GREEN = (80, 200, 120)
 ACCENT_BLUE = (100, 180, 255)
 TEXT_BLACK = (30, 30, 30)
 
@@ -378,11 +379,17 @@ async def _draw_pool_section(pool: Dict) -> Image.Image:
         # 绘制抽数标注（28px，与格子底部对齐，底部间距 25px）
         pulls = item.get("pulls", 0)
         pulls_text = f"{pulls}抽"
+        if pulls < 50:
+            pulls_color = PULL_GREEN
+        elif pulls <= 80:
+            pulls_color = TEXT_BLACK
+        else:
+            pulls_color = PITY_RED
         draw.text(
             (item_x + frame_w // 2, item_y + frame_h - 25),
             pulls_text,
             font=_font(28),
-            fill=TEXT_BLACK,
+            fill=pulls_color,
             anchor="mb",
         )
 
