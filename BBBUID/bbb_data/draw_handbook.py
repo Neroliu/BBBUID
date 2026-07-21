@@ -174,16 +174,15 @@ def _draw_player_info(
     draw = ImageDraw.Draw(canvas)
 
     info_bar = _load_common_res("player_info_bar_long.png")
+    bar_x = 20
     if info_bar:
         orig_w, orig_h = info_bar.size
-        scale = 1360 / orig_w
-        bar_w = 1360
+        bar_w = W - 2 * bar_x
+        scale = bar_w / orig_w
         bar_h = round(orig_h * scale)
         info_bar = info_bar.resize((bar_w, bar_h), Image.Resampling.LANCZOS)
-        bar_x = 20
         canvas.paste(info_bar, (bar_x, y), info_bar)
     else:
-        bar_x = 20
         bar_h = 192
 
     avatar_x = bar_x + 90
