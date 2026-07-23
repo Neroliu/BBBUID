@@ -293,8 +293,21 @@ async def get_full_gachalogs(uid: str) -> str:
         for gacha_name, old_records in old_history.items():
             merged_records = merged_history.get(gacha_name, [])
             if not merged_records:
-                # API 没拉到该卡池数据，保留旧数据
-                merged_history[gacha_name] = old_records
+                # API 没拉到该卡池数据（如已下架的角色补给），对旧数据做去重纠正
+                old_records_sorted = sorted(old_records, key=lambda x: x.get("time", ""))
+                seen: set[Tuple[str, str]] = set()
+                deduped: list[Dict[str, str]] = []
+                for r in old_records_sorted:
+                    base = (r.get("time", ""), r.get("content", ""))
+                    if base not in seen:
+                        seen.add(base)
+                        deduped.append(r)
+                merged_history[gacha_name] = deduped
+                if len(deduped) < len(old_records):
+                    logger.info(
+                        f"[崩坏3] [抽卡记录] {gacha_name}: "
+                        f"API 无数据, 旧数据纠正 {len(old_records) - len(deduped)} 条重复"
+                    )
                 continue
 
             # API 数据优先，同时纠正历史 bug 导致的旧数据重复
