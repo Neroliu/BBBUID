@@ -379,12 +379,22 @@ async def _draw_pool_section(pool: Dict) -> Image.Image:
         # 绘制抽数标注（28px，与格子底部对齐，底部间距 25px）
         pulls = item.get("pulls", 0)
         pulls_text = f"{pulls}抽"
-        if pulls < 50:
-            pulls_color = PULL_GREEN
-        elif pulls <= 80:
-            pulls_color = TEXT_BLACK
+        if pool_type == "char":
+            # 角色/家园补给: <50绿, 50-80黑, >80红
+            if pulls < 50:
+                pulls_color = PULL_GREEN
+            elif pulls <= 80:
+                pulls_color = TEXT_BLACK
+            else:
+                pulls_color = PITY_RED
         else:
-            pulls_color = PITY_RED
+            # 武器/协同补给: <30绿, 30-50黑, >50红
+            if pulls < 30:
+                pulls_color = PULL_GREEN
+            elif pulls <= 50:
+                pulls_color = TEXT_BLACK
+            else:
+                pulls_color = PITY_RED
         draw.text(
             (item_x + frame_w // 2, item_y + frame_h - 25),
             pulls_text,
