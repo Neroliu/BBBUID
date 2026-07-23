@@ -620,16 +620,26 @@ def _get_weapon_icon_path(weapon_name: str) -> Path | None:
 
 
 def _get_partner_icon_path(partner_name: str) -> Path | None:
-    """根据协同者名称获取图标路径。"""
+    """根据协同者名称获取图标路径（精确+模糊匹配）。"""
     try:
         from ..bbb_wiki.resource_update import get_local_index
         index = get_local_index("协同者")
-        if index:
-            for cid_str, title in index.items():
-                if title == partner_name:
-                    icon_path = PARTNER_ICON_CACHE_DIR / f"{cid_str}.png"
-                    if icon_path.exists():
-                        return icon_path
+        if not index:
+            return None
+        # 精确匹配
+        for cid_str, title in index.items():
+            if title == partner_name:
+                icon_path = PARTNER_ICON_CACHE_DIR / f"{cid_str}.png"
+                if icon_path.exists():
+                    return icon_path
+        # 模糊匹配：名称是标题的子串，或标题是名称的子串
+        for cid_str, title in index.items():
+            if partner_name in title or title in partner_name:
+                icon_path = PARTNER_ICON_CACHE_DIR / f"{cid_str}.png"
+                if icon_path.exists():
+                    logger.info(f"[崩坏3] [抽卡记录] 协同者模糊匹配: '{partner_name}' -> '{title}'")
+                    return icon_path
+        logger.info(f"[崩坏3] [抽卡记录] 协同者图标未找到: '{partner_name}', 索引: {list(index.values())}")
     except Exception:
         pass
     return None
