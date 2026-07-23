@@ -619,26 +619,54 @@ def _get_weapon_icon_path(weapon_name: str) -> Path | None:
     return None
 
 
+def _longest_common_substr(a: str, b: str) -> int:
+    """返回 a、b 最长公共子串长度。"""
+    if not a or not b:
+        return 0
+    max_len = 0
+    for i in range(len(a)):
+        for j in range(len(b)):
+            k = 0
+            while i + k < len(a) and j + k < len(b) and a[i + k] == b[j + k]:
+                k += 1
+            max_len = max(max_len, k)
+    return max_len
+
+
 def _get_partner_icon_path(partner_name: str) -> Path | None:
-    """根据协同者名称获取图标路径（精确+模糊匹配）。"""
+    """根据协同者名称获取图标路径（精确→子串→公共子串匹配）。"""
     try:
         from ..bbb_wiki.resource_update import get_local_index
         index = get_local_index("协同者")
         if not index:
             return None
-        # 精确匹配
+        # 1. 精确匹配
         for cid_str, title in index.items():
             if title == partner_name:
                 icon_path = PARTNER_ICON_CACHE_DIR / f"{cid_str}.png"
                 if icon_path.exists():
                     return icon_path
-        # 模糊匹配：名称是标题的子串，或标题是名称的子串
+        # 2. 子串匹配
         for cid_str, title in index.items():
             if partner_name in title or title in partner_name:
                 icon_path = PARTNER_ICON_CACHE_DIR / f"{cid_str}.png"
                 if icon_path.exists():
-                    logger.info(f"[崩坏3] [抽卡记录] 协同者模糊匹配: '{partner_name}' -> '{title}'")
+                    logger.info(f"[崩坏3] [抽卡记录] 协同者子串匹配: '{partner_name}' -> '{title}'")
                     return icon_path
+        # 3. 公共子串匹配（>=2个连续相同字符）
+        best_match = None
+        best_len = 0
+        for cid_str, title in index.items():
+            lcs = _longest_common_substr(partner_name, title)
+            if lcs > best_len:
+                best_len = lcs
+                best_match = (cid_str, title)
+        if best_match and best_len >= 2:
+            cid_str, title = best_match
+            icon_path = PARTNER_ICON_CACHE_DIR / f"{cid_str}.png"
+            if icon_path.exists():
+                logger.info(f"[崩坏3] [抽卡记录] 协同者公共子串匹配: '{partner_name}' -> '{title}' (公共'{partner_name}'中长度{best_len})")
+                return icon_path
         logger.info(f"[崩坏3] [抽卡记录] 协同者图标未找到: '{partner_name}', 索引: {list(index.values())}")
     except Exception:
         pass
