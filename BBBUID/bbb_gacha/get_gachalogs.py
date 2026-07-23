@@ -338,12 +338,11 @@ async def get_full_gachalogs(uid: str) -> str:
             }
 
             # 保留 API 时间范围之外的旧数据（更早的记录）
+            # 仅过滤与 API 重叠的记录，不做额外去重（保留10连合法重复）
             extra: list[Dict[str, str]] = []
-            extra_seen: set[Tuple[str, str]] = set()
             for r in sorted(old_records, key=lambda x: x.get("time", "")):
                 base = (r.get("time", ""), r.get("content", ""))
-                if base not in api_keys and base not in extra_seen:
-                    extra_seen.add(base)
+                if base not in api_keys:
                     extra.append(r)
 
             merged_history[gacha_name] = api_records + extra
