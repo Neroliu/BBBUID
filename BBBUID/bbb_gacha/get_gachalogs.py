@@ -215,16 +215,16 @@ async def save_gachalogs(uid: str, is_force: bool = False, skip_dedup: bool = Fa
                 added = len(new_records)
                 logger.info(f"[崩坏3] [抽卡记录] {gacha_name}: 替换为 API 数据 {added} 条")
             else:
-                # 增量刷新：合并本地与 API 数据，按时间排序后用出现序号去重
+                # 增量刷新：合并本地与 API 数据，按 (time, content) 去重
                 merged = history[gacha_name] + new_records
                 merged.sort(key=lambda x: x.get("time", ""))
-                seen: Dict[Tuple[str, str], int] = {}
+                seen: set[Tuple[str, str]] = set()
                 deduped: list[Dict[str, str]] = []
                 for r in merged:
                     base = (r.get("time", ""), r.get("content", ""))
-                    count = seen.get(base, 0) + 1
-                    seen[base] = count
-                    deduped.append(r)
+                    if base not in seen:
+                        seen.add(base)
+                        deduped.append(r)
                 history[gacha_name] = deduped
                 added = len(history[gacha_name]) - old_count
             # 按时间降序排列
