@@ -209,10 +209,11 @@ async def save_gachalogs(uid: str, is_force: bool = False, skip_dedup: bool = Fa
         if new_records:
             old_count = len(history[gacha_name])
             if skip_dedup:
-                # 全量刷新：直接追加 API 数据，后续由 get_full_gachalogs 统一合并去重
-                history[gacha_name].extend(new_records)
+                # 全量刷新：用 API 数据替换该卡池（不追加，避免旧数据重复累加）
+                # get_full_gachalogs 会负责与备份中更早的旧数据合并
+                history[gacha_name] = new_records
                 added = len(new_records)
-                logger.info(f"[崩坏3] [抽卡记录] {gacha_name}: 追加 API 数据 {added} 条")
+                logger.info(f"[崩坏3] [抽卡记录] {gacha_name}: 替换为 API 数据 {added} 条")
             else:
                 # 增量刷新：合并本地与 API 数据，按时间排序后用出现序号去重
                 merged = history[gacha_name] + new_records
