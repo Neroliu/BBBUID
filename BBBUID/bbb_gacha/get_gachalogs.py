@@ -269,20 +269,8 @@ async def save_gachalogs(uid: str, is_force: bool = False, skip_dedup: bool = Fa
                     f"检测到 {multiplier}x 累积, 恢复 {len(records)} → {len(recovered)} 条"
                 )
             else:
-                # 无倍数累积，仍做 (time,content) 去重
-                seen_set: set[Tuple[str, str]] = set()
-                deduped: list[Dict[str, str]] = []
-                for r in sorted(records, key=lambda x: x.get("time", "")):
-                    base = (r.get("time", ""), r.get("content", ""))
-                    if base not in seen_set:
-                        seen_set.add(base)
-                        deduped.append(r)
-                if len(deduped) < len(records):
-                    history[gacha_name] = deduped
-                    logger.info(
-                        f"[崩坏3] [抽卡记录] {gacha_name}: "
-                        f"去重 {len(records)} → {len(deduped)} 条"
-                    )
+                # 无倍数累积，不做去重（同一秒相同物品可能是 10 连真实重复）
+                pass
 
     # 构建结果
     result = {
@@ -394,6 +382,14 @@ def _extract_weapon_name(content: str) -> str | None:
     if not content.startswith("[武器]"):
         return None
     name = content.replace("[武器]", "").strip()
+    return name if name else None
+
+
+def _extract_partner_name(content: str) -> str | None:
+    """从补给内容中提取协同者名称。格式: [协同者]XXX"""
+    if not content.startswith("[协同者]"):
+        return None
+    name = content.replace("[协同者]", "").strip()
     return name if name else None
 
 
@@ -572,7 +568,18 @@ async def get_gacha_summary(uid: str) -> str:
                 parts.append(f"  已连续 {pull_since_last} 抽未出")
         else:
             for content, pulls, time_str in highlights:
-                parts.append(f"  {content}  ({pulls}抽)  {time_str}")
+                # 提取显示名称
+                display_name = content
+                if pool_type == "char":
+                    n = _extract_character_name(content)
+                    if n: display_name = n
+                elif pool_type == "weapon":
+                    n = _extract_weapon_name(content)
+                    if n: display_name = n
+                elif pool_type == "partner":
+                    n = _extract_partner_name(content)
+                    if n: display_name = n
+                parts.append(f"  {display_name}  ({pulls}抽)  {time_str}")
             if pull_since_last > 0:
                 parts.append(f"  ---- 已连续 {pull_since_last} 抽未出 ----")
 
@@ -691,6 +698,10 @@ async def get_gacha_summary_data(uid: str, ev=None) -> Dict | str:
                     if weapon_name:
                         item_name = weapon_name
                         icon_path = _get_weapon_icon_path(weapon_name)
+                elif pool_type == "partner":
+                    partner_name = _extract_partner_name(content)
+                    if partner_name:
+                        item_name = partner_name
 
                 items.append({
                     "name": item_name,
