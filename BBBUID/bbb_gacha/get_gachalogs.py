@@ -293,21 +293,51 @@ async def get_full_gachalogs(uid: str) -> str:
         for gacha_name, old_records in old_history.items():
             merged_records = merged_history.get(gacha_name, [])
             if not merged_records:
-                # API 没拉到该卡池数据（如已下架的角色补给），对旧数据做去重纠正
-                old_records_sorted = sorted(old_records, key=lambda x: x.get("time", ""))
-                seen: set[Tuple[str, str]] = set()
-                deduped: list[Dict[str, str]] = []
-                for r in old_records_sorted:
-                    base = (r.get("time", ""), r.get("content", ""))
-                    if base not in seen:
-                        seen.add(base)
-                        deduped.append(r)
-                merged_history[gacha_name] = deduped
-                if len(deduped) < len(old_records):
+                # API 没拉到该卡池数据（如已下架的角色补给）
+                # 检测历史累积倍数并恢复：如果每条记录都恰好出现 N 次，说明被叠加了 N 次
+                from collections import Counter as _Counter
+                key_counts = _Counter(
+                    (r.get("time", ""), r.get("content", "")) for r in old_records
+                )
+                if key_counts:
+                    # 取众数作为累积倍数
+                    freq_distribution = _Counter(key_counts.values())
+                    multiplier = freq_distribution.most_common(1)[0][0]
+                else:
+                    multiplier = 1
+
+                if multiplier > 1:
+                    # 按出现次数除以倍数恢复
+                    target_seen: Dict[Tuple[str, str], int] = {}
+                    old_sorted = sorted(old_records, key=lambda x: x.get("time", ""))
+                    recovered: list[Dict[str, str]] = []
+                    for r in old_sorted:
+                        base = (r.get("time", ""), r.get("content", ""))
+                        count = target_seen.get(base, 0) + 1
+                        target_seen[base] = count
+                        if count <= max(1, key_counts[base] // multiplier):
+                            recovered.append(r)
+                    merged_history[gacha_name] = recovered
                     logger.info(
                         f"[崩坏3] [抽卡记录] {gacha_name}: "
-                        f"API 无数据, 旧数据纠正 {len(old_records) - len(deduped)} 条重复"
+                        f"API 无数据, 检测到 {multiplier}x 累积, "
+                        f"恢复 {len(old_records)} → {len(recovered)} 条"
                     )
+                else:
+                    # 无累积，但仍对 (time,content) 去重以防万一
+                    seen_set: set[Tuple[str, str]] = set()
+                    deduped: list[Dict[str, str]] = []
+                    for r in sorted(old_records, key=lambda x: x.get("time", "")):
+                        base = (r.get("time", ""), r.get("content", ""))
+                        if base not in seen_set:
+                            seen_set.add(base)
+                            deduped.append(r)
+                    merged_history[gacha_name] = deduped
+                    if len(deduped) < len(old_records):
+                        logger.info(
+                            f"[崩坏3] [抽卡记录] {gacha_name}: "
+                            f"API 无数据, 旧数据纠正 {len(old_records) - len(deduped)} 条重复"
+                        )
                 continue
 
             # API 数据优先，同时纠正历史 bug 导致的旧数据重复
