@@ -209,14 +209,10 @@ async def save_gachalogs(uid: str, is_force: bool = False, skip_dedup: bool = Fa
         if new_records:
             old_count = len(history[gacha_name])
             if skip_dedup:
-                # 全量刷新：删除本地中与 API 时间范围重叠的记录，再追加 API 数据
-                min_api_time = min(r.get("time", "") for r in new_records)
-                old_records = history[gacha_name]
-                # 保留比 API 最早时间更早的本地记录
-                older = [r for r in old_records if r.get("time", "") < min_api_time]
-                history[gacha_name] = older + new_records
+                # 全量刷新：直接追加 API 数据，后续由 get_full_gachalogs 统一合并去重
+                history[gacha_name].extend(new_records)
                 added = len(new_records)
-                logger.info(f"[崩坏3] [抽卡记录] {gacha_name}: 覆盖 {len(old_records) - len(older)} 条，新增 {added} 条，保留 {len(older)} 条更早记录")
+                logger.info(f"[崩坏3] [抽卡记录] {gacha_name}: 追加 API 数据 {added} 条")
             else:
                 # 增量刷新：合并本地与 API 数据，按时间排序后用出现序号去重
                 merged = history[gacha_name] + new_records
@@ -300,18 +296,25 @@ async def get_full_gachalogs(uid: str) -> str:
                 merged_history[gacha_name] = old_records
                 continue
 
-            # 合并 API 数据与旧数据，按时间排序后用出现序号去重
-            combined = merged_records + old_records
-            combined.sort(key=lambda x: x.get("time", ""))
-            seen: Dict[Tuple[str, str], int] = {}
-            deduped: list[Dict[str, str]] = []
-            for r in combined:
+            # API 数据优先：先记录 API 中每个 (time, content) 的出现次数，
+            # 旧数据中超出该次数的部分才保留（即只保留 API 未覆盖的更早记录）
+            api_seen: Dict[Tuple[str, str], int] = {}
+            for r in merged_records:
                 base = (r.get("time", ""), r.get("content", ""))
-                count = seen.get(base, 0) + 1
-                seen[base] = count
-                deduped.append(r)
-            merged_history[gacha_name] = deduped
-            logger.info(f"[崩坏3] [抽卡记录] {gacha_name}: 合并后共 {len(deduped)} 条")
+                api_seen[base] = api_seen.get(base, 0) + 1
+            # 旧数据按时间排序，只追加 API 没覆盖到的出现次数
+            old_records_sorted = sorted(old_records, key=lambda x: x.get("time", ""))
+            old_counters: Dict[Tuple[str, str], int] = {}
+            extra: list[Dict[str, str]] = []
+            for r in old_records_sorted:
+                base = (r.get("time", ""), r.get("content", ""))
+                old_count = old_counters.get(base, 0) + 1
+                old_counters[base] = old_count
+                if old_count > api_seen.get(base, 0):
+                    extra.append(r)
+            merged_history[gacha_name] = merged_records + extra
+            merged_history[gacha_name].sort(key=lambda x: x.get("time", ""), reverse=True)
+            logger.info(f"[崩坏3] [抽卡记录] {gacha_name}: API {len(merged_records)} 条 + 保留旧数据 {len(extra)} 条")
 
         merged_log["data"] = merged_history
         async with aiofiles.open(gachalogs_path, "w", encoding="utf-8") as f:
