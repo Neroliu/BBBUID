@@ -214,18 +214,20 @@ async def save_gachalogs(uid: str, is_force: bool = False, skip_dedup: bool = Fa
                 added = len(new_records)
                 logger.info(f"[崩坏3] [抽卡记录] {gacha_name}: 替换为 API 数据 {added} 条")
             else:
-                # 增量刷新：合并本地与 API 数据，按 (time, content) 去重
-                merged = history[gacha_name] + new_records
-                merged.sort(key=lambda x: x.get("time", ""))
-                seen: set[Tuple[str, str]] = set()
-                deduped: list[Dict[str, str]] = []
-                for r in merged:
+                # 增量刷新：保留本地数据，仅追加 API 中的新记录
+                # 用 (time, content, 序号) 区分同秒同内容的合法10连重复
+                existing_keys: set[Tuple[str, str, int]] = _build_unique_keys(history[gacha_name])
+                # 为 API 记录生成带序号的 key，只追加本地不存在的
+                api_counters: Dict[Tuple[str, str], int] = {}
+                new_added = 0
+                for r in new_records:
                     base = (r.get("time", ""), r.get("content", ""))
-                    if base not in seen:
-                        seen.add(base)
-                        deduped.append(r)
-                history[gacha_name] = deduped
-                added = len(history[gacha_name]) - old_count
+                    count = api_counters.get(base, 0) + 1
+                    api_counters[base] = count
+                    if (base[0], base[1], count) not in existing_keys:
+                        history[gacha_name].append(r)
+                        new_added += 1
+                added = new_added
             # 按时间降序排列
             history[gacha_name].sort(key=lambda x: x.get("time", ""), reverse=True)
             deltas[gacha_name] = added
