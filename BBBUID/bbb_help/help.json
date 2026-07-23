@@ -245,6 +245,14 @@
         "need_ck": false,
         "need_sk": false,
         "need_admin": false
+      },
+      {
+        "name": "下载全部资源",
+        "desc": "手动触发Wiki资源全量更新",
+        "eg": "下载全部资源",
+        "need_ck": false,
+        "need_sk": false,
+        "need_admin": false
       }
     ]
   },

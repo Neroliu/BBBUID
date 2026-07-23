@@ -49,6 +49,18 @@ async def bbb_wiki_start():
         logger.error(f"[崩坏3] [WIKI] 资源更新失败: {e}")
 
 
+@sv_bbb_wiki.on_fullmatch(("下载全部资源", "更新全部资源", "更新wiki资源"), block=True)
+async def manual_update_all_resources(bot: Bot, ev: Event):
+    logger.info("[崩坏3] [WIKI] 手动触发全部资源更新")
+    await bot.send("[崩坏3] 开始更新全部Wiki资源，请稍候...")
+    try:
+        await update_all()
+        await bot.send("[崩坏3] 全部Wiki资源更新完成！")
+    except Exception as e:
+        logger.error(f"[崩坏3] [WIKI] 手动资源更新失败: {e}")
+        await bot.send(f"[崩坏3] 资源更新失败: {e}")
+
+
 def _find_local(channel_name: str, name: str) -> dict | None:
     index = get_local_index(channel_name)
     for cid, title in index.items():
