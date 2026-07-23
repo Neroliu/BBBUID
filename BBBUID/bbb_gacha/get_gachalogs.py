@@ -209,19 +209,9 @@ async def save_gachalogs(uid: str, is_force: bool = False, skip_dedup: bool = Fa
         if new_records:
             old_count = len(history[gacha_name])
             if skip_dedup:
-                # 全量刷新：用 API 数据替换该卡池，同时对 API 数据内部去重
-                api_sorted = sorted(new_records, key=lambda x: x.get("time", ""))
-                seen_api: set[Tuple[str, str]] = set()
-                deduped_api: list[Dict[str, str]] = []
-                for r in api_sorted:
-                    base = (r.get("time", ""), r.get("content", ""))
-                    if base not in seen_api:
-                        seen_api.add(base)
-                        deduped_api.append(r)
-                history[gacha_name] = deduped_api
-                added = len(deduped_api)
-                if len(deduped_api) < len(new_records):
-                    logger.info(f"[崩坏3] [抽卡记录] {gacha_name}: API 数据去重 {len(new_records)} → {len(deduped_api)}")
+                # 全量刷新：直接用 API 数据替换该卡池（API 数据可信，不去重）
+                history[gacha_name] = new_records
+                added = len(new_records)
                 logger.info(f"[崩坏3] [抽卡记录] {gacha_name}: 替换为 API 数据 {added} 条")
             else:
                 # 增量刷新：合并本地与 API 数据，按 (time, content) 去重
@@ -241,10 +231,13 @@ async def save_gachalogs(uid: str, is_force: bool = False, skip_dedup: bool = Fa
             deltas[gacha_name] = added
             total_add += added
 
-    # 全量刷新时，对所有卡池（含 API 未覆盖的旧池子）做去重
+    # 全量刷新时，仅对 API 未覆盖的旧池子做累积检测恢复
     if skip_dedup:
         from collections import Counter as _Counter
         for gacha_name, records in history.items():
+            # API 覆盖的池子数据可信，跳过
+            if gacha_name in deltas:
+                continue
             key_counts = _Counter(
                 (r.get("time", ""), r.get("content", "")) for r in records
             )
@@ -480,7 +473,7 @@ def _get_pool_type(gacha_name: str) -> str:
     """根据卡池名称判断类型：char / weapon / partner"""
     if "武器" in gacha_name or "装备" in gacha_name:
         return "weapon"
-    if "协同者" in gacha_name:
+    if "协同" in gacha_name:
         return "partner"
     # 角色补给、家园补给等都是出角色的
     return "char"
@@ -591,6 +584,7 @@ async def get_gacha_summary(uid: str) -> str:
 # --- 角色/武器图标缓存路径 ---
 CHAR_ICON_CACHE_DIR = WIKI_PATH / "角色" / "icons"
 WEAPON_ICON_CACHE_DIR = WIKI_PATH / "武器" / "icons"
+PARTNER_ICON_CACHE_DIR = WIKI_PATH / "协同者" / "icons" 
 
 
 def _get_char_icon_path(char_name: str) -> Path | None:
@@ -618,6 +612,22 @@ def _get_weapon_icon_path(weapon_name: str) -> Path | None:
             for cid_str, title in index.items():
                 if title == weapon_name:
                     icon_path = WEAPON_ICON_CACHE_DIR / f"{cid_str}.png"
+                    if icon_path.exists():
+                        return icon_path
+    except Exception:
+        pass
+    return None
+
+
+def _get_partner_icon_path(partner_name: str) -> Path | None:
+    """根据协同者名称获取图标路径。"""
+    try:
+        from ..bbb_wiki.resource_update import get_local_index
+        index = get_local_index("协同者")
+        if index:
+            for cid_str, title in index.items():
+                if title == partner_name:
+                    icon_path = PARTNER_ICON_CACHE_DIR / f"{cid_str}.png"
                     if icon_path.exists():
                         return icon_path
     except Exception:
@@ -702,6 +712,7 @@ async def get_gacha_summary_data(uid: str, ev=None) -> Dict | str:
                     partner_name = _extract_partner_name(content)
                     if partner_name:
                         item_name = partner_name
+                        icon_path = _get_partner_icon_path(partner_name)
 
                 items.append({
                     "name": item_name,
